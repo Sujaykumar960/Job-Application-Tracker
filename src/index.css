@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+
+    /* LinkedIn-Inspired Light Theme Design Tokens */
+    --primary: #0A66C2;
+    --primary-dark: #004182;
+    --primary-light: #E8F3FF;
+
+    --page-bg: #F3F2EF;
+    --surface: #FFFFFF;
+    --surface-hover: #F3F6F8;
+
+    --text-primary: #1D2226;
+    --text-secondary: #56687A;
+    --text-muted: #788896;
+    --text-subtle: #667788;
+    --text-disabled: #9AA5B1;
+    --text-body: #38434F;
+
+    --border: #D9D9D9;
+    --border-light: #E8E8E8;
+
+    --link: #0A66C2;
+    --link-hover: #004182;
+
+    --success: #12B886;
+    --success-bg: #E6F4EA;
+    --success-text: #137333;
+
+    --warning: #F5A623;
+    --warning-bg: #FFF4CC;
+    --warning-text: #8A6100;
+
+    --danger: #E6395A;
+    --danger-bg: #FCE8E6;
+    --danger-text: #B3261E;
+
+    --info: #0A66C2;
+    --info-bg: #E8F3FF;
+    --info-text: #0A66C2;
+  }
+  
+  html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: var(--page-bg);
+    color: var(--text-primary);
+  }
+
+  /* Custom sleek scrollbar (Light Theme) */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #F3F6F8;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #C7D0D9;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #9AA5B1;
+  }
+}
+
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 16px rgba(10, 102, 194, 0.25);
+  }
+  
+  .glass-card {
+    background: #FFFFFF;
+    border: 1px solid #D9D9D9;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+
+  .glass-card-hover {
+    transition: all 0.2s ease-in-out;
+  }
+  .glass-card-hover:hover {
+    border-color: #0A66C2;
+    box-shadow: 0 4px 14px -2px rgba(10, 102, 194, 0.12);
+  }
+}

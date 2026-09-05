@@ -1,0 +1,207 @@
+export type ConnectionState = 'Connect' | 'Pending' | 'Connected';
+
+export interface NetworkUser {
+  id: string;
+  name: string;
+  headline: string;
+  avatarInitials: string;
+  avatarGradient: string;
+  company: string;
+  location: string;
+  skills: string[];
+  mutualCount: number;
+  mutualNames: string[];
+  connectionState: ConnectionState;
+  isFollowing: boolean;
+  isIncomingRequest?: boolean;
+  requestDate?: string;
+  connectedDate?: string;
+  note?: string;
+}
+
+export const INITIAL_NETWORK_USERS: NetworkUser[] = [
+  // Incoming Requests
+  {
+    id: 'req-1',
+    name: 'Marcus Vance',
+    headline: 'Staff SRE & Infrastructure Architect @ Stripe',
+    avatarInitials: 'MV',
+    avatarGradient: 'from-brand-600 to-indigo-800',
+    company: 'Stripe',
+    location: 'San Francisco, CA',
+    skills: ['Go', 'Kafka', 'Distributed Systems', 'Redis Lua', 'AWS'],
+    mutualCount: 12,
+    mutualNames: ['Sarah Lin', 'Elena Rostova'],
+    connectionState: 'Pending',
+    isFollowing: true,
+    isIncomingRequest: true,
+    requestDate: '2 hours ago',
+    note: 'Hey Alex, loved your post on sliding-window rate limiters with Redis Lua. Would love to connect!',
+  },
+  {
+    id: 'req-2',
+    name: 'Chloe Nguyen',
+    headline: 'Founding Tech Lead @ Linear | Ex-Airbnb',
+    avatarInitials: 'CN',
+    avatarGradient: 'from-emerald-600 to-teal-800',
+    company: 'Linear',
+    location: 'Remote',
+    skills: ['TypeScript', 'React', 'Local-First', 'CRDTs', 'GraphQL'],
+    mutualCount: 8,
+    mutualNames: ['Ryan Sterling'],
+    connectionState: 'Pending',
+    isFollowing: false,
+    isIncomingRequest: true,
+    requestDate: '1 day ago',
+    note: 'Hi Alex! Saw your linear-clone GitHub project. Very impressed with the micro-interaction responsiveness.',
+  },
+  {
+    id: 'req-3',
+    name: 'Arjun Mehta',
+    headline: 'Senior Database Engineer @ Cockroach Labs',
+    avatarInitials: 'AM',
+    avatarGradient: 'from-purple-600 to-indigo-900',
+    company: 'Cockroach Labs',
+    location: 'New York, NY',
+    skills: ['Raft', 'Go', 'Distributed SQL', 'Consensus', 'Kubernetes'],
+    mutualCount: 5,
+    mutualNames: ['Devin Chen'],
+    connectionState: 'Pending',
+    isIncomingRequest: true,
+    isFollowing: false,
+    requestDate: '2 days ago',
+  },
+
+  // Suggestions (Connect state)
+  {
+    id: 'sug-1',
+    name: 'Sarah Lin',
+    headline: 'Principal Technical Recruiter @ Stripe',
+    avatarInitials: 'SL',
+    avatarGradient: 'from-amber-600 to-orange-800',
+    company: 'Stripe',
+    location: 'San Francisco, CA',
+    skills: ['Technical Recruiting', 'System Architecture', 'Talent Strategy'],
+    mutualCount: 14,
+    mutualNames: ['Marcus Vance', 'Elena Rostova'],
+    connectionState: 'Connect',
+    isFollowing: true,
+  },
+  {
+    id: 'sug-2',
+    name: 'Elena Rostova',
+    headline: 'Senior Full Stack Engineer @ Vercel',
+    avatarInitials: 'ER',
+    avatarGradient: 'from-rose-600 to-pink-800',
+    company: 'Vercel',
+    location: 'Remote (Seattle, WA)',
+    skills: ['Next.js', 'React', 'TypeScript', 'Edge Workers', 'Tailwind'],
+    mutualCount: 19,
+    mutualNames: ['Sarah Lin', 'Marcus Vance', 'Ryan Sterling'],
+    connectionState: 'Connect',
+    isFollowing: true,
+  },
+  {
+    id: 'sug-3',
+    name: 'David Zhao',
+    headline: 'Distributed Systems Tech Lead @ Datadog',
+    avatarInitials: 'DZ',
+    avatarGradient: 'from-sky-600 to-blue-800',
+    company: 'Datadog',
+    location: 'Seattle, WA',
+    skills: ['Go', 'eBPF', 'Kafka', 'Kubernetes', 'High Throughput'],
+    mutualCount: 9,
+    mutualNames: ['Sophia Patel', 'Devin Chen'],
+    connectionState: 'Connect',
+    isFollowing: false,
+  },
+  {
+    id: 'sug-4',
+    name: 'Sophia Patel',
+    headline: 'Cloud Infrastructure & Kubernetes Specialist @ Netflix',
+    avatarInitials: 'SP',
+    avatarGradient: 'from-indigo-600 to-brand-800',
+    company: 'Netflix',
+    location: 'Los Gatos, CA',
+    skills: ['Kubernetes (CKA)', 'AWS', 'Terraform', 'Service Mesh', 'Linux'],
+    mutualCount: 11,
+    mutualNames: ['David Zhao'],
+    connectionState: 'Connect',
+    isFollowing: true,
+  },
+  {
+    id: 'sug-5',
+    name: 'Liam O’Connor',
+    headline: 'Backend Platform Engineer @ GitHub',
+    avatarInitials: 'LO',
+    avatarGradient: 'from-slate-700 to-surface-950',
+    company: 'GitHub',
+    location: 'Bellevue, WA',
+    skills: ['Ruby', 'Go', 'MySQL', 'High Availability', 'Git Internals'],
+    mutualCount: 7,
+    mutualNames: ['Elena Rostova'],
+    connectionState: 'Connect',
+    isFollowing: false,
+  },
+  {
+    id: 'sug-6',
+    name: 'Maya Lin',
+    headline: 'Product Infrastructure Lead @ Notion',
+    avatarInitials: 'ML',
+    avatarGradient: 'from-emerald-700 to-teal-900',
+    company: 'Notion',
+    location: 'San Francisco, CA',
+    skills: ['PostgreSQL', 'TypeScript', 'Collaborative Editing', 'Node.js'],
+    mutualCount: 15,
+    mutualNames: ['Chloe Nguyen', 'Ryan Sterling'],
+    connectionState: 'Connect',
+    isFollowing: false,
+  },
+
+  // Already Connected (1st Degree)
+  {
+    id: 'conn-1',
+    name: 'Ryan Sterling',
+    headline: 'Engineering Manager @ Linear',
+    avatarInitials: 'RS',
+    avatarGradient: 'from-brand-600 to-purple-800',
+    company: 'Linear',
+    location: 'San Francisco, CA',
+    skills: ['Engineering Leadership', 'Product Architecture', 'React', 'CRDTs'],
+    mutualCount: 22,
+    mutualNames: ['Chloe Nguyen', 'Sarah Lin'],
+    connectionState: 'Connected',
+    isFollowing: true,
+    connectedDate: 'Aug 2026',
+  },
+  {
+    id: 'conn-2',
+    name: 'Devin Chen',
+    headline: 'Undergraduate Systems Researcher @ UW Lab',
+    avatarInitials: 'DC',
+    avatarGradient: 'from-cyan-600 to-blue-800',
+    company: 'Univ of Washington',
+    location: 'Seattle, WA',
+    skills: ['C++', 'Raft', 'Operating Systems', 'Go', 'Distributed Brokers'],
+    mutualCount: 18,
+    mutualNames: ['David Zhao', 'Arjun Mehta'],
+    connectionState: 'Connected',
+    isFollowing: true,
+    connectedDate: 'Jul 2026',
+  },
+  {
+    id: 'conn-3',
+    name: 'Kavita Iyer',
+    headline: 'Software Engineer II @ Microsoft (Azure Core)',
+    avatarInitials: 'KI',
+    avatarGradient: 'from-rose-600 to-amber-800',
+    company: 'Microsoft',
+    location: 'Redmond, WA',
+    skills: ['C#', '.NET Core', 'Azure', 'Microservices', 'PostgreSQL'],
+    mutualCount: 16,
+    mutualNames: ['Sarah Lin'],
+    connectionState: 'Connected',
+    isFollowing: true,
+    connectedDate: 'Jun 2026',
+  },
+];
