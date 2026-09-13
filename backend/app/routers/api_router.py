@@ -11,6 +11,7 @@ from app.routers.feed import router as feed_router
 from app.routers.files import router as files_router
 from app.routers.health import router as health_router
 from app.routers.jobs import router as jobs_router
+from app.routers.learning import router as learning_router
 from app.routers.messages import router as messages_router
 from app.routers.network import router as network_router
 from app.routers.notifications import router as notifications_router
@@ -20,7 +21,10 @@ from app.routers.questions import router as questions_router
 from app.routers.recruiter import router as recruiter_router
 from app.routers.resumes import router as resumes_router
 from app.routers.search import router as search_router
+from app.routers.skill_gap import router as skill_gap_router
 from app.routers.users import router as users_router
+from app.routers.admin import router as admin_router
+from app.routers.metrics import router as metrics_router
 from app.websocket.chat_ws import router as chat_ws_router
 
 api_router = APIRouter()
@@ -36,6 +40,7 @@ api_router.include_router(jobs_router)
 api_router.include_router(questions_router)
 api_router.include_router(code_execution_router)
 api_router.include_router(progress_router)
+api_router.include_router(learning_router)
 api_router.include_router(feed_router)
 api_router.include_router(posts_router)
 api_router.include_router(network_router)
@@ -47,6 +52,9 @@ api_router.include_router(notifications_router)
 api_router.include_router(ai_router)
 api_router.include_router(files_router)
 api_router.include_router(search_router)
+api_router.include_router(skill_gap_router)
+api_router.include_router(admin_router)
+api_router.include_router(metrics_router)
 
 # Register WebSocket endpoint under /api
 api_router.include_router(chat_ws_router)

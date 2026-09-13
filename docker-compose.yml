@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # 1. MongoDB Database Cluster
+  # ============================================================================
+  mongodb:
+    image: mongo:7.0
+    container_name: careerx-mongodb
+    restart: unless-stopped
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - careerx_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ============================================================================
+  # 2. FastAPI Backend Service
+  # ============================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: careerx-backend
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      - ENVIRONMENT=production
+      - APP_NAME=CareerX Backend API
+      - HOST=0.0.0.0
+      - PORT=8000
+      - MONGODB_URI=mongodb://mongodb:27017
+      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-careerx_prod_db}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-careerx_production_secret_key_change_in_production_8f3d1b4a}
+      - JWT_ALGORITHM=HS256
+      - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=1440
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost,http://localhost:80,http://127.0.0.1}
+      - UPLOAD_DIR=/app/uploads
+      - STORAGE_BACKEND=local
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+    volumes:
+      - backend_uploads:/app/uploads
+    networks:
+      - careerx_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # ============================================================================
+  # 3. Nginx Static Frontend + Reverse Proxy
+  # ============================================================================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: careerx-frontend
+    restart: unless-stopped
+    ports:
+      - "${PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - careerx_network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+# ==============================================================================
+# Persistent Named Volumes
+# ==============================================================================
+volumes:
+  mongodb_data:
+    name: careerx_mongodb_data
+  backend_uploads:
+    name: careerx_backend_uploads
+
+# ==============================================================================
+# Bridge Network
+# ==============================================================================
+networks:
+  careerx_network:
+    name: careerx_network
+    driver: bridge

@@ -30,6 +30,16 @@ dist-ssr
 .env.*
 **/.env
 **/.env.*
+!.env.example
+!**/.env.example
+!.env.production.example
 playwright-report/
 test-results/
 uploads_e2e/
+uploads/
+backend/uploads/
+**/uploads/
+__pycache__/
+*.pyc
+**/*.pyc
+.pytest_cache/

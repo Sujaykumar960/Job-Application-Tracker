@@ -32,6 +32,7 @@ import { LanguageDetailPage } from '../pages/LanguageDetailPage';
 import { CodingPracticePage } from '../pages/CodingPracticePage';
 import { RecruiterPage } from '../pages/RecruiterPage';
 import { CalendarPage } from '../pages/CalendarPage';
+import { AdminPage } from '../pages/AdminPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 
 export const AppRoutes: React.FC = () => {
@@ -68,6 +69,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="/messages" element={<MessagesPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/profile/:userId" element={<ProfilePage />} />
           <Route path="/settings" element={<SettingsPage />} />
 
           {/* Job Match & Skill Gap Routes */}
@@ -78,6 +80,7 @@ export const AppRoutes: React.FC = () => {
           {/* Complementary Protected Routes */}
           <Route path="/recruiter" element={<RecruiterPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/admin" element={<AdminPage />} />
         </Route>
       </Route>
 

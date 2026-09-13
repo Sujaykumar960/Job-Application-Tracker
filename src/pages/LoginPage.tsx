@@ -42,23 +42,29 @@ export const LoginPage: React.FC = () => {
     try {
       await login(data);
       navigate(from, { replace: true });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Invalid credentials. Please try again.';
-      setAuthError(msg);
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        (Array.isArray(err?.response?.data?.detail)
+          ? err.response.data.detail[0]?.msg
+          : err?.response?.data?.detail) ||
+        err?.message ||
+        'Invalid credentials. Please try again.';
+      setAuthError(typeof msg === 'string' ? msg : JSON.stringify(msg));
     }
   };
 
-  // 1-Click Demo Login for immediate evaluation
-  const handleQuickDemo = async (role: 'seeker' | 'recruiter') => {
+  // 1-Click Quick Fill for test evaluation
+  const handleQuickFill = async (role: 'seeker' | 'recruiter') => {
     setAuthError(null);
-    const demoEmail = role === 'seeker' ? 'alex.rivera@devmail.io' : 'recruiter@stripe.com';
-    setValue('email', demoEmail);
+    const targetEmail = role === 'seeker' ? 'alex.rivera@devmail.io' : 'recruiter@stripe.com';
+    setValue('email', targetEmail);
     setValue('password', 'password123');
     try {
-      await login({ email: demoEmail, password: 'password123' });
+      await login({ email: targetEmail, password: 'password123' });
       navigate(from, { replace: true });
     } catch (err: unknown) {
-      setAuthError(err instanceof Error ? err.message : 'Demo login failed');
+      setAuthError(err instanceof Error ? err.message : 'Login failed');
     }
   };
 
@@ -74,7 +80,7 @@ export const LoginPage: React.FC = () => {
 
       {/* Error Alert */}
       {authError && (
-        <div className="p-3 rounded-xl bg-[#FCE8E6] border border-[#f8cbc7] text-xs text-[#B3261E] flex items-start gap-2.5 animate-in fade-in duration-150">
+        <div role="alert" data-testid="auth-error-alert" className="p-3 rounded-xl bg-[#FCE8E6] border border-[#f8cbc7] text-xs text-[#B3261E] flex items-start gap-2.5 animate-in fade-in duration-150">
           <AlertCircle className="w-4 h-4 text-[#B3261E] flex-shrink-0 mt-0.5" />
           <span className="leading-relaxed">{authError}</span>
         </div>
@@ -148,27 +154,27 @@ export const LoginPage: React.FC = () => {
           <div className="w-full border-t border-[#E8E8E8]" />
         </div>
         <div className="relative flex justify-center text-[10px] uppercase font-mono">
-          <span className="bg-white px-2 text-[#788896]">Or test with demo account</span>
+          <span className="bg-white px-2 text-[#788896]">Or sign in with preconfigured test account</span>
         </div>
       </div>
 
-      {/* Quick Demo Logins */}
+      {/* Quick Test Logins */}
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
-          onClick={() => handleQuickDemo('seeker')}
+          onClick={() => handleQuickFill('seeker')}
           className="p-2 rounded-xl bg-[#F3F6F8] border border-[#D9D9D9] hover:border-[#0A66C2]/40 text-xs text-[#1D2226] flex items-center justify-center gap-1.5 transition font-semibold"
         >
           <Sparkles className="w-3.5 h-3.5 text-[#0A66C2]" />
-          <span>Demo Seeker</span>
+          <span>Quick: Seeker</span>
         </button>
         <button
           type="button"
-          onClick={() => handleQuickDemo('recruiter')}
+          onClick={() => handleQuickFill('recruiter')}
           className="p-2 rounded-xl bg-[#F3F6F8] border border-[#D9D9D9] hover:border-[#0A66C2]/40 text-xs text-[#1D2226] flex items-center justify-center gap-1.5 transition font-semibold"
         >
           <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Demo Recruiter</span>
+          <span>Quick: Recruiter</span>
         </button>
       </div>
 

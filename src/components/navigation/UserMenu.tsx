@@ -173,6 +173,18 @@ export const UserMenu: React.FC = () => {
               <span>Learning Hub</span>
             </Link>
 
+            {user?.role === 'admin' && (
+              <Link
+                to="/admin"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 font-medium transition"
+                role="menuitem"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-rose-600" />
+                <span>Admin Governance</span>
+              </Link>
+            )}
+
             {/* Theme Toggle in Menu */}
             <button
               onClick={() => {

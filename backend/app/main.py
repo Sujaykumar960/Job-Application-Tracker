@@ -6,7 +6,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import DatabaseManager
 from app.middleware.error_handler import register_error_handlers
+from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.middleware.logging_middleware import StructuredLoggingMiddleware
 from app.routers.api_router import api_router
+from app.routers.metrics import router as root_metrics_router
 
 # Configure logging
 logging.basicConfig(
@@ -49,8 +52,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Register security headers middleware
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Register structured logging & correlation ID middleware
+app.add_middleware(StructuredLoggingMiddleware)
+
 # Register custom exception handlers matching frontend ApiErrorResponse format
 register_error_handlers(app)
+
+# Mount root metrics endpoint for external Prometheus scraping
+app.include_router(root_metrics_router)
 
 # Mount all API routes with common prefix /api
 app.include_router(api_router, prefix=settings.API_PREFIX)
