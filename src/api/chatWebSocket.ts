@@ -16,6 +16,10 @@ export interface ChatMessage {
   isOutgoing: boolean;
   status: 'sending' | 'sent' | 'delivered' | 'read';
   attachment?: ChatAttachment;
+  clientMessageId?: string;
+  createdAt?: string;
+  editedAt?: string;
+  isEdited?: boolean;
 }
 
 export interface ChatConversation {
@@ -43,9 +47,24 @@ export interface WebSocketEnvelope {
   payload: any;
 }
 
+function getDefaultWsUrl(): string {
+  if (typeof window !== 'undefined') {
+    const wsEnv = (import.meta as any).env?.VITE_WS_BASE_URL;
+    if (wsEnv) {
+      if (wsEnv.includes('/api/ws/chat')) {
+        return wsEnv;
+      }
+      return `${wsEnv.replace(/\/+$/, '')}/api/ws/chat`;
+    }
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.hostname === 'localhost' ? 'localhost:8000' : window.location.host;
+    return `${protocol}//${host}/api/ws/chat`;
+  }
+  return 'ws://localhost:8000/api/ws/chat';
+}
+
 /**
  * ChatWebSocketClient manages real-time messaging with FastAPI WebSocket backend.
- * Gracefully provides local simulation when remote WebSocket server is offline.
  */
 class ChatWebSocketClient {
   private ws: WebSocket | null = null;
@@ -55,9 +74,11 @@ class ChatWebSocketClient {
   private statusListeners: Array<(status: WsConnectionStatus) => void> = [];
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 3;
+  private reconnectTimer: any = null;
+  private currentToken: string | undefined = undefined;
 
-  constructor(url = 'ws://localhost:8000/api/ws/chat') {
-    this.url = url;
+  constructor(url?: string) {
+    this.url = url || getDefaultWsUrl();
   }
 
   public connect(token?: string) {
@@ -65,15 +86,26 @@ class ChatWebSocketClient {
       return;
     }
 
+    const authToken =
+      token ||
+      (typeof localStorage !== 'undefined'
+        ? localStorage.getItem('careerx_auth_token') || localStorage.getItem('token') || undefined
+        : undefined);
+
+    this.currentToken = authToken;
     this.setStatus('CONNECTING');
 
     try {
-      const wsUrl = token ? `${this.url}?token=${encodeURIComponent(token)}` : this.url;
+      const wsUrl = authToken ? `${this.url}?token=${encodeURIComponent(authToken)}` : this.url;
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
         this.setStatus('OPEN');
         this.reconnectAttempts = 0;
+        if (this.reconnectTimer) {
+          clearTimeout(this.reconnectTimer);
+          this.reconnectTimer = null;
+        }
       };
 
       this.ws.onmessage = (event) => {
@@ -87,6 +119,8 @@ class ChatWebSocketClient {
 
       this.ws.onclose = () => {
         this.setStatus('CLOSED');
+        this.ws = null;
+        this.handleReconnect();
       };
 
       this.ws.onerror = () => {
@@ -94,6 +128,19 @@ class ChatWebSocketClient {
       };
     } catch {
       this.setStatus('CLOSED');
+      this.handleReconnect();
+    }
+  }
+
+  private handleReconnect() {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++;
+      const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 5000);
+      this.reconnectTimer = setTimeout(() => {
+        if (this.status === 'CLOSED') {
+          this.connect(this.currentToken);
+        }
+      }, delay);
     }
   }
 
@@ -101,6 +148,37 @@ class ChatWebSocketClient {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(envelope));
     }
+  }
+
+  public sendChatMessage(conversationId: string, content: string, clientMessageId?: string, attachment?: ChatAttachment) {
+    this.send({
+      type: 'message',
+      payload: {
+        conversationId,
+        content,
+        clientMessageId,
+        attachment,
+      },
+    });
+  }
+
+  public sendTyping(conversationId: string, isTyping: boolean) {
+    this.send({
+      type: 'typing',
+      payload: {
+        conversationId,
+        isTyping,
+      },
+    });
+  }
+
+  public sendReadReceipt(conversationId: string) {
+    this.send({
+      type: 'read',
+      payload: {
+        conversationId,
+      },
+    });
   }
 
   public onMessage(callback: (event: WebSocketEnvelope) => void) {
@@ -123,6 +201,10 @@ class ChatWebSocketClient {
   }
 
   public disconnect() {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     if (this.ws) {
       this.ws.close();
       this.ws = null;

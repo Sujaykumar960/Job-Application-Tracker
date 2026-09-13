@@ -1,113 +1,117 @@
-import { apiClient, withFallback } from './client';
-import { NetworkUser, INITIAL_NETWORK_USERS } from '../data/mockNetwork';
-
-const NETWORK_STORAGE_KEY = 'careerx_network_users_v2';
-
-function getLocalNetworkUsers(): NetworkUser[] {
-  const saved = localStorage.getItem(NETWORK_STORAGE_KEY);
-  if (saved) {
-    try {
-      return JSON.parse(saved);
-    } catch {
-      return INITIAL_NETWORK_USERS;
-    }
-  }
-  return INITIAL_NETWORK_USERS;
-}
+import { apiClient } from './client';
+import { NetworkUser } from '../types';
 
 export const connectionApi = {
   /**
    * Fetch 1st-degree connected engineers
    */
   getConnections: async (): Promise<NetworkUser[]> => {
-    const users = getLocalNetworkUsers().filter((u) => u.connectionState === 'Connected');
-
-    return withFallback(
-      apiClient.get<NetworkUser[]>('/network/connections'),
-      users
-    );
+    const response = await apiClient.get<NetworkUser[]>('/network/connections');
+    return response.data;
   },
 
   /**
    * Fetch incoming connection invitations
    */
   getConnectionRequests: async (): Promise<NetworkUser[]> => {
-    const users = getLocalNetworkUsers().filter((u) => u.isIncomingRequest);
-
-    return withFallback(
-      apiClient.get<NetworkUser[]>('/network/requests'),
-      users
-    );
+    const response = await apiClient.get<NetworkUser[]>('/network/requests');
+    return response.data;
   },
 
   /**
    * Fetch recommended candidate & engineering peers
    */
   getSuggestedConnections: async (): Promise<NetworkUser[]> => {
-    const users = getLocalNetworkUsers().filter((u) => !u.isIncomingRequest && u.connectionState !== 'Connected');
+    const response = await apiClient.get<NetworkUser[]>('/network/suggestions');
+    return response.data;
+  },
 
-    return withFallback(
-      apiClient.get<NetworkUser[]>('/network/suggestions'),
-      users
-    );
+  /**
+   * Fetch overview of network stats and connections
+   */
+  getNetworkSummary: async (): Promise<{
+    connections: NetworkUser[];
+    totalConnections: number;
+    pendingIncomingCount: number;
+    pendingOutgoingCount: number;
+  }> => {
+    const response = await apiClient.get('/network');
+    return response.data;
+  },
+
+  /**
+   * Discover real candidates and engineering peers with filters
+   */
+  discoverUsers: async (params?: {
+    search?: string;
+    role?: string;
+    skills?: string;
+    company?: string;
+    location?: string;
+    limit?: number;
+    skip?: number;
+  }): Promise<NetworkUser[]> => {
+    const response = await apiClient.get<NetworkUser[]>('/network/discover', { params });
+    return response.data;
   },
 
   /**
    * Send connection request to a candidate or recruiter
    */
-  sendConnectionRequest: async (userId: string): Promise<{ success: boolean }> => {
-    const existing = getLocalNetworkUsers();
-    const updated = existing.map((u) => (u.id === userId ? { ...u, connectionState: 'Pending' as const } : u));
-    localStorage.setItem(NETWORK_STORAGE_KEY, JSON.stringify(updated));
-
-    return withFallback(
-      apiClient.post<{ success: boolean }>(`/network/connect/${userId}`),
-      { success: true }
-    );
+  sendConnectionRequest: async (userId: string, note?: string): Promise<{ success: boolean; id?: string }> => {
+    const response = await apiClient.post<{ success: boolean; id?: string }>('/network/requests', {
+      recipientId: userId,
+      note,
+    });
+    return response.data;
   },
 
   /**
-   * Accept or ignore an incoming connection request
+   * Accept an incoming connection request
+   */
+  acceptConnectionRequest: async (requestId: string): Promise<{ success: boolean; status: string }> => {
+    const response = await apiClient.post<{ success: boolean; status: string }>(`/network/requests/${requestId}/accept`);
+    return response.data;
+  },
+
+  /**
+   * Reject an incoming connection request
+   */
+  rejectConnectionRequest: async (requestId: string): Promise<{ success: boolean; status: string }> => {
+    const response = await apiClient.post<{ success: boolean; status: string }>(`/network/requests/${requestId}/reject`);
+    return response.data;
+  },
+
+  /**
+   * Cancel an outgoing pending connection request
+   */
+  cancelConnectionRequest: async (requestId: string): Promise<{ success: boolean; status: string }> => {
+    const response = await apiClient.delete<{ success: boolean; status: string }>(`/network/requests/${requestId}`);
+    return response.data;
+  },
+
+  /**
+   * Remove/disconnect 1st-degree connection
+   */
+  removeConnection: async (userId: string): Promise<{ success: boolean; message: string }> => {
+    const response = await apiClient.delete<{ success: boolean; message: string }>(`/network/connections/${userId}`);
+    return response.data;
+  },
+
+  /**
+   * Accept or ignore an incoming connection request (legacy wrapper)
    */
   respondToConnectionRequest: async (requestId: string, accept: boolean): Promise<{ success: boolean }> => {
-    const existing = getLocalNetworkUsers();
-    const updated = existing.map((u) => {
-      if (u.id === requestId) {
-        return {
-          ...u,
-          isIncomingRequest: false,
-          connectionState: accept ? ('Connected' as const) : ('Connect' as const),
-        };
-      }
-      return u;
-    });
-    localStorage.setItem(NETWORK_STORAGE_KEY, JSON.stringify(updated));
-
-    return withFallback(
-      apiClient.post<{ success: boolean }>(`/network/requests/${requestId}/respond`, { accept }),
-      { success: true }
-    );
+    const response = await apiClient.post<{ success: boolean }>(`/network/requests/${requestId}/respond`, { accept });
+    return response.data;
   },
 
   /**
    * Follow or unfollow a tech leader
    */
   followUser: async (userId: string): Promise<{ following: boolean }> => {
-    const existing = getLocalNetworkUsers();
-    let isFollowing = false;
-    const updated = existing.map((u) => {
-      if (u.id === userId) {
-        isFollowing = !u.isFollowing;
-        return { ...u, isFollowing };
-      }
-      return u;
-    });
-    localStorage.setItem(NETWORK_STORAGE_KEY, JSON.stringify(updated));
-
-    return withFallback(
-      apiClient.post<{ following: boolean }>(`/network/follow/${userId}`),
-      { following: isFollowing }
-    );
+    const response = await apiClient.post<{ following: boolean }>(`/network/follow/${userId}`);
+    return response.data;
   },
 };
 

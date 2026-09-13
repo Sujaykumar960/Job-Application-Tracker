@@ -998,6 +998,39 @@ SEEDED_PROGRESS = {
     "currentAtsScore": 88,
     "projectsCompleted": 4,
     "certificationsCount": 3,
+    "activityHistory": {
+        "daily": [
+            {"period": "Mon", "studyHours": 3.5, "questionsSolved": 6, "streakDays": 10},
+            {"period": "Tue", "studyHours": 4.0, "questionsSolved": 8, "streakDays": 11},
+            {"period": "Wed", "studyHours": 2.5, "questionsSolved": 4, "streakDays": 12},
+            {"period": "Thu", "studyHours": 5.0, "questionsSolved": 10, "streakDays": 13},
+            {"period": "Fri", "studyHours": 4.5, "questionsSolved": 9, "streakDays": 14},
+            {"period": "Sat", "studyHours": 6.0, "questionsSolved": 12, "streakDays": 15},
+            {"period": "Sun", "studyHours": 3.0, "questionsSolved": 5, "streakDays": 16},
+        ],
+        "weekly": [
+            {"period": "W1 (Jul 25)", "studyHours": 14.5, "questionsSolved": 18, "streakDays": 7},
+            {"period": "W2 (Aug 01)", "studyHours": 16.0, "questionsSolved": 22, "streakDays": 14},
+            {"period": "W3 (Aug 08)", "studyHours": 18.5, "questionsSolved": 26, "streakDays": 21},
+            {"period": "W4 (Aug 15)", "studyHours": 17.0, "questionsSolved": 24, "streakDays": 28},
+            {"period": "W5 (Aug 22)", "studyHours": 21.0, "questionsSolved": 31, "streakDays": 35},
+            {"period": "W6 (Aug 29)", "studyHours": 23.5, "questionsSolved": 34, "streakDays": 42},
+        ],
+        "monthly": [
+            {"period": "Apr", "studyHours": 38.0, "questionsSolved": 45, "streakDays": 15},
+            {"period": "May", "studyHours": 46.0, "questionsSolved": 62, "streakDays": 22},
+            {"period": "Jun", "studyHours": 54.0, "questionsSolved": 78, "streakDays": 30},
+            {"period": "Jul", "studyHours": 62.0, "questionsSolved": 95, "streakDays": 31},
+            {"period": "Aug", "studyHours": 78.0, "questionsSolved": 122, "streakDays": 31},
+            {"period": "Sep", "studyHours": 85.0, "questionsSolved": 142, "streakDays": 14},
+        ],
+    },
+    "skillTrajectories": [
+        {"name": "Go Concurrency & Channels", "initialScore": 40, "currentScore": 92, "growthPercentage": 130},
+        {"name": "Distributed Systems & Consensus", "initialScore": 30, "currentScore": 88, "growthPercentage": 193},
+        {"name": "Database Indexing & PostgreSQL", "initialScore": 55, "currentScore": 90, "growthPercentage": 63},
+        {"name": "Data Structures & Algorithms", "initialScore": 60, "currentScore": 92, "growthPercentage": 53},
+    ],
 }
 
 # 11. CALENDAR EVENTS FOR usr-1

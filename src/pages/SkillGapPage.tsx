@@ -1,25 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PageHeader } from '../components/common/PageHeader';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
 import { Link } from 'react-router-dom';
+import { skillGapApi } from '../api/skillGapApi';
+import { SkillGapAnalysisResponse } from '../types';
 import {
   Target,
-  Sparkles,
   BookOpen,
   ArrowRight,
   TrendingUp,
   AlertTriangle,
   CheckCircle2,
-  Code2,
-  Database,
-  Layers,
-  Server,
-  Cloud,
   Clock,
   Briefcase,
-  SlidersHorizontal,
+  Loader2,
+  AlertCircle,
+  UploadCloud,
+  UserCheck,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -29,125 +28,164 @@ import {
   PolarRadiusAxis,
   Radar,
   Tooltip,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
 } from 'recharts';
 
 export const SkillGapPage: React.FC = () => {
   const [targetTrack, setTargetTrack] = useState<'backend' | 'fullstack' | 'distributed'>('distributed');
+  const [data, setData] = useState<SkillGapAnalysisResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Radar Chart: Candidate vs Market Expectation
-  const radarData = [
-    { subject: 'Distributed Systems', candidate: 88, market: 85 },
-    { subject: 'System Design', candidate: 82, market: 90 },
-    { subject: 'Algorithms & DSA', candidate: 92, market: 85 },
-    { subject: 'Cloud & DevOps', candidate: 70, market: 88 },
-    { subject: 'Databases & Storage', candidate: 90, market: 85 },
-    { subject: 'Frontend Tech', candidate: 85, market: 70 },
-  ];
+  useEffect(() => {
+    let isMounted = true;
 
-  // Category Proficiency Progress Data
-  const categoryProficiency = [
-    { name: 'Core Languages (Go, Python, TS)', score: 94, level: 'Expert', verified: true },
-    { name: 'Databases & Storage (Postgres, Redis)', score: 88, level: 'Advanced', verified: true },
-    { name: 'System Design & Concurrency', score: 84, level: 'Advanced', verified: true },
-    { name: 'Web & UI (React, Next.js, Tailwind)', score: 92, level: 'Expert', verified: true },
-    { name: 'Cloud & Kubernetes (ECS, K8s, S3)', score: 72, level: 'Intermediate', verified: false },
-    { name: 'Event Streaming (Kafka, RabbitMQ)', score: 68, level: 'Intermediate', verified: false },
-  ];
+    const fetchSkillGap = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const res = await skillGapApi.getSkillGapAnalysis({ track: targetTrack });
+        if (!isMounted) return;
+        setData(res);
+      } catch (err: any) {
+        if (!isMounted) return;
+        console.error('Failed to load skill gap matrix:', err);
+        setError(err?.response?.data?.detail || 'Unable to calculate skill gap analysis. Please try again.');
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
 
-  // Current Skills with Detailed Levels & Progress Bars
-  const currentSkills = [
-    { name: 'Go (Golang)', category: 'Languages', level: 'Advanced', percent: 92, verified: true },
-    { name: 'TypeScript', category: 'Languages', level: 'Expert', percent: 95, verified: true },
-    { name: 'Python', category: 'Languages', level: 'Advanced', percent: 88, verified: true },
-    { name: 'PostgreSQL', category: 'Databases', level: 'Advanced', percent: 89, verified: true },
-    { name: 'React', category: 'Frameworks', level: 'Expert', percent: 94, verified: true },
-    { name: 'Docker', category: 'DevOps', level: 'Proficient', percent: 82, verified: true },
-    { name: 'Redis', category: 'Databases', level: 'Proficient', percent: 80, verified: true },
-    { name: 'Node.js', category: 'Frameworks', level: 'Advanced', percent: 86, verified: true },
-  ];
+    fetchSkillGap();
 
-  // Missing Skills with Priority & Connected Learning Recommendations
-  const missingSkills = [
-    {
-      id: 'gap-1',
-      skill: 'Kafka Partitioning & Consumer Groups',
-      category: 'Distributed Systems',
-      priority: 'High' as const,
-      requiredBy: 'Stripe, Datadog, Netflix',
-      estHours: '3.5 hrs',
-      moduleTitle: 'Event-Driven Microservices with Kafka',
-      moduleSlug: '/learning',
-      rationale:
-        'Flagged in 75% of your target distributed systems backend roles. Essential for high-throughput messaging.',
-    },
-    {
-      id: 'gap-2',
-      skill: 'Distributed Rate Limiting (Redis Lua)',
-      category: 'Caching & Concurrency',
-      priority: 'High' as const,
-      requiredBy: 'Stripe, Linear, Datadog',
-      estHours: '2.5 hrs',
-      moduleTitle: 'Distributed Rate Limiting Blueprint',
-      moduleSlug: '/learning',
-      rationale:
-        'Standard onsite systems question. Involves sliding-window log algorithms and atomic Redis Lua evaluation.',
-    },
-    {
-      id: 'gap-3',
-      skill: 'Kubernetes Multi-Pod Orchestration',
-      category: 'Cloud & Infrastructure',
-      priority: 'Medium' as const,
-      requiredBy: 'Netflix, Vercel, Datadog',
-      estHours: '4.0 hrs',
-      moduleTitle: 'Kubernetes Production Deployments',
-      moduleSlug: '/learning',
-      rationale:
-        'Required for understanding zero-downtime rolling updates, ingress routing, and Helm chart manifests.',
-    },
-    {
-      id: 'gap-4',
-      skill: 'OpenTelemetry & Distributed Tracing',
-      category: 'Observability',
-      priority: 'Medium' as const,
-      requiredBy: 'Datadog, Stripe',
-      estHours: '2.0 hrs',
-      moduleTitle: 'System Observability with OpenTelemetry',
-      moduleSlug: '/learning',
-      rationale:
-        'Needed for instrumenting microservice spans, propagation headers, and debugging latency anomalies.',
-    },
-  ];
+    return () => {
+      isMounted = false;
+    };
+  }, [targetTrack]);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-[#0A66C2]" />
+        <span className="ml-3 text-[#56687A]">Analyzing real candidate skills against market demand...</span>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <AlertCircle className="w-12 h-12 text-[#E6395A]" />
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-[#1D2226]">Skill Gap Matrix Unavailable</h3>
+          <p className="text-[#56687A] mt-1">{error}</p>
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => window.location.reload()}
+            className="mt-4"
+          >
+            Retry Analysis
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state: No profile skills and no active resume
+  if (!data || (!data.hasActiveResume && !data.hasProfileSkills && data.currentSkills.length === 0)) {
+    return (
+      <div className="space-y-5">
+        <PageHeader
+          title="Skill Gap Analysis & Readiness Roadmap"
+          description="Diagnose missing competencies against live market expectations and follow structured remediation paths."
+          badge={
+            <Badge variant="brand" size="sm">
+              Target: {targetTrack.toUpperCase()}
+            </Badge>
+          }
+        />
+
+        <div className="p-8 rounded-2xl bg-white border border-[#D9D9D9] text-center max-w-xl mx-auto space-y-4 shadow-xs">
+          <div className="w-12 h-12 rounded-full bg-[#E8F3FF] text-[#0A66C2] flex items-center justify-center mx-auto">
+            <Target className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-bold text-[#1D2226]">No Skills or Active Resume Detected</h3>
+          <p className="text-xs text-[#56687A] leading-relaxed">
+            To generate a realistic skill gap matrix, CareerX needs your technical competencies.
+            Upload your resume or add verified skills to your profile.
+          </p>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <Link to="/resume">
+              <Button size="sm" variant="primary" icon={<UploadCloud className="w-3.5 h-3.5" />}>
+                Upload Resume
+              </Button>
+            </Link>
+            <Link to="/profile">
+              <Button size="sm" variant="outline" icon={<UserCheck className="w-3.5 h-3.5" />}>
+                Edit Profile Skills
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const { summary, radarData, categoryProficiency, currentSkills, missingSkills } = data;
 
   return (
     <div className="space-y-5">
       {/* Top Header */}
       <PageHeader
         title="Skill Gap Analysis & Readiness Roadmap"
-        description="Diagnose missing competencies against market expectations and follow structured remediation paths."
+        description="Diagnose missing competencies against live market expectations and follow structured remediation paths."
         badge={
           <Badge variant="brand" size="sm">
-            Target: Distributed Systems
+            Target: {targetTrack.toUpperCase()}
           </Badge>
         }
         actions={
           <div className="flex items-center gap-2">
+            <div className="flex items-center bg-white border border-[#D9D9D9] rounded-lg p-0.5 text-xs">
+              {(['distributed', 'backend', 'fullstack'] as const).map((track) => (
+                <button
+                  key={track}
+                  onClick={() => setTargetTrack(track)}
+                  className={`px-2.5 py-1 rounded-md capitalize font-medium transition ${
+                    targetTrack === track
+                      ? 'bg-[#0A66C2] text-white'
+                      : 'text-[#56687A] hover:text-[#1D2226]'
+                  }`}
+                >
+                  {track}
+                </button>
+              ))}
+            </div>
             <Link to="/job-match">
-              <Button size="sm" variant="outline" icon={<Target className="w-3.5 h-3.5 text-brand-400" />}>
+              <Button size="sm" variant="outline" icon={<Target className="w-3.5 h-3.5 text-[#0A66C2]" />}>
                 Run Job Match
               </Button>
             </Link>
             <Link to="/learning">
               <Button size="sm" variant="primary" icon={<BookOpen className="w-3.5 h-3.5" />}>
-                Open Dev Learning Hub
+                Dev Hub
               </Button>
             </Link>
           </div>
         }
       />
+
+      {/* Info notice if message exists */}
+      {data.message && (
+        <div className="p-3.5 rounded-xl bg-[#E8F3FF] border border-[#d0e6fc] text-xs text-[#0A66C2] flex items-center justify-between gap-3 shadow-xs">
+          <span>{data.message}</span>
+          <Link to="/resume" className="font-semibold underline flex-shrink-0">
+            Go to Resume Analyzer →
+          </Link>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 1. KPI SUMMARY BANNER                                                     */}
@@ -156,37 +194,39 @@ export const SkillGapPage: React.FC = () => {
         <div className="p-3.5 rounded-xl bg-white border border-[#D9D9D9] space-y-1 shadow-xs">
           <span className="text-[11px] text-[#788896]">Total Profile Skills</span>
           <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold text-[#1D2226] font-mono">25</span>
+            <span className="text-xl font-bold text-[#1D2226] font-mono">{summary.totalProfileSkills}</span>
             <span className="text-[10px] text-emerald-700 font-semibold">Verified ✓</span>
           </div>
-          <p className="text-[10px] text-[#788896]">Extracted from resume & tests</p>
+          <p className="text-[10px] text-[#788896]">From resume & profile</p>
         </div>
 
         <div className="p-3.5 rounded-xl bg-white border border-[#D9D9D9] space-y-1 shadow-xs">
           <span className="text-[11px] text-emerald-700">Market Alignment</span>
           <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold text-emerald-700 font-mono">88%</span>
-            <span className="text-[10px] text-emerald-700 font-semibold">Strong</span>
+            <span className="text-xl font-bold text-emerald-700 font-mono">{summary.marketAlignment}%</span>
+            <span className="text-[10px] text-emerald-700 font-semibold">
+              {summary.marketAlignment >= 80 ? 'Strong' : 'Moderate'}
+            </span>
           </div>
-          <p className="text-[10px] text-[#788896]">Above 80% interview cutoff</p>
+          <p className="text-[10px] text-[#788896]">Across live job postings</p>
         </div>
 
         <div className="p-3.5 rounded-xl bg-white border border-[#D9D9D9] space-y-1 shadow-xs">
           <span className="text-[11px] text-[#8A6100]">Critical Skill Gaps</span>
           <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold text-[#8A6100] font-mono">4</span>
-            <span className="text-[10px] text-[#B3261E] font-semibold">2 High Priority</span>
+            <span className="text-xl font-bold text-[#8A6100] font-mono">{summary.criticalGaps}</span>
+            <span className="text-[10px] text-[#B3261E] font-semibold">Prioritized</span>
           </div>
-          <p className="text-[10px] text-[#788896]">Across target company specs</p>
+          <p className="text-[10px] text-[#788896]">Across target requirements</p>
         </div>
 
         <div className="p-3.5 rounded-xl bg-white border border-[#D9D9D9] space-y-1 shadow-xs">
           <span className="text-[11px] text-[#0A66C2]">Remediation Modules</span>
           <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold text-[#0A66C2] font-mono">4 Ready</span>
-            <span className="text-[10px] text-[#0A66C2] font-semibold">~12 hrs total</span>
+            <span className="text-xl font-bold text-[#0A66C2] font-mono">{summary.remediationModules} Ready</span>
+            <span className="text-[10px] text-[#0A66C2] font-semibold">In Dev Hub</span>
           </div>
-          <p className="text-[10px] text-[#788896]">Connected in Dev Hub</p>
+          <p className="text-[10px] text-[#788896]">Connected learning</p>
         </div>
       </div>
 
@@ -200,14 +240,14 @@ export const SkillGapPage: React.FC = () => {
             <div>
               <CardTitle className="text-xs font-bold text-[#1D2226] flex items-center gap-1.5">
                 <Target className="w-3.5 h-3.5 text-[#0A66C2]" />
-                Competency Radar: Candidate vs. Market Expectation
+                Competency Radar: Candidate vs. Market Demand
               </CardTitle>
               <p className="text-[11px] text-[#56687A] mt-0.5">
-                Blue = Your Verified Depth • Emerald = FAANG Expectations
+                Blue = Your Verified Depth • Emerald = Live Market Baseline
               </p>
             </div>
             <Badge variant="brand" size="sm">
-              6 Dimensions
+              {radarData.length} Dimensions
             </Badge>
           </CardHeader>
           <CardContent className="p-3 flex-1 flex flex-col justify-between">
@@ -254,10 +294,10 @@ export const SkillGapPage: React.FC = () => {
 
             <div className="flex items-center justify-between text-[11px] text-[#56687A] pt-2 border-t border-[#E8E8E8]">
               <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#0A66C2]" /> You (88% Avg)
+                <span className="w-2.5 h-2.5 rounded-full bg-[#0A66C2]" /> You ({summary.marketAlignment}% Avg)
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" /> Market Threshold (85% Avg)
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" /> Market Baseline (80% Cutoff)
               </span>
             </div>
           </CardContent>
@@ -272,7 +312,7 @@ export const SkillGapPage: React.FC = () => {
                 Category Skill Depth & Proficiency
               </CardTitle>
               <p className="text-[11px] text-[#56687A] mt-0.5">
-                Evaluated from coding submissions and verified project code
+                Evaluated from candidate resume and profile technical inventory
               </p>
             </div>
           </CardHeader>
@@ -321,67 +361,73 @@ export const SkillGapPage: React.FC = () => {
               Prioritized Skill Gaps & Actionable Learning Roadmap
             </h3>
             <p className="text-[11px] text-[#56687A] mt-0.5">
-              Target competencies required by your active applications with direct learning links.
+              Live market competencies identified from job postings with direct remediation links.
             </p>
           </div>
           <Badge variant="warning" size="sm">
-            4 Gaps to Close
+            {missingSkills.length} Gaps to Close
           </Badge>
         </div>
 
         <div className="space-y-3">
-          {missingSkills.map((gap) => (
-            <div
-              key={gap.id}
-              className="p-3.5 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] hover:border-[#0A66C2]/40 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
-            >
-              <div className="space-y-1 min-w-0 max-w-xl">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span
-                    className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
-                      gap.priority === 'High'
-                        ? 'bg-[#FCE8E6] text-[#B3261E] border-[#f8cbc7]'
-                        : 'bg-[#FFF4CC] text-[#8A6100] border-[#ffe899]'
-                    }`}
-                  >
-                    {gap.priority} Priority
-                  </span>
-                  <h4 className="text-xs font-bold text-[#1D2226] group-hover:text-[#0A66C2] transition">
-                    {gap.skill}
-                  </h4>
-                  <span className="text-[10px] text-[#788896] font-mono">• {gap.category}</span>
-                </div>
-
-                <p className="text-[11px] text-[#38434F] leading-relaxed">{gap.rationale}</p>
-
-                <div className="flex items-center gap-3 text-[10px] text-[#788896] pt-0.5">
-                  <span className="flex items-center gap-1">
-                    <Briefcase className="w-3 h-3 text-[#788896]" />
-                    Required by: <strong className="text-[#1D2226] font-semibold">{gap.requiredBy}</strong>
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-[#788896]" />
-                    Est. Time: {gap.estHours}
-                  </span>
-                </div>
-              </div>
-
-              {/* Recommended Learning Action */}
-              <div className="flex items-center gap-2 flex-shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#E8E8E8]">
-                <Link to={gap.moduleSlug}>
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    className="text-xs"
-                    icon={<BookOpen className="w-3.5 h-3.5" />}
-                  >
-                    Start in Dev Hub
-                    <ArrowRight className="w-3 h-3 ml-1" />
-                  </Button>
-                </Link>
-              </div>
+          {missingSkills.length === 0 ? (
+            <div className="py-6 text-center text-xs text-emerald-700">
+              ✓ Excellent! No critical skill gaps identified against market expectations.
             </div>
-          ))}
+          ) : (
+            missingSkills.map((gap) => (
+              <div
+                key={gap.id}
+                className="p-3.5 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] hover:border-[#0A66C2]/40 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
+              >
+                <div className="space-y-1 min-w-0 max-w-xl">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span
+                      className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                        gap.priority === 'High'
+                          ? 'bg-[#FCE8E6] text-[#B3261E] border-[#f8cbc7]'
+                          : 'bg-[#FFF4CC] text-[#8A6100] border-[#ffe899]'
+                      }`}
+                    >
+                      {gap.priority} Priority
+                    </span>
+                    <h4 className="text-xs font-bold text-[#1D2226] group-hover:text-[#0A66C2] transition">
+                      {gap.skill}
+                    </h4>
+                    <span className="text-[10px] text-[#788896] font-mono">• {gap.category}</span>
+                  </div>
+
+                  <p className="text-[11px] text-[#38434F] leading-relaxed">{gap.rationale}</p>
+
+                  <div className="flex items-center gap-3 text-[10px] text-[#788896] pt-0.5">
+                    <span className="flex items-center gap-1">
+                      <Briefcase className="w-3 h-3 text-[#788896]" />
+                      Required by: <strong className="text-[#1D2226] font-semibold">{gap.requiredBy}</strong>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-[#788896]" />
+                      Est. Time: {gap.estHours}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Recommended Learning Action */}
+                <div className="flex items-center gap-2 flex-shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#E8E8E8]">
+                  <Link to={gap.moduleSlug}>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      className="text-xs"
+                      icon={<BookOpen className="w-3.5 h-3.5" />}
+                    >
+                      Start in Dev Hub
+                      <ArrowRight className="w-3 h-3 ml-1" />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </Card>
 
@@ -405,31 +451,37 @@ export const SkillGapPage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-          {currentSkills.map((sk) => (
-            <div
-              key={sk.name}
-              className="p-2.5 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] space-y-1.5"
-            >
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-[#1D2226]">{sk.name}</span>
-                <span className="text-[10px] font-mono text-emerald-700 font-bold">
-                  {sk.percent}%
-                </span>
-              </div>
+          {currentSkills.length === 0 ? (
+            <p className="col-span-full py-4 text-center text-xs text-[#788896] italic">
+              No technical competencies registered yet.
+            </p>
+          ) : (
+            currentSkills.map((sk) => (
+              <div
+                key={sk.name}
+                className="p-2.5 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] space-y-1.5"
+              >
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-[#1D2226]">{sk.name}</span>
+                  <span className="text-[10px] font-mono text-emerald-700 font-bold">
+                    {sk.percent}%
+                  </span>
+                </div>
 
-              <div className="w-full h-1.5 rounded-full bg-white border border-[#D9D9D9] overflow-hidden">
-                <div
-                  className="h-full bg-emerald-600 rounded-full"
-                  style={{ width: `${sk.percent}%` }}
-                />
-              </div>
+                <div className="w-full h-1.5 rounded-full bg-white border border-[#D9D9D9] overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-600 rounded-full"
+                    style={{ width: `${sk.percent}%` }}
+                  />
+                </div>
 
-              <div className="flex items-center justify-between text-[10px] text-[#788896]">
-                <span>{sk.category}</span>
-                <span className="font-semibold text-[#38434F]">{sk.level}</span>
+                <div className="flex items-center justify-between text-[10px] text-[#788896]">
+                  <span>{sk.category}</span>
+                  <span className="font-semibold text-[#38434F]">{sk.level}</span>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </Card>
     </div>

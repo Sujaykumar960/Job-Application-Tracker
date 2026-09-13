@@ -12,7 +12,10 @@ class JobRepository(BaseRepository):
         super().__init__(db, "jobs")
 
     def _build_filter_criteria(self, query: JobFilterQuery) -> Dict[str, Any]:
-        and_conditions: List[Dict[str, Any]] = [{"isActive": {"$ne": False}}]
+        and_conditions: List[Dict[str, Any]] = [
+            {"isActive": {"$ne": False}},
+            {"status": {"$nin": ["closed", "draft"]}},
+        ]
 
         if query.search:
             safe_search = re.escape(query.search)
@@ -112,19 +115,23 @@ class JobRepository(BaseRepository):
             skip=skip,
         )
 
-        candidate_skills_set = {s.lower() for s in (candidate_skills or [])}
+        from app.services.matching_service import normalize_skill
+
+        candidate_skills_set = {normalize_skill(s) for s in (candidate_skills or []) if normalize_skill(s)}
         results = []
         for doc in docs:
             skills = doc.get("skills", [])
             for s in skills:
                 if isinstance(s, dict) and "name" in s:
-                    s["isMatched"] = s["name"].lower() in candidate_skills_set
+                    s["isMatched"] = normalize_skill(s["name"]) in candidate_skills_set
             doc["skills"] = skills
 
             # Calculate match score based on candidate skills
             if candidate_skills_set and skills:
                 matched_count = sum(1 for s in skills if isinstance(s, dict) and s.get("isMatched"))
-                doc["matchScore"] = min(99, max(60, int((matched_count / len(skills)) * 100)))
+                doc["matchScore"] = min(100, max(0, int((matched_count / len(skills)) * 100)))
+            else:
+                doc["matchScore"] = 0
 
             results.append(doc)
 
@@ -132,6 +139,9 @@ class JobRepository(BaseRepository):
 
     async def create(self, doc_data: Dict[str, Any]) -> Dict[str, Any]:
         data = dict(doc_data)
+        if "id" not in data or not data["id"]:
+            import uuid
+            data["id"] = f"job_{uuid.uuid4().hex[:12]}"
         if "isActive" not in data:
             data["isActive"] = True
         if "company" in data and not data.get("companyName"):

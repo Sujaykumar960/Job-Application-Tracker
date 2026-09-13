@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.dependencies import get_db, get_optional_user, require_role
+from app.dependencies import get_current_user, get_db, get_optional_user, require_role
 from app.repositories.job_repository import JobRepository
 from app.schemas.common import StandardSuccessResponse
 from app.schemas.job import (
@@ -11,6 +11,11 @@ from app.schemas.job import (
     JobMatchAnalysis,
     JobResponse,
     JobUpdate,
+)
+from app.services.matching_service import (
+    calculate_job_match,
+    get_candidate_skills,
+    normalize_skill,
 )
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
@@ -59,8 +64,13 @@ async def get_jobs(
     )
 
     total_count = await repo.count_jobs(filter_q)
-    candidate_skills = user.get("skills", []) if user else []
+    candidate_skills = []
+    if user:
+        cand_set, _, _, _ = await get_candidate_skills(db, user["id"])
+        candidate_skills = list(cand_set)
     docs = await repo.search_jobs(filter_q, candidate_skills=candidate_skills)
+    if filter_q.sortBy == "match":
+        docs.sort(key=lambda j: j.get("matchScore", 0), reverse=True)
 
     # Set pagination response headers
     response.headers["X-Total-Count"] = str(total_count)
@@ -71,6 +81,21 @@ async def get_jobs(
     response.headers["X-Total-Pages"] = str(max(1, total_pages))
 
     return docs
+
+
+@router.get("/matches", response_model=List[JobResponse])
+async def get_recommended_job_matches(
+    limit: int = Query(20, ge=1, le=50, description="Number of matches to return"),
+    user: Dict[str, Any] = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Retrieve active jobs ranked by deterministic match score for the authenticated user."""
+    repo = JobRepository(db)
+    cand_set, _, _, _ = await get_candidate_skills(db, user["id"])
+    filter_q = JobFilterQuery(limit=100)
+    docs = await repo.search_jobs(filter_q, candidate_skills=list(cand_set))
+    docs.sort(key=lambda j: j.get("matchScore", 0), reverse=True)
+    return docs[:limit]
 
 
 @router.get("/{job_id}", response_model=JobResponse)
@@ -89,12 +114,20 @@ async def get_job_by_id(
         )
 
     # Compute skill match against viewing user
-    candidate_skills_set = {s.lower() for s in user.get("skills", [])} if user else set()
+    cand_set = set()
+    if user:
+        cand_set, _, _, _ = await get_candidate_skills(db, user["id"])
     skills = doc.get("skills", [])
     for s in skills:
         if isinstance(s, dict) and "name" in s:
-            s["isMatched"] = s["name"].lower() in candidate_skills_set
+            s["isMatched"] = normalize_skill(s["name"]) in cand_set
     doc["skills"] = skills
+
+    if cand_set and skills:
+        matched_count = sum(1 for s in skills if isinstance(s, dict) and s.get("isMatched"))
+        doc["matchScore"] = min(100, max(0, int((matched_count / len(skills)) * 100)))
+    else:
+        doc["matchScore"] = 0
 
     return doc
 
@@ -102,17 +135,17 @@ async def get_job_by_id(
 @router.post("", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
 async def create_job(
     job_data: JobCreate,
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(require_role("recruiter", "admin")),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
-    """Post a new job listing (Recruiter/Admin only)."""
-    if user and user.get("role") not in ["recruiter", "admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Operation not permitted. Only recruiters and administrators can create job listings.",
-        )
+    """Post a new job listing (Recruiter/Admin only). Enforces server-authoritative recruiter ownership."""
     repo = JobRepository(db)
     doc_data = job_data.model_dump()
+    # Server-authoritatively assign ownership to the authenticated recruiter
+    doc_data["recruiterId"] = user["id"]
+    doc_data["postedBy"] = user["id"]
+    if not doc_data.get("status"):
+        doc_data["status"] = "published"
     created = await repo.create(doc_data)
     return created
 
@@ -121,15 +154,10 @@ async def create_job(
 async def update_job(
     job_id: str,
     job_data: JobUpdate,
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(require_role("recruiter", "admin")),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
-    """Update an existing job listing (Recruiter/Admin only)."""
-    if user and user.get("role") not in ["recruiter", "admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Operation not permitted. Only recruiters and administrators can modify job listings.",
-        )
+    """Update an existing job listing (Recruiter/Admin only). Enforces recruiter ownership."""
     repo = JobRepository(db)
     existing = await repo.get_by_id(job_id)
     if not existing:
@@ -138,7 +166,27 @@ async def update_job(
             detail=f"Job listing with ID '{job_id}' not found.",
         )
 
+    # Ownership check: non-admins can only modify their own jobs
+    if user.get("role") != "admin":
+        owner_id = existing.get("recruiterId") or existing.get("postedBy")
+        if owner_id and owner_id != user["id"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Operation not permitted. You can only modify job listings that you created.",
+            )
+
     update_dict = {k: v for k, v in job_data.model_dump().items() if v is not None}
+    # Forbid tampering with immutable ownership fields
+    update_dict.pop("id", None)
+    update_dict.pop("recruiterId", None)
+    update_dict.pop("postedBy", None)
+
+    # If closing the job, ensure isActive mirrors status
+    if update_dict.get("status") == "closed":
+        update_dict["isActive"] = False
+    elif update_dict.get("status") == "published" and "isActive" not in update_dict:
+        update_dict["isActive"] = True
+
     updated = await repo.update(job_id, update_dict)
     return updated
 
@@ -146,16 +194,27 @@ async def update_job(
 @router.delete("/{job_id}", response_model=StandardSuccessResponse)
 async def delete_job(
     job_id: str,
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(require_role("recruiter", "admin")),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
-    """Delete a job listing (Recruiter/Admin only)."""
-    if user and user.get("role") not in ["recruiter", "admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Operation not permitted. Only recruiters and administrators can delete job listings.",
-        )
+    """Delete a job listing (Recruiter/Admin only). Enforces recruiter ownership."""
     repo = JobRepository(db)
+    existing = await repo.get_by_id(job_id)
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Job listing with ID '{job_id}' not found.",
+        )
+
+    # Ownership check: non-admins can only delete their own jobs
+    if user.get("role") != "admin":
+        owner_id = existing.get("recruiterId") or existing.get("postedBy")
+        if owner_id and owner_id != user["id"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Operation not permitted. You can only delete job listings that you created.",
+            )
+
     success = await repo.delete(job_id)
     if not success:
         raise HTTPException(
@@ -168,9 +227,11 @@ async def delete_job(
 @router.post("/{job_id}/match", response_model=JobMatchAnalysis)
 async def analyze_job_match(
     job_id: str,
+    resumeId: Optional[str] = Query(None, description="Optional resume ID to analyze against"),
+    user: Dict[str, Any] = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
-    """Analyze candidate profile compatibility against job description."""
+    """Analyze authenticated candidate profile compatibility against job description."""
     repo = JobRepository(db)
     job = await repo.get_by_id(job_id)
     if not job:
@@ -179,18 +240,17 @@ async def analyze_job_match(
             detail=f"Job listing with ID '{job_id}' not found.",
         )
 
-    matched = []
-    missing = []
-    if "skills" in job:
-        matched = [s["name"] for s in job["skills"] if isinstance(s, dict) and s.get("isMatched")]
-        missing = [s["name"] for s in job["skills"] if isinstance(s, dict) and not s.get("isMatched")]
-
-    return JobMatchAnalysis(
-        matchScore=job.get("matchScore", 88),
-        matchedSkills=matched or ["Go", "PostgreSQL", "Kafka"],
-        missingSkills=missing or ["Docker", "AWS"],
-        recommendations=[
-            "Review transactional outbox design patterns.",
-            "Complete the Kafka message ordering exercise in the Learning Hub.",
-        ],
+    candidate_skills, _, target_resume, _ = await get_candidate_skills(
+        db, user["id"], resume_id=resumeId
     )
+
+    match_result = calculate_job_match(
+        candidate_skills=candidate_skills,
+        job=job,
+        candidate_exp=user.get("experienceLevel", "Mid"),
+        candidate_loc=user.get("location", "Remote"),
+        target_resume=target_resume,
+    )
+
+    return match_result
+

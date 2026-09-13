@@ -12,6 +12,7 @@ import {
 } from '../components/coding/AiAssistantDrawer';
 import { CODING_PROBLEMS, CodingProblem } from '../data/codingProblems';
 import { codeExecutionApi, ExecutionResult } from '../api/codeExecution';
+import { aiApi } from '../api/aiApi';
 import {
   Code2,
   Terminal,
@@ -111,89 +112,58 @@ export const CodingPracticePage: React.FC = () => {
   };
 
   // Handle AI Assistant Actions (Hint, Explain Error, Explain Code, Optimize, Generate Tests)
-  const handleAiAction = (action: AiActionType) => {
+  const handleAiAction = async (action: AiActionType) => {
     setIsAiDrawerOpen(true);
     setIsAiLoading(true);
+    setAiResponse(null);
 
-    setTimeout(() => {
-      setIsAiLoading(false);
+    try {
+      let res;
+      let badge = 'AI Assistant';
 
       switch (action) {
         case 'hint':
-          setAiResponse({
-            action: 'hint',
-            title: 'Algorithmic Intuition & Data Structure Hint',
-            badge: 'Key Idea',
-            content: `To achieve true O(1) time complexity for both \`get\` and \`put\`, you need two synchronized data structures:
-1. A **Hash Map** (\`map[int]*Node\`) for O(1) key lookup.
-2. A **Doubly-Linked List** with dummy \`head\` and \`tail\` sentinels to remove and re-insert nodes in O(1) time without traversing.
-When accessing a key with \`get\`, remove the node from its current spot and insert it immediately after \`head\`. When adding exceeds capacity, drop \`tail.prev\`.`,
-          });
+          res = await aiApi.getCodingHint(currentProblemId, code, selectedLanguage);
+          badge = 'Key Idea';
           break;
-
         case 'explain_error':
-          setAiResponse({
-            action: 'explain_error',
-            title: 'Static Analysis & Edge-Case Vulnerabilities',
-            badge: 'Diagnostic',
-            content: `Potential pitfalls identified in your implementation:
-1. **Nil Pointer Dereference**: Check if dummy head and tail are properly linked before inserting: \`head.next = tail\` and \`tail.prev = head\`.
-2. **Duplicate Key Updates**: When putting an existing key, remember to update its value AND move it to the most recently used position.
-3. **Capacity = 1 Edge Case**: Ensure that evicting a single node correctly updates \`tail.prev\` to \`head\`.`,
-          });
+          const errOutput = executionResult?.stderr || executionResult?.stdout || 'No runtime error found';
+          res = await aiApi.explainError(code, errOutput, selectedLanguage);
+          badge = 'Diagnostic';
           break;
-
         case 'explain_code':
-          setAiResponse({
-            action: 'explain_code',
-            title: 'Step-by-Step Code Walkthrough',
-            badge: 'Explanation',
-            content: `Here is the architectural execution flow of this solution:
-* \`Constructor(capacity)\`: Initializes the map and links \`head <-> tail\` sentinels.
-* \`moveToHead(node)\`: Unlinks the node from its neighbors in 4 pointer re-assignments and stitches it between \`head\` and \`head.next\`.
-* \`removeTail()\`: Extracts \`tail.prev\` and deletes its entry from the hash map to release memory.`,
-          });
+          res = await aiApi.explainCode(code, selectedLanguage);
+          badge = 'Explanation';
           break;
-
         case 'optimize':
-          setAiResponse({
-            action: 'optimize',
-            title: 'Time & Space Complexity Optimization',
-            badge: 'Optimal',
-            timeComplexity: 'O(1) average per operation',
-            spaceComplexity: 'O(capacity) space in hash map',
-            content: `Your algorithm achieves optimal O(1) amortized bounds.
-For high-concurrency production systems (like Redis/Memcached), consider:
-- Partitioning the cache into 16 striped mutex shards to avoid single-lock contention.
-- Pre-allocating node structs in a contiguous slice to maximize CPU L1/L2 cache locality.`,
-            codeSnippet: `// Striped LRU Cache slice layout for memory locality
-type Node struct {
-    key, val   int
-    prev, next *Node
-}`,
-          });
+          res = await aiApi.optimizeCode(code, selectedLanguage);
+          badge = 'Optimal';
           break;
-
         case 'generate_tests':
-          setAiResponse({
-            action: 'generate_tests',
-            title: 'Adversarial Edge-Case Test Suite',
-            badge: 'Test Generator',
-            content: `Generated 3 high-stress boundary test cases covering cache eviction and concurrency:`,
-            codeSnippet: `// Test Case 1: Capacity = 1 thrashing
-c := Constructor(1)
-c.Put(1, 10); c.Put(2, 20); // 1 evicted
-assert(c.Get(1) == -1 && c.Get(2) == 20)
-
-// Test Case 2: Overwrite existing key without increasing size
-c2 := Constructor(2)
-c2.Put(1, 1); c2.Put(2, 2); c2.Put(1, 100) // update 1
-c2.Put(3, 3) // evicts 2, keeps 1
-assert(c2.Get(2) == -1 && c2.Get(1) == 100)`,
-          });
+          res = await aiApi.generateTests(code, selectedLanguage);
+          badge = 'Test Generator';
           break;
       }
-    }, 600);
+
+      if (res) {
+        setAiResponse({
+          action,
+          title: res.title || 'AI Assistant Response',
+          badge,
+          content: res.markdownContent || '',
+          codeSnippet: res.suggestedCodeSnippet,
+        });
+      }
+    } catch (err: unknown) {
+      setAiResponse({
+        action,
+        title: 'AI Service Notice',
+        badge: 'Notice',
+        content: err instanceof Error ? err.message : 'Unable to contact AI assistant service. Please check your network connection.',
+      });
+    } finally {
+      setIsAiLoading(false);
+    }
   };
 
   return (

@@ -36,10 +36,19 @@ class DashboardService:
         headline = (profile_doc and profile_doc.get("headline")) or "Software Engineer"
         ats_score = (profile_doc and profile_doc.get("atsScore")) or 85
         skills = (profile_doc and profile_doc.get("skills")) or []
+        email = (user_doc and user_doc.get("email")) or ""
+        if not email:
+            u_q = {"id": user_id}
+            if ObjectId.is_valid(user_id):
+                u_q = {"$or": [{"id": user_id}, {"_id": ObjectId(user_id)}]}
+            u = await self.db.users.find_one(u_q)
+            if u:
+                email = u.get("email", "")
 
         profile_overview = UserProfileOverview(
             id=user_id,
             name=name,
+            email=email,
             headline=headline,
             atsScore=ats_score,
             skills=skills,
@@ -132,10 +141,15 @@ class DashboardService:
         unread_messages = sum(c.get("unreadCounts", {}).get(user_id, 0) for c in conversations)
 
         # 7. Incoming Connection Requests Count
-        conn_requests = await self.db.connection_requests.count_documents({
+        conn_req_1 = await self.db.connection_requests.count_documents({
             "recipientId": user_id,
             "status": "Pending",
         })
+        conn_req_2 = await self.db.connections.count_documents({
+            "receiverId": user_id,
+            "status": "Pending",
+        })
+        conn_requests = conn_req_1 + conn_req_2
 
         # 8. Saved Jobs Count
         saved_jobs_count = await self.db.saved_jobs.count_documents({"userId": user_id})
@@ -245,6 +259,24 @@ class DashboardService:
                     description=f"Status: {req_status}",
                     timestamp=req.get("requestDate") or req.get("createdAt") or utc_now_iso(),
                     metadata={"requestId": rid, "status": req_status},
+                )
+            )
+
+        conn_alt = await self.db.connections.find({
+            "$or": [{"requesterId": user_id}, {"receiverId": user_id}]
+        }).sort("createdAt", -1).limit(limit).to_list(limit)
+        for cdoc in conn_alt:
+            cid = str(cdoc.get("id") or cdoc.get("_id"))
+            is_incoming = cdoc.get("receiverId") == user_id
+            c_status = cdoc.get("status", "Connected")
+            activities.append(
+                DashboardActivityItem(
+                    id=f"act_conn_{cid}",
+                    type="connection",
+                    title="Incoming Connection Request" if (is_incoming and c_status == "Pending") else ("Connection Accepted" if c_status == "Connected" else "Sent Connection Request"),
+                    description=f"Status: {c_status}",
+                    timestamp=cdoc.get("connectedDate") or cdoc.get("requestDate") or cdoc.get("createdAt") or utc_now_iso(),
+                    metadata={"connectionId": cid, "status": c_status},
                 )
             )
 

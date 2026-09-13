@@ -1,8 +1,9 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Card } from '../common/Card';
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
-import { NetworkUser, ConnectionState } from '../../data/mockNetwork';
+import { NetworkUser } from '../../types';
 import {
   UserPlus,
   Clock,
@@ -28,7 +29,7 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
 }) => {
   const renderConnectionButton = () => {
     switch (user.connectionState) {
-      case 'Connect':
+      case 'not_connected':
         return (
           <Button
             size="xs"
@@ -41,7 +42,7 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
           </Button>
         );
 
-      case 'Pending':
+      case 'pending':
         return (
           <Button
             size="xs"
@@ -55,7 +56,7 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
           </Button>
         );
 
-      case 'Connected':
+      case 'connected':
         return (
           <div className="flex items-center gap-1.5 w-full">
             <Button
@@ -90,20 +91,24 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
         {/* Avatar + Name + Headline */}
         <div className="flex items-start gap-3">
           {/* Avatar / Photo */}
-          <div
+          <Link
+            to={`/profile/${user.id}`}
             className={cn(
-              'w-12 h-12 rounded-2xl bg-gradient-to-br flex items-center justify-center text-white font-extrabold text-sm flex-shrink-0 shadow border border-surface-700/60',
+              'w-12 h-12 rounded-2xl bg-gradient-to-br flex items-center justify-center text-white font-extrabold text-sm flex-shrink-0 shadow border border-surface-700/60 transition hover:opacity-90',
               user.avatarGradient
             )}
           >
             {user.avatarInitials}
-          </div>
+          </Link>
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <h3 className="text-xs font-bold text-[#1D2226] group-hover:text-[#0A66C2] transition truncate">
+              <Link
+                to={`/profile/${user.id}`}
+                className="text-xs font-bold text-[#1D2226] hover:text-[#0A66C2] transition truncate"
+              >
                 {user.name}
-              </h3>
+              </Link>
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
             </div>
 
@@ -143,7 +148,7 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
           <Users className="w-3 h-3 text-[#0A66C2] flex-shrink-0" />
           <span className="truncate">
             {user.mutualCount} mutual connections
-            {user.mutualNames.length > 0 && ` (${user.mutualNames[0]})`}
+            {user.mutualNames && user.mutualNames.length > 0 && ` (${user.mutualNames[0]})`}
           </span>
         </div>
 

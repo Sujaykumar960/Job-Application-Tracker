@@ -120,6 +120,17 @@ async def test_auth_password_reset_flow(client):
 
 @pytest.mark.asyncio
 async def test_calendar_endpoints_and_google_sync(client):
+    # Register test user
+    reg = await client.post("/api/auth/register", json={
+        "name": "Audit Calendar User",
+        "email": "calendar@audit.io",
+        "password": "Password123!",
+        "role": "seeker",
+    })
+    assert reg.status_code == 201
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
     # 1. Create a calendar event
     create_res = await client.post("/api/calendar/events", json={
         "title": "Test Architecture Review",
@@ -129,7 +140,7 @@ async def test_calendar_endpoints_and_google_sync(client):
         "company": "Test Linear",
         "locationOrUrl": "https://meet.google.com/test",
         "notes": "Testing calendar sync functionality.",
-    })
+    }, headers=headers)
     assert create_res.status_code == 201
     evt = create_res.json()
     assert evt["title"] == "Test Architecture Review"
@@ -137,17 +148,18 @@ async def test_calendar_endpoints_and_google_sync(client):
     assert "id" in evt
 
     # 2. Retrieve calendar events
-    get_res = await client.get("/api/calendar/events")
+    get_res = await client.get("/api/calendar/events", headers=headers)
     assert get_res.status_code == 200
     events = get_res.json()
     assert isinstance(events, list)
     assert any(e["id"] == evt["id"] for e in events)
 
     # 3. Trigger Google Calendar sync
-    sync_res = await client.post("/api/calendar/google/sync")
+    sync_res = await client.post("/api/calendar/google/sync", headers=headers)
     assert sync_res.status_code == 200
     sync_data = sync_res.json()
     assert sync_data["success"] is True
     assert sync_data["syncedCount"] >= 1
     assert "lastSyncedAt" in sync_data
     assert "accountEmail" in sync_data
+

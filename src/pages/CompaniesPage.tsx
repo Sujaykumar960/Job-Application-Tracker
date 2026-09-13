@@ -1,11 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { PageHeader } from '../components/common/PageHeader';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
 import { CompanyCard } from '../components/companies/CompanyCard';
 import { CompanyDetailModal } from '../components/companies/CompanyDetailModal';
 import { JobMatchModal } from '../components/jobs/JobMatchModal';
-import { MOCK_COMPANIES } from '../data/mockCompanies';
+import { companyApi } from '../api/companyApi';
+import { applicationApi } from '../api/applicationApi';
+import { resumeApi } from '../api/resumeApi';
 import { CompanyProfile } from '../types/company';
 import { JobItem, Application } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
@@ -19,27 +21,37 @@ import {
   CheckCircle2,
   ExternalLink,
   ArrowRight,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
-
-const APPLICATIONS_STORAGE_KEY = 'careerx_applications_v2';
-const COMPANIES_STORAGE_KEY = 'careerx_companies_v2';
 
 export const CompaniesPage: React.FC = () => {
   const navigate = useNavigate();
 
-  // Companies state with localStorage persistence
-  const [companies, setCompanies] = useState<CompanyProfile[]>(() => {
-    const saved = localStorage.getItem(COMPANIES_STORAGE_KEY);
-    if (saved) {
+  // Companies state from backend
+  const [companies, setCompanies] = useState<CompanyProfile[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch companies from backend
+  useEffect(() => {
+    const fetchCompanies = async () => {
       try {
-        return JSON.parse(saved);
-      } catch {
-        return MOCK_COMPANIES;
+        setIsLoading(true);
+        setError(null);
+        const data = await companyApi.getCompanies();
+        setCompanies(data);
+      } catch (err) {
+        setError('Failed to load companies. Please try again.');
+        console.error('Companies fetch error:', err);
+      } finally {
+        setIsLoading(false);
       }
-    }
-    return MOCK_COMPANIES;
-  });
+    };
+
+    fetchCompanies();
+  }, []);
 
   const [selectedCompany, setSelectedCompany] = useState<CompanyProfile | null>(null);
   const [matchAnalysisJob, setMatchAnalysisJob] = useState<JobItem | null>(null);
@@ -47,100 +59,76 @@ export const CompaniesPage: React.FC = () => {
   const [selectedIndustry, setSelectedIndustry] = useState('All');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Track applied jobs
-  const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(() => {
-    const existing = localStorage.getItem(APPLICATIONS_STORAGE_KEY);
-    if (existing) {
-      try {
-        const apps: Application[] = JSON.parse(existing);
-        const appliedTitles = new Set(apps.map((a) => `${a.company.toLowerCase()}-${a.role.toLowerCase()}`));
-        const ids = new Set<string>();
-        MOCK_COMPANIES.forEach((c) => {
-          c.jobs.forEach((j) => {
-            if (appliedTitles.has(`${j.company.toLowerCase()}-${j.title.toLowerCase()}`)) {
-              ids.add(j.id);
-            }
-          });
-        });
-        return ids;
-      } catch {
-        return new Set();
-      }
-    }
-    return new Set();
-  });
-
-  const syncCompanies = (updated: CompanyProfile[]) => {
-    setCompanies(updated);
-    localStorage.setItem(COMPANIES_STORAGE_KEY, JSON.stringify(updated));
-    if (selectedCompany) {
-      const active = updated.find((c) => c.id === selectedCompany.id);
-      if (active) setSelectedCompany(active);
-    }
-  };
+  // Track applied jobs (would need to be fetched from backend)
+  const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
 
   // Follow Toggle
-  const handleFollowToggle = (companyId: string) => {
-    const updated = companies.map((c) => {
-      if (c.id === companyId) {
-        const nextFollowing = !c.isFollowing;
-        return {
-          ...c,
-          isFollowing: nextFollowing,
-          followersCount: nextFollowing ? c.followersCount + 1 : c.followersCount - 1,
-        };
-      }
-      return c;
-    });
-    syncCompanies(updated);
+  const handleFollowToggle = async (companyId: string) => {
+    try {
+      const result = await companyApi.toggleFollowCompany(companyId);
+      setCompanies((prev) =>
+        prev.map((c) =>
+          c.id === companyId
+            ? { ...c, isFollowing: result.isFollowing, followersCount: result.followersCount }
+            : c
+        )
+      );
+    } catch (err) {
+      console.error('Failed to toggle follow:', err);
+      alert('Failed to update follow status. Please try again.');
+    }
   };
 
   // Apply to Job
-  const handleApplyJob = (job: JobItem) => {
-    const existingApps: Application[] = (() => {
-      const stored = localStorage.getItem(APPLICATIONS_STORAGE_KEY);
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch {
-          return [];
-        }
-      }
-      return [];
-    })();
-
-    const alreadyApplied = existingApps.some(
-      (a) => a.company.toLowerCase() === job.company.toLowerCase() && a.role.toLowerCase() === job.title.toLowerCase()
-    );
-
+  const handleApplyJob = async (job: JobItem) => {
+    const alreadyApplied = appliedJobIds.has(job.id);
     if (alreadyApplied) {
       setToastMessage(`You have already applied to ${job.title} at ${job.company}`);
       setTimeout(() => setToastMessage(null), 4000);
       return;
     }
 
-    const newApplication: Application = {
-      id: `app-${Date.now()}`,
-      company: job.company,
-      role: job.title,
-      location: job.location,
-      appliedDate: new Date().toISOString().split('T')[0],
-      deadline: '2026-09-30',
-      status: 'Applied',
-      priority: 'High',
-      matchScore: job.matchScore,
-      salaryRange: job.salaryRange,
-      tags: job.skills.slice(0, 3).map((s) => s.name),
-      notes: `Direct application submitted via CareerX Companies Portal. Tech stack verified: ${job.skills.map((s) => s.name).join(', ')}.`,
-      resume: 'Alex_Rivera_Distributed_Systems.pdf',
-    };
+    try {
+      let resumeName = '';
+      let resumeId = '';
+      try {
+        const activeRes = await resumeApi.getActiveResume();
+        if (activeRes) {
+          resumeName = activeRes.name;
+          resumeId = activeRes.id;
+        }
+      } catch {
+        // Fall back to server auto-attaching resume
+      }
 
-    const updatedApps = [newApplication, ...existingApps];
-    localStorage.setItem(APPLICATIONS_STORAGE_KEY, JSON.stringify(updatedApps));
+      const newApplication: Application = {
+        id: `app-${Date.now()}`,
+        jobId: job.id,
+        companyId: job.companyId || selectedCompany?.id,
+        company: job.company,
+        role: job.title,
+        location: job.location,
+        appliedDate: new Date().toISOString().split('T')[0],
+        deadline: '2026-09-30',
+        status: 'Applied',
+        priority: 'High',
+        matchScore: job.matchScore,
+        salaryRange: job.salaryRange,
+        tags: job.skills.slice(0, 3).map((s) => s.name),
+        notes: `Direct application submitted via CareerX Companies Portal. Tech stack verified: ${job.skills.map((s) => s.name).join(', ')}.`,
+        resume: resumeName || undefined,
+        resumeId: resumeId || undefined,
+      };
 
-    setAppliedJobIds((prev) => new Set([...prev, job.id]));
-    setToastMessage(`🎉 Applied successfully to ${job.title} at ${job.company}! Added to your Application Tracker.`);
-    setTimeout(() => setToastMessage(null), 5000);
+      await applicationApi.createApplication(newApplication);
+      setAppliedJobIds((prev) => new Set([...prev, job.id]));
+      setToastMessage(`🎉 Applied successfully to ${job.title} at ${job.company}! Added to your Application Tracker.`);
+      setTimeout(() => setToastMessage(null), 5000);
+    } catch (err: any) {
+      console.error('Failed to apply:', err);
+      const msg = err.response?.data?.detail || 'Failed to submit application. Please try again.';
+      alert(msg);
+    }
   };
 
   // Filtered Companies
@@ -173,6 +161,50 @@ export const CompaniesPage: React.FC = () => {
   );
 
   const industriesList = ['All', 'Fintech', 'Developer Tools', 'Cloud Platform', 'Monitoring'];
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-[#0A66C2]" />
+        <span className="ml-3 text-[#56687A]">Loading companies...</span>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <AlertCircle className="w-12 h-12 text-[#E6395A]" />
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-[#1D2226]">Unable to load companies</h3>
+          <p className="text-[#56687A] mt-1">{error}</p>
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => window.location.reload()}
+            className="mt-4"
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (companies.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <Building2 className="w-12 h-12 text-[#788896]" />
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-[#1D2226]">No companies available</h3>
+          <p className="text-[#56687A] mt-1">Check back later for new hiring partners.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">

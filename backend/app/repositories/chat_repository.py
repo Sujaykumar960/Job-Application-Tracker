@@ -183,6 +183,7 @@ class ChatRepository:
         sender_name: str,
         content: str,
         attachment: Optional[Dict[str, Any]] = None,
+        client_message_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Execute full 6-step message creation, persistence, notification, and WebSocket pipeline."""
         conv = await self.conv_repo.get_by_id(conversation_id)
@@ -199,15 +200,25 @@ class ChatRepository:
                 detail="Access denied. You cannot send messages to a conversation you are not part of.",
             )
 
+        # Idempotency check: if client_message_id already exists, return existing message without duplicating
+        if client_message_id:
+            existing = await self.msg_repo.find_one({
+                "$or": [{"id": client_message_id}, {"clientMessageId": client_message_id}],
+            })
+            if existing:
+                existing["isOutgoing"] = (existing.get("senderId") == sender_id)
+                return existing
+
         recipients = [p for p in participants if p != sender_id]
 
-        msg_id = f"msg_{uuid.uuid4().hex[:8]}"
+        msg_id = client_message_id if (client_message_id and client_message_id.startswith("msg_")) else f"msg_{uuid.uuid4().hex[:8]}"
         time_str = datetime.now(timezone.utc).strftime("%I:%M %p")
         now_iso = utc_now_iso()
 
         # Step 1: Persist message in database
         doc = {
             "id": msg_id,
+            "clientMessageId": client_message_id,
             "conversationId": conversation_id,
             "senderId": sender_id,
             "senderName": sender_name,
@@ -314,3 +325,72 @@ class ChatRepository:
         unread_counts = conv.get("unreadCounts", {})
         unread_counts[user_id] = 0
         await self.conv_repo.update(conversation_id, {"unreadCounts": unread_counts})
+
+    async def edit_message(
+        self,
+        conversation_id: str,
+        message_id: str,
+        user_id: str,
+        new_content: str,
+    ) -> Dict[str, Any]:
+        """Edit an existing message, ensuring author-only permissions."""
+        msg = await self.msg_repo.get_by_id(message_id)
+        if not msg:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Message with ID '{message_id}' not found.",
+            )
+
+        if msg.get("conversationId") != conversation_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Message does not belong to this conversation.",
+            )
+
+        if msg.get("senderId") != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Operation not permitted. You can only edit your own messages.",
+            )
+
+        now = utc_now_iso()
+        await self.msg_repo.update(message_id, {
+            "content": new_content,
+            "editedAt": now,
+            "isEdited": True,
+        })
+        msg["content"] = new_content
+        msg["editedAt"] = now
+        msg["isEdited"] = True
+        msg["isOutgoing"] = True
+        return msg
+
+    async def delete_message(
+        self,
+        conversation_id: str,
+        message_id: str,
+        user_id: str,
+    ) -> bool:
+        """Delete an existing message, ensuring author-only permissions."""
+        msg = await self.msg_repo.get_by_id(message_id)
+        if not msg:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Message with ID '{message_id}' not found.",
+            )
+
+        if msg.get("conversationId") != conversation_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Message does not belong to this conversation.",
+            )
+
+        if msg.get("senderId") != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Operation not permitted. You can only delete your own messages.",
+            )
+
+        await self.msg_repo.delete(message_id)
+        return True
+

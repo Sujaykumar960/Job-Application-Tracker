@@ -42,9 +42,13 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
 
   const statusVariants: Record<ApplicationStatus, 'brand' | 'success' | 'warning' | 'danger'> = {
     Applied: 'warning',
+    Screening: 'brand',
+    Shortlisted: 'brand',
     Interview: 'brand',
     Offer: 'success',
+    Hired: 'success',
     Rejected: 'danger',
+    Wishlist: 'warning',
   };
 
   return (

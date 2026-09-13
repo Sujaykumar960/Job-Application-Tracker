@@ -48,8 +48,11 @@ async def test_job_crud_and_salary_parsing(client):
         "description": "Design transaction pipelines.",
     }
 
+    recruiter_token = await create_user_and_token(client, "recruiter_jobs@jobapptest.io", "Recruiter Test", role="recruiter")
+    headers = {"Authorization": f"Bearer {recruiter_token}"}
+
     # 1. Create Job
-    create_res = await client.post("/api/jobs", json=job_payload)
+    create_res = await client.post("/api/jobs", json=job_payload, headers=headers)
     assert create_res.status_code == 201
     job_data = create_res.json()
     job_id = job_data["id"]
@@ -63,12 +66,12 @@ async def test_job_crud_and_salary_parsing(client):
     assert get_res.json()["title"] == "Staff Ledger Engineer"
 
     # 3. Update Job
-    patch_res = await client.patch(f"/api/jobs/{job_id}", json={"title": "Principal Ledger Architect"})
+    patch_res = await client.patch(f"/api/jobs/{job_id}", json={"title": "Principal Ledger Architect"}, headers=headers)
     assert patch_res.status_code == 200
     assert patch_res.json()["title"] == "Principal Ledger Architect"
 
     # 4. Delete Job
-    del_res = await client.delete(f"/api/jobs/{job_id}")
+    del_res = await client.delete(f"/api/jobs/{job_id}", headers=headers)
     assert del_res.status_code == 200
     assert del_res.json()["success"] is True
 
@@ -119,8 +122,10 @@ async def test_job_filtering_and_pagination(client):
         },
     ]
 
+    recruiter_token = await create_user_and_token(client, "recruiter_filter@jobapptest.io", "Recruiter Filter", role="recruiter")
+    headers = {"Authorization": f"Bearer {recruiter_token}"}
     for j in jobs:
-        await client.post("/api/jobs", json=j)
+        await client.post("/api/jobs", json=j, headers=headers)
 
     # Filter by search
     res = await client.get("/api/jobs?search=telemetry")

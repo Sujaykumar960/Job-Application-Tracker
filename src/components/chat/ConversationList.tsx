@@ -99,7 +99,12 @@ export const ConversationList: React.FC<ConversationListProps> = ({
 
       {/* Conversations Scroll Area */}
       <div className="flex-1 overflow-y-auto divide-y divide-[#E8E8E8]">
-        {filteredConversations.length === 0 ? (
+        {conversations.length === 0 ? (
+          <div className="p-8 text-center text-xs text-[#788896] space-y-1">
+            <p className="font-semibold text-[#1D2226]">No conversations yet.</p>
+            <p className="text-[11px]">Connect with recruiters or peers to begin chatting.</p>
+          </div>
+        ) : filteredConversations.length === 0 ? (
           <div className="p-8 text-center text-xs text-[#788896] space-y-1">
             <p className="font-semibold text-[#1D2226]">No conversations found</p>
             <p className="text-[11px]">Check your spelling or reset the filter</p>

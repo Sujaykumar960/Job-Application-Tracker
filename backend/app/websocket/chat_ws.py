@@ -23,37 +23,40 @@ async def chat_websocket_endpoint(
     """Production real-time messaging, typing, presence, and read-receipts WebSocket endpoint.
     Path: ws://localhost:8000/api/ws/chat?token=<JWT>
     """
-    # 1. Mandatory Authentication (JWT access token or development mock token)
+    # 1. Mandatory Authentication (JWT access token)
     if not token:
         logger.warning("WebSocket rejected: missing authentication token.")
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Missing authentication token.")
         return
 
-    if token == "mock-test-token":
-        user_id = "mock_test_user"
-        user_doc = {"id": user_id, "name": "Mock Tester", "isActive": True}
-    else:
-        payload = decode_access_token(token)
-        if not payload or "sub" not in payload or payload.get("token_type") != "access":
-            logger.warning("WebSocket rejected: invalid or expired access token.")
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid or expired access token.")
+    payload = decode_access_token(token)
+    if not payload or "sub" not in payload or payload.get("token_type") != "access":
+        logger.warning("WebSocket rejected: invalid or expired access token.")
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid or expired access token.")
+        return
+
+    user_id = payload["sub"]
+
+    try:
+        db = get_database()
+        # Check token revocation
+        revoked = await db.revoked_tokens.find_one({"token": token})
+        if revoked:
+            logger.warning("WebSocket rejected: token has been revoked.")
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Token revoked.")
             return
 
-        user_id = payload["sub"]
-
-        try:
-            db = get_database()
-            from app.repositories.user_repository import UserRepository
-            user_repo = UserRepository(db)
-            user_doc = await user_repo.get_by_id(user_id)
-            if not user_doc or not user_doc.get("isActive", True):
-                logger.warning("WebSocket rejected: user '%s' not found or deactivated.", user_id)
-                await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="User not found or deactivated.")
-                return
-        except Exception as e:
-            logger.error("Database error during WebSocket auth verification: %s", e)
-            await websocket.close(code=status.WS_1011_INTERNAL_ERROR, reason="Authentication check failed.")
+        from app.repositories.user_repository import UserRepository
+        user_repo = UserRepository(db)
+        user_doc = await user_repo.get_by_id(user_id)
+        if not user_doc or not user_doc.get("isActive", True):
+            logger.warning("WebSocket rejected: user '%s' not found or deactivated.", user_id)
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="User not found or deactivated.")
             return
+    except Exception as e:
+        logger.error("Database error during WebSocket auth verification: %s", e)
+        await websocket.close(code=status.WS_1011_INTERNAL_ERROR, reason="Authentication check failed.")
+        return
 
     # 2. Register with ConnectionManager
     await ws_manager.connect(websocket, user_id)
@@ -74,6 +77,13 @@ async def chat_websocket_endpoint(
     try:
         while True:
             text_data = await websocket.receive_text()
+
+            # Enforce 64KB maximum payload constraint to mitigate DoS
+            if len(text_data) > 65536:
+                await websocket.send_text(
+                    json.dumps({"type": "error", "payload": {"message": "Payload size exceeds maximum allowed limit (64KB)."}})
+                )
+                continue
 
             # Malformed JSON handling: do NOT crash
             try:
@@ -129,8 +139,21 @@ async def chat_websocket_endpoint(
                     )
                     continue
 
+                # Idempotency check with clientMessageId or id
+                client_msg_id = msg_payload.get("clientMessageId") or msg_payload.get("id")
+                if client_msg_id:
+                    existing_msg = await db.messages.find_one({
+                        "$or": [{"id": client_msg_id}, {"clientMessageId": client_msg_id}],
+                    })
+                    if existing_msg:
+                        existing_packet = dict(existing_msg)
+                        existing_packet.pop("_id", None)
+                        existing_packet["isOutgoing"] = True
+                        await websocket.send_text(json.dumps({"type": "message", "payload": existing_packet}))
+                        continue
+
                 recipients = [p for p in participants if p != user_id]
-                msg_id = f"msg_{uuid.uuid4().hex[:8]}"
+                msg_id = client_msg_id if (client_msg_id and client_msg_id.startswith("msg_")) else f"msg_{uuid.uuid4().hex[:8]}"
                 time_str = datetime.now(timezone.utc).strftime("%I:%M %p")
                 now_iso = utc_now_iso()
 
@@ -140,6 +163,7 @@ async def chat_websocket_endpoint(
 
                 msg_doc = {
                     "id": msg_id,
+                    "clientMessageId": client_msg_id,
                     "conversationId": conversation_id,
                     "senderId": user_id,  # Authoritative sender from JWT
                     "senderName": user_doc.get("name", "Alex Rivera"),

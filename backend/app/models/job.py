@@ -20,7 +20,7 @@ class JobModel(BaseModel):
     experienceLevel: str = "Mid"
     roleCategory: str = "Software Engineering"
     postedDate: str = Field(default_factory=utc_now_iso)
-    matchScore: int = 85
+    matchScore: int = 0
     skills: List[JobSkillItem] = Field(default_factory=list)
     requiredSkills: List[str] = Field(default_factory=list)
     description: str
@@ -30,5 +30,9 @@ class JobModel(BaseModel):
     jobUrl: Optional[str] = None
     applicantsCount: int = 0
     isActive: bool = True
+    recruiterId: Optional[str] = None
+    postedBy: Optional[str] = None
+    companyId: Optional[str] = None
+    status: str = "published"  # "draft", "published", "closed"
     createdAt: str = Field(default_factory=utc_now_iso)
     updatedAt: Optional[str] = None

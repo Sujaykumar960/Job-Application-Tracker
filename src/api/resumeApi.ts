@@ -1,78 +1,107 @@
-import { apiClient, withFallback } from './client';
+import { apiClient } from './client';
 import { AtsBreakdown } from '../types';
+import { ResumeItem } from '../components/resume/ResumeUploadZone';
+import { PillarMetric } from '../components/resume/AtsPillars';
+import { BulletImprovement } from '../components/resume/AiBulletOptimizer';
+
+export type { ResumeItem, PillarMetric, BulletImprovement };
+
+export interface MissingKeywordItem {
+  name: string;
+  priority: 'High' | 'Medium' | 'Low';
+  category: string;
+}
+
+export interface FormattingCheckItem {
+  label: string;
+  status: string;
+  detail: string;
+}
 
 export interface ResumeAnalysisResult {
   atsScore: number;
   atsBreakdown: AtsBreakdown;
+  pillars: PillarMetric[];
   strengths: string[];
   weaknesses: string[];
-  missingKeywords: string[];
-  skillGaps: string[];
+  missingKeywords: MissingKeywordItem[];
+  extractedSkills: Record<string, string[]>;
+  bulletImprovements: BulletImprovement[];
   recommendations: string[];
+  projects?: Array<Record<string, any>>;
+  education?: Array<Record<string, any>>;
+  formattingHealth?: FormattingCheckItem[];
+  rawResumeText?: string;
+  jobDescription?: string;
+  analyzedAt?: string;
+  modelUsed?: string;
 }
-
-const MOCK_RESUME_ANALYSIS: ResumeAnalysisResult = {
-  atsScore: 88,
-  atsBreakdown: {
-    overallScore: 88,
-    keywordsScore: 92,
-    impactScore: 85,
-    formattingScore: 90,
-    completenessScore: 86,
-  },
-  strengths: [
-    'Strong quantified achievements in distributed transactions ($1T processed).',
-    'Demonstrated concurrency expertise with Goroutines, Kafka outbox, and Redis Lua.',
-    'Clear section hierarchy matching standard parsing formats (Work, Education, Projects).',
-  ],
-  weaknesses: [
-    'Could expand on cloud deployment infrastructure and Kubernetes pod topologies.',
-    'Certifications section could include CKA or AWS Solutions Architect credentials.',
-  ],
-  missingKeywords: ['eBPF', 'Terraform', 'Service Mesh (Istio)', 'OpenTelemetry', 'gRPC-Web'],
-  skillGaps: ['eBPF Linux Kernel Tracing', 'Terraform Multi-Cloud Infrastructure'],
-  recommendations: [
-    'Add specific latency reduction metrics to the Sliding Window Rate Limiter project.',
-    'Include CI/CD pipeline automation keywords in the CloudScale internship description.',
-    'Complete the CareerX Cloud Platform Assessment to verify Kubernetes proficiency.',
-  ],
-};
 
 export const resumeApi = {
   /**
+   * List all resumes belonging to current authenticated user
+   */
+  getResumes: async (): Promise<ResumeItem[]> => {
+    const response = await apiClient.get<ResumeItem[]>('/resumes');
+    return response.data;
+  },
+
+  /**
+   * Fetch user's currently active resume
+   */
+  getActiveResume: async (): Promise<ResumeItem> => {
+    const response = await apiClient.get<ResumeItem>('/resumes/active');
+    return response.data;
+  },
+
+  /**
+   * Set specific resume as active
+   */
+  setActiveResume: async (id: string): Promise<{ success: boolean; id: string; isActive: boolean; message: string }> => {
+    const response = await apiClient.patch<{ success: boolean; id: string; isActive: boolean; message: string }>(
+      `/resumes/${id}/active`
+    );
+    return response.data;
+  },
+
+  /**
+   * Delete resume from database and storage
+   */
+  deleteResume: async (id: string): Promise<{ success: boolean; id: string; message: string }> => {
+    const response = await apiClient.delete<{ success: boolean; id: string; message: string }>(`/resumes/${id}`);
+    return response.data;
+  },
+
+  /**
    * Upload resume document (PDF / DOCX) for parsing
    */
-  uploadResume: async (formData: FormData): Promise<{ id: string; filename: string; size: string }> => {
-    return withFallback(
-      apiClient.post<{ id: string; filename: string; size: string }>('/resume/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      }),
-      {
-        id: 'res-alex-rivera-2026',
-        filename: 'Alex_Rivera_Distributed_Systems.pdf',
-        size: '2.4 MB',
-      }
-    );
+  uploadResume: async (file: File): Promise<ResumeItem> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post<ResumeItem>('/resumes/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
   },
 
   /**
-   * Run full AI-powered ATS resume parsing and rubric evaluation
+   * Run full AI-powered ATS resume parsing and rubric evaluation against Groq
    */
-  analyzeResume: async (resumeId?: string): Promise<ResumeAnalysisResult> => {
-    return withFallback(
-      apiClient.post<ResumeAnalysisResult>('/resume/analyze', { resumeId }),
-      MOCK_RESUME_ANALYSIS
-    );
+  analyzeResume: async (resumeId?: string, jobDescription?: string): Promise<ResumeAnalysisResult> => {
+    const response = await apiClient.post<ResumeAnalysisResult>('/resumes/analyze', {
+      resumeId,
+      jobDescription,
+    });
+    return response.data;
   },
 
   /**
-   * Get cached resume analysis results
+   * Get latest cached or persisted resume analysis results
    */
-  getResumeAnalysis: async (): Promise<ResumeAnalysisResult> => {
-    return withFallback(
-      apiClient.get<ResumeAnalysisResult>('/resume/analysis'),
-      MOCK_RESUME_ANALYSIS
-    );
+  getResumeAnalysis: async (resumeId?: string): Promise<ResumeAnalysisResult> => {
+    const url = resumeId ? `/resumes/${resumeId}/analysis` : '/resumes/analysis';
+    const response = await apiClient.get<ResumeAnalysisResult>(url);
+    return response.data;
   },
 };
 

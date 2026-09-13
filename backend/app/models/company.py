@@ -27,5 +27,7 @@ class CompanyModel(BaseModel):
     employees: List[CompanyEmployeeSummary] = Field(default_factory=list)
     posts: List[CompanyPostSummary] = Field(default_factory=list)
     jobs: List[Any] = Field(default_factory=list)
+    ownerId: Optional[str] = None
+    recruiterIds: List[str] = Field(default_factory=list)
     createdAt: str = Field(default_factory=utc_now_iso)
     updatedAt: Optional[str] = None

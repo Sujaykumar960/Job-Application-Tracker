@@ -17,6 +17,7 @@ class ChatAttachmentModel(BaseModel):
 
 class MessageModel(BaseModel):
     id: Optional[str] = None
+    clientMessageId: Optional[str] = None
     conversationId: str
     senderId: str
     senderName: str
@@ -25,6 +26,8 @@ class MessageModel(BaseModel):
     status: MessageDeliveryStatus = "sent"
     attachment: Optional[ChatAttachmentModel] = None
     createdAt: str = Field(default_factory=utc_now_iso)
+    editedAt: Optional[str] = None
+    isEdited: bool = False
 
 
 class ConversationModel(BaseModel):

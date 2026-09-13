@@ -61,10 +61,10 @@ export const SettingsPage: React.FC = () => {
     }
     return {
       // Account
-      name: user?.name || 'Alex Rivera',
-      email: user?.email || 'alex.rivera@example.com',
+      name: user?.name || '',
+      email: user?.email || '',
       phone: '+1 (206) 555-0194',
-      username: 'alexrivera',
+      username: user?.name ? user.name.toLowerCase().replace(/\s+/g, '') : '',
       timezone: 'America/Los_Angeles (PST - UTC-8)',
       language: 'English (US)',
 

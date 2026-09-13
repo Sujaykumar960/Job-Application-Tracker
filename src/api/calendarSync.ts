@@ -1,4 +1,4 @@
-import { apiClient, withFallback } from './client';
+import { apiClient } from './client';
 
 export type CalendarEventType = 'Interview' | 'Deadline' | 'Follow-up' | 'Assessment';
 
@@ -7,7 +7,7 @@ export interface CalendarEvent {
   title: string;
   type: CalendarEventType;
   date: string; // YYYY-MM-DD
-  time: string; // e.g. '09:30 AM'
+  time?: string; // e.g. '09:30 AM'
   endTime?: string;
   company?: string;
   locationOrUrl?: string;
@@ -29,20 +29,51 @@ export interface GoogleCalendarSyncResult {
  */
 export const calendarSyncApi = {
   /**
-   * Executes or simulates OAuth2 sync with Google Calendar API v3.
+   * Fetch calendar events from backend
+   */
+  getEvents: async (): Promise<CalendarEvent[]> => {
+    const response = await apiClient.get<CalendarEvent[]>('/calendar/events');
+    return response.data;
+  },
+
+  /**
+   * Fetch a single calendar event by id
+   */
+  getEventById: async (id: string): Promise<CalendarEvent> => {
+    const response = await apiClient.get<CalendarEvent>(`/calendar/events/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Create a new calendar event
+   */
+  createEvent: async (eventData: Partial<CalendarEvent>): Promise<CalendarEvent> => {
+    const response = await apiClient.post<CalendarEvent>('/calendar/events', eventData);
+    return response.data;
+  },
+
+  /**
+   * Update an existing calendar event
+   */
+  updateEvent: async (id: string, eventData: Partial<CalendarEvent>): Promise<CalendarEvent> => {
+    const response = await apiClient.patch<CalendarEvent>(`/calendar/events/${id}`, eventData);
+    return response.data;
+  },
+
+  /**
+   * Delete a calendar event
+   */
+  deleteEvent: async (id: string): Promise<{ success: boolean; message: string }> => {
+    const response = await apiClient.delete<{ success: boolean; message: string }>(`/calendar/events/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Executes real sync with Google Calendar API.
    */
   syncWithGoogle: async (): Promise<GoogleCalendarSyncResult> => {
-    const fallback: GoogleCalendarSyncResult = {
-      success: true,
-      syncedCount: 6,
-      lastSyncedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      accountEmail: 'alex.rivera.dev@gmail.com',
-    };
-
-    return withFallback(
-      apiClient.post<GoogleCalendarSyncResult>('/calendar/google/sync'),
-      fallback
-    );
+    const response = await apiClient.post<GoogleCalendarSyncResult>('/calendar/google/sync');
+    return response.data;
   },
 
   /**

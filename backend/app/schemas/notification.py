@@ -8,8 +8,12 @@ NotificationCategory = Literal[
     "follow_up",
     "message",
     "connection_request",
+    "connection_accepted",
     "job_recommendation",
     "learning_achievement",
+    "post_like",
+    "post_comment",
+    "calendar_event",
 ]
 
 

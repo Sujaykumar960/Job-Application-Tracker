@@ -6,6 +6,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.repositories.base import BaseRepository
 from app.schemas.post import FeedComment, FeedFilterQuery
+from app.storage import get_storage_backend
 from app.utils.helpers import serialize_mongo_doc, utc_now_iso
 
 
@@ -121,35 +122,49 @@ class PostRepository(BaseRepository):
         profile_doc: Optional[Dict[str, Any]],
         post_data: Dict[str, Any],
     ) -> Dict[str, Any]:
-        author_name = "Alex Rivera"
-        author_headline = "Distributed Systems & Backend Platform Engineer"
-        author_company = "Tech"
-        avatar_initials = "AR"
+        author_name = ""
+        author_headline = "CareerX Member"
+        author_company = ""
+        avatar_url = None
         avatar_gradient = "from-brand-600 to-indigo-800"
 
         if profile_doc:
-            author_name = profile_doc.get("name") or author_name
+            author_name = profile_doc.get("name") or ""
             author_headline = profile_doc.get("headline") or author_headline
-            author_company = profile_doc.get("company") or author_company
-            avatar_initials = profile_doc.get("avatarInitials") or "".join([p[0].upper() for p in author_name.split()[:2]])
+            author_company = profile_doc.get("company") or ""
+            avatar_url = profile_doc.get("avatarUrl") or profile_doc.get("avatar")
             avatar_gradient = profile_doc.get("avatarGradient") or avatar_gradient
-        elif user_doc:
-            author_name = user_doc.get("name") or author_name
-            avatar_initials = "".join([p[0].upper() for p in author_name.split()[:2]])
+
+        if not author_name and user_doc:
+            author_name = user_doc.get("name") or user_doc.get("email", "").split("@")[0].capitalize()
+            if not author_company:
+                author_company = user_doc.get("company") or ""
+
+        if not author_name:
+            author_name = "CareerX Member"
+
+        avatar_initials = (
+            (profile_doc and profile_doc.get("avatarInitials"))
+            or "".join([p[0].upper() for p in author_name.split()[:2]])
+            or "CX"
+        )
 
         doc = {
             "id": f"post_{uuid.uuid4().hex[:8]}",
             "authorId": author_id,
             "author": {
+                "id": author_id,
                 "name": author_name,
                 "headline": author_headline,
+                "avatarUrl": avatar_url,
                 "avatarInitials": avatar_initials,
                 "avatarGradient": avatar_gradient,
-                "company": author_company,
-                "isVerified": True,
+                "company": author_company or None,
+                "isVerified": bool(user_doc.get("isVerified", False)),
             },
             "type": post_data.get("type", "Technical Discussion"),
             "content": post_data.get("content", ""),
+            "media": post_data.get("media", []),
             "tags": post_data.get("tags", []),
             "codeSnippet": post_data.get("codeSnippet"),
             "likes": [],
@@ -203,6 +218,18 @@ class PostRepository(BaseRepository):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Operation not permitted. You can only delete your own posts.",
             )
+
+        # Delete associated media files from storage backend
+        media_items = post.get("media", [])
+        if media_items:
+            storage = get_storage_backend()
+            for item in media_items:
+                storage_key = item.get("storageKey") if isinstance(item, dict) else getattr(item, "storageKey", None)
+                if storage_key:
+                    try:
+                        await storage.delete(storage_key)
+                    except Exception:
+                        pass
 
         await self.delete(post_id)
         return True

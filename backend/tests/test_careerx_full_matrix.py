@@ -596,6 +596,17 @@ class TestWebSocketSuite:
 class TestRecruiterSuite:
     @pytest.mark.asyncio
     async def test_recruiter_features(self, async_client):
+        db = DatabaseManager.db
+        if db is not None:
+            import copy
+            from app.repositories.candidate_repository import SEED_CANDIDATES
+            from app.utils.helpers import utc_now_iso
+            for cand in SEED_CANDIDATES:
+                doc = copy.deepcopy(cand)
+                doc.pop("_id", None)
+                doc["createdAt"] = utc_now_iso()
+                await db.candidates.update_one({"id": cand["id"]}, {"$set": doc}, upsert=True)
+
         recruiter = await register_user(async_client, "Lead Recruiter", "recruiter_full@matrix.io", "recruiter")
         headers = {"Authorization": f"Bearer {recruiter['access_token']}"}
 

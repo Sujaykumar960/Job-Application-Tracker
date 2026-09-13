@@ -8,7 +8,9 @@
     "dev:backend": "python -m uvicorn app.main:app --reload --port 8000 --app-dir backend",
     "dev:all": "concurrently -k -n \"BACKEND,FRONTEND\" -c \"cyan,magenta\" \"npm run dev:backend\" \"npm run dev\"",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "playwright test",
+    "test:e2e:setup": "python backend/scripts/e2e_setup.py"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -25,6 +27,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^22.10.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",

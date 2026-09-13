@@ -1,10 +1,12 @@
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.dependencies import get_current_active_user, get_db, get_optional_user
 from app.repositories.post_repository import PostRepository
 from app.repositories.user_repository import UserRepository
+from app.services.notification_service import NotificationService
+from app.services.post_service import PostService
 from app.schemas.common import StandardSuccessResponse
 from app.schemas.post import (
     CommentCreate,
@@ -82,26 +84,30 @@ async def get_post_by_id(
     return post
 
 
-@router.post("/posts", response_model=FeedPost, status_code=status.HTTP_201_CREATED)
-async def create_post(
-    post_data: PostCreate,
+@router.get("/users/{user_id}/posts", response_model=List[FeedPost])
+async def get_user_posts(
+    user_id: str,
+    limit: int = Query(50, ge=1, le=100),
+    skip: int = Query(0, ge=0),
     user: Optional[Dict[str, Any]] = Depends(get_optional_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
-    """Publish a new post to the community feed."""
+    """Fetch posts authored by a specific user for LinkedIn-style profile activity."""
     repo = PostRepository(db)
-    user_repo = UserRepository(db)
+    filter_q = FeedFilterQuery(authorId=user_id, limit=limit, skip=skip)
+    viewing_uid = user["id"] if user else None
+    return await repo.get_feed(filter_q, viewing_user_id=viewing_uid)
 
-    author_id = user["id"] if user else "usr_guest"
-    profile_doc = await user_repo.get_profile(author_id) if user else None
 
-    created = await repo.create_post_for_user(
-        author_id=author_id,
-        user_doc=user or {},
-        profile_doc=profile_doc,
-        post_data=post_data.model_dump(),
-    )
-    return created
+@router.post("/posts", response_model=FeedPost, status_code=status.HTTP_201_CREATED)
+async def create_post(
+    request: Request,
+    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Publish a new post to the community feed with text and media."""
+    post_service = PostService(db)
+    return await post_service.create_post_from_request(request, user)
 
 
 @router.patch("/posts/{post_id}", response_model=FeedPost)
@@ -131,6 +137,30 @@ async def delete_post(
     return StandardSuccessResponse(success=True, message="Post deleted successfully.")
 
 
+@router.get("/saved", response_model=List[FeedPost])
+@router.get("/posts/saved", response_model=List[FeedPost])
+async def get_saved_posts(
+    user: Dict[str, Any] = Depends(get_current_active_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Fetch posts bookmarked/saved by authenticated user."""
+    repo = PostRepository(db)
+    docs = await repo.find_many({"bookmarks": user["id"]}, sort=[("createdAt", -1)], limit=100)
+    results = []
+    for doc in docs:
+        computed = dict(doc)
+        likes = doc.get("likes", [])
+        bookmarks = doc.get("bookmarks", [])
+        comments = doc.get("comments", [])
+        computed["likesCount"] = len(likes)
+        computed["commentsCount"] = len(comments)
+        computed["isLiked"] = user["id"] in likes
+        computed["isSaved"] = True
+        computed["sharesCount"] = doc.get("sharesCount", 0)
+        results.append(computed)
+    return results
+
+
 @router.post("/posts/{post_id}/like", response_model=LikeResponse)
 async def add_post_like(
     post_id: str,
@@ -138,9 +168,30 @@ async def add_post_like(
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Like a post (Idempotent - avoids duplicate likes)."""
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required to like posts.",
+        )
     repo = PostRepository(db)
-    user_id = user["id"] if user else "usr_guest"
+    user_id = user["id"]
     res = await repo.add_like(post_id, user_id)
+
+    # Notify author if not self
+    post = await repo.get_by_id(post_id)
+    if post and post.get("authorId") and post.get("authorId") != user_id:
+        user_repo = UserRepository(db)
+        liker_prof = await user_repo.get_profile(user_id)
+        liker_name = (liker_prof and liker_prof.get("name")) or user.get("name") or "CareerX Engineer"
+        snippet = post.get("content", "")[:60]
+        await NotificationService.notify_post_liked(
+            db,
+            author_id=post["authorId"],
+            liker_name=liker_name,
+            post_id=post_id,
+            post_snippet=snippet,
+        )
+
     return LikeResponse(**res)
 
 
@@ -151,8 +202,13 @@ async def remove_post_like(
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Unlike a post."""
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required to unlike posts.",
+        )
     repo = PostRepository(db)
-    user_id = user["id"] if user else "usr_guest"
+    user_id = user["id"]
     res = await repo.remove_like(post_id, user_id)
     return LikeResponse(**res)
 
@@ -164,8 +220,13 @@ async def add_post_save(
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Save a post to bookmarks (Idempotent - avoids duplicate saves)."""
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required to bookmark posts.",
+        )
     repo = PostRepository(db)
-    user_id = user["id"] if user else "usr_guest"
+    user_id = user["id"]
     res = await repo.add_save(post_id, user_id)
     return SaveResponse(**res)
 
@@ -177,8 +238,13 @@ async def remove_post_save(
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Remove a post from bookmarks."""
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required to remove bookmarks.",
+        )
     repo = PostRepository(db)
-    user_id = user["id"] if user else "usr_guest"
+    user_id = user["id"]
     res = await repo.remove_save(post_id, user_id)
     return SaveResponse(**res)
 
@@ -201,20 +267,24 @@ async def add_post_comment(
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Add a comment to a post."""
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required to comment on posts.",
+        )
     repo = PostRepository(db)
     user_repo = UserRepository(db)
 
-    author_id = user["id"] if user else "usr_guest"
+    author_id = user["id"]
     author_name = "Alex Rivera"
     author_headline = "Distributed Systems Engineer"
 
-    if user:
-        profile = await user_repo.get_profile(author_id)
-        if profile:
-            author_name = profile.get("name") or author_name
-            author_headline = profile.get("headline") or author_headline
-        elif user.get("name"):
-            author_name = user["name"]
+    profile = await user_repo.get_profile(author_id)
+    if profile:
+        author_name = profile.get("name") or author_name
+        author_headline = profile.get("headline") or author_headline
+    elif user.get("name"):
+        author_name = user["name"]
 
     created = await repo.add_comment(
         post_id=post_id,
@@ -223,6 +293,19 @@ async def add_post_comment(
         author_headline=author_headline,
         content=comment_data.content,
     )
+
+    # Notify post author if not self
+    post = await repo.get_by_id(post_id)
+    if post and post.get("authorId") and post.get("authorId") != author_id:
+        await NotificationService.notify_post_commented(
+            db,
+            author_id=post["authorId"],
+            commenter_name=author_name,
+            post_id=post_id,
+            comment_text=comment_data.content,
+            comment_id=created.get("id"),
+        )
+
     return FeedComment(**created)
 
 

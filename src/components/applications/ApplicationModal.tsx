@@ -19,6 +19,8 @@ import {
   Paperclip,
 } from 'lucide-react';
 
+import { resumeApi, ResumeItem } from '../../api/resumeApi';
+
 const applicationSchema = z.object({
   company: z.string().min(1, 'Company name is required'),
   role: z.string().min(1, 'Role title is required'),
@@ -28,10 +30,10 @@ const applicationSchema = z.object({
   deadline: z.string().optional(),
   interviewDate: z.string().optional(),
   recruiter: z.string().optional(),
-  status: z.enum(['Applied', 'Interview', 'Offer', 'Rejected']),
+  status: z.enum(['Applied', 'Screening', 'Shortlisted', 'Interview', 'Offer', 'Hired', 'Rejected']),
   priority: z.enum(['Low', 'Medium', 'High']),
   notes: z.string().optional(),
-  resume: z.string().min(1, 'Resume selection is required'),
+  resume: z.string().optional(),
 });
 
 type ApplicationFormData = z.infer<typeof applicationSchema>;
@@ -50,11 +52,14 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
   initialData,
 }) => {
   const isEditing = Boolean(initialData);
+  const [userResumes, setUserResumes] = React.useState<ResumeItem[]>([]);
+  const [loadingResumes, setLoadingResumes] = React.useState(false);
 
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<ApplicationFormData>({
     resolver: zodResolver(applicationSchema),
@@ -70,9 +75,37 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
       status: 'Applied',
       priority: 'High',
       notes: '',
-      resume: 'Alex_Rivera_Distributed_Systems.pdf',
+      resume: '',
     },
   });
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchResumes = async () => {
+      try {
+        setLoadingResumes(true);
+        const list = await resumeApi.getResumes();
+        if (mounted) {
+          setUserResumes(list);
+          if (!initialData && list.length > 0) {
+            const active = list.find((r) => r.isActive) || list[0];
+            setValue('resume', active.name);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch resumes:', e);
+      } finally {
+        if (mounted) setLoadingResumes(false);
+      }
+    };
+
+    if (isOpen) {
+      fetchResumes();
+    }
+    return () => {
+      mounted = false;
+    };
+  }, [isOpen, initialData, setValue]);
 
   useEffect(() => {
     if (initialData) {
@@ -85,10 +118,10 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
         deadline: initialData.deadline || initialData.deadlineDate || '',
         interviewDate: initialData.interviewDate || '',
         recruiter: initialData.recruiter || '',
-        status: initialData.status,
+        status: (initialData.status as any) || 'Applied',
         priority: initialData.priority || 'Medium',
         notes: initialData.notes || '',
-        resume: initialData.resume || 'Alex_Rivera_Distributed_Systems.pdf',
+        resume: initialData.resume || '',
       });
     } else {
       reset({
@@ -103,10 +136,10 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
         status: 'Applied',
         priority: 'High',
         notes: '',
-        resume: 'Alex_Rivera_Distributed_Systems.pdf',
+        resume: userResumes.find((r) => r.isActive)?.name || userResumes[0]?.name || '',
       });
     }
-  }, [initialData, reset, isOpen]);
+  }, [initialData, reset, isOpen, userResumes]);
 
   const handleFormSubmit = (data: ApplicationFormData) => {
     const formatted: Application = {
@@ -126,7 +159,7 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
       priority: data.priority,
       notes: data.notes || undefined,
       resume: data.resume,
-      matchScore: initialData?.matchScore || Math.floor(Math.random() * 15) + 85, // 85-99%
+      matchScore: initialData?.matchScore || 85, // Default match score
       tags: initialData?.tags || ['TypeScript', 'Full Stack'],
     };
 
@@ -193,8 +226,11 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
               {...register('status')}
             >
               <option value="Applied">Applied</option>
+              <option value="Screening">Screening</option>
+              <option value="Shortlisted">Shortlisted</option>
               <option value="Interview">Interview</option>
               <option value="Offer">Offer</option>
+              <option value="Hired">Hired</option>
               <option value="Rejected">Rejected</option>
             </select>
           </div>
@@ -248,21 +284,23 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
           />
 
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-slate-300">Resume Attached *</label>
+            <label className="block text-xs font-semibold text-slate-300">Resume Attached</label>
             <div className="relative">
               <select
                 className="w-full bg-surface-950 text-slate-100 text-xs rounded-lg border border-surface-700/80 pl-8 pr-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-500"
                 {...register('resume')}
               >
-                <option value="Alex_Rivera_Distributed_Systems.pdf">
-                  Alex_Rivera_Distributed_Systems.pdf (ATS 94%)
-                </option>
-                <option value="Alex_Rivera_FullStack_v2.pdf">
-                  Alex_Rivera_FullStack_v2.pdf (ATS 91%)
-                </option>
-                <option value="Alex_Rivera_FrontendPlatform.pdf">
-                  Alex_Rivera_FrontendPlatform.pdf (ATS 88%)
-                </option>
+                {loadingResumes ? (
+                  <option value="">Loading resumes...</option>
+                ) : userResumes.length > 0 ? (
+                  userResumes.map((r) => (
+                    <option key={r.id} value={r.name}>
+                      {r.name} {r.atsScore ? `(ATS ${r.atsScore}%)` : ''} {r.isActive ? '• Active' : ''}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">No resume uploaded (upload in Resume AI)</option>
+                )}
               </select>
               <Paperclip className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
             </div>

@@ -1,19 +1,30 @@
+import copy
 import httpx
 import pytest
 import pytest_asyncio
 
 from app.database import DatabaseManager
 from app.main import app
+from app.repositories.candidate_repository import SEED_CANDIDATES
+from app.utils.helpers import utc_now_iso
 
 
 @pytest_asyncio.fixture
 async def client():
     await DatabaseManager.connect()
+    db = DatabaseManager.db
+    if db is not None:
+        await db.candidates.delete_many({})
+        for cand in SEED_CANDIDATES:
+            doc = copy.deepcopy(cand)
+            doc.pop("_id", None)
+            doc["createdAt"] = utc_now_iso()
+            await db.candidates.insert_one(doc)
+
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
     # Clean up test data
-    db = DatabaseManager.db
     if db is not None:
         await db.candidates.delete_many({})
         await db.recruiter_interactions.delete_many({})

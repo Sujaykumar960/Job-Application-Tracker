@@ -40,6 +40,7 @@ class LearningProgressSummary(BaseModel):
 class UserProfileOverview(BaseModel):
     id: str
     name: str
+    email: str = ""
     headline: str = ""
     atsScore: int = 85
     skills: List[str] = Field(default_factory=list)

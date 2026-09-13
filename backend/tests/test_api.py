@@ -88,9 +88,26 @@ def test_auth_and_application_lifecycle(client: TestClient):
 
 def test_websocket_chat_echo(client: TestClient):
     """Verify WebSocket handshake and envelope messaging."""
-    with client.websocket_connect("/api/ws/chat?token=mock-test-token") as ws:
+    unique_email = "ws_echo_test@careerx.io"
+    reg_res = client.post("/api/auth/register", json={
+        "name": "WS Echo User",
+        "email": unique_email,
+        "password": "Password12345!",
+        "role": "seeker",
+    })
+    if reg_res.status_code == 201:
+        token = reg_res.json()["access_token"]
+    else:
+        login_res = client.post("/api/auth/login", json={
+            "email": unique_email,
+            "password": "Password12345!",
+        })
+        token = login_res.json()["access_token"]
+
+    with client.websocket_connect(f"/api/ws/chat?token={token}") as ws:
         # Send ping envelope
         ws.send_json({"type": "ping", "payload": {}})
         # Expect pong or presence envelope
         resp = ws.receive_json()
         assert resp["type"] in ["pong", "presence", "message"]
+

@@ -1,5 +1,5 @@
-import { apiClient, withFallback } from './client';
-import { CODING_PROBLEMS, CodingProblem } from '../data/codingProblems';
+import { apiClient } from './client';
+import { CodingProblem } from '../data/codingProblems';
 import { ExecuteCodePayload, ExecutionResult, codeExecutionApi } from './codeExecution';
 
 export const questionApi = {
@@ -7,27 +7,16 @@ export const questionApi = {
    * Fetch all coding questions with optional difficulty/tag filtering
    */
   getQuestions: async (filter?: { difficulty?: string; tag?: string }): Promise<CodingProblem[]> => {
-    let result = [...CODING_PROBLEMS];
-    if (filter?.difficulty && filter.difficulty !== 'All') {
-      result = result.filter((p: CodingProblem) => p.difficulty.toLowerCase() === filter.difficulty!.toLowerCase());
-    }
-
-    return withFallback(
-      apiClient.get<CodingProblem[]>('/questions', { params: filter }),
-      result
-    );
+    const response = await apiClient.get<CodingProblem[]>('/questions', { params: filter });
+    return response.data;
   },
 
   /**
    * Fetch single coding problem by ID or slug
    */
-  getQuestionById: async (id: string): Promise<CodingProblem | null> => {
-    const found = CODING_PROBLEMS.find((p: CodingProblem) => p.id === id || p.slug === id) || null;
-
-    return withFallback(
-      apiClient.get<CodingProblem>(`/questions/${id}`),
-      found
-    );
+  getQuestionById: async (id: string): Promise<CodingProblem> => {
+    const response = await apiClient.get<CodingProblem>(`/questions/${id}`);
+    return response.data;
   },
 
   /**

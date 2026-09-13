@@ -1,83 +1,45 @@
-import { apiClient, withFallback } from './client';
+import { apiClient } from './client';
 import { LoginCredentials, RegisterData, AuthResponse, UserProfile } from '../types';
-
-const MOCK_USER: UserProfile = {
-  id: 'usr_001',
-  name: 'Alex Rivera',
-  email: 'alex.rivera@example.com',
-  role: 'seeker',
-  headline: 'Distributed Systems & Backend Platform Engineer',
-  location: 'Seattle, WA',
-  atsScore: 88,
-  skills: ['Go', 'Kafka', 'PostgreSQL', 'Redis Lua', 'Docker', 'Kubernetes'],
-};
-
-const MOCK_AUTH_RESPONSE: AuthResponse = {
-  token: 'mock-jwt-token-alex-rivera-careerx-session',
-  user: MOCK_USER,
-};
 
 export const authApi = {
   /**
    * Log in user with credentials, receiving JWT token and user profile
    */
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-    return withFallback(
-      apiClient.post<AuthResponse>('/auth/login', credentials),
-      MOCK_AUTH_RESPONSE
-    );
+    const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
+    return response.data;
   },
 
   /**
    * Register a new seeker or recruiter account
    */
   register: async (data: RegisterData): Promise<AuthResponse> => {
-    const fallback: AuthResponse = {
-      token: `mock-jwt-token-${Date.now()}`,
-      user: {
-        id: `usr_${Date.now()}`,
-        name: data.name,
-        email: data.email,
-        role: data.role,
-        skills: ['TypeScript', 'React', 'Go'],
-        atsScore: 82,
-      },
-    };
-
-    return withFallback(
-      apiClient.post<AuthResponse>('/auth/register', data),
-      fallback
-    );
+    const response = await apiClient.post<AuthResponse>('/auth/register', data);
+    return response.data;
   },
 
   /**
    * Fetch authenticated user details from JWT token
    */
   getMe: async (): Promise<UserProfile> => {
-    return withFallback(
-      apiClient.get<UserProfile>('/auth/me'),
-      MOCK_USER
-    );
+    const response = await apiClient.get<UserProfile>('/auth/me');
+    return response.data;
   },
 
   /**
    * Log out active session
    */
   logout: async (): Promise<{ success: boolean }> => {
-    return withFallback(
-      apiClient.post<{ success: boolean }>('/auth/logout'),
-      { success: true }
-    );
+    const response = await apiClient.post<{ success: boolean }>('/auth/logout');
+    return response.data;
   },
 
   /**
    * Refresh JWT authentication token
    */
   refreshToken: async (): Promise<{ token: string }> => {
-    return withFallback(
-      apiClient.post<{ token: string }>('/auth/refresh'),
-      { token: 'refreshed-mock-jwt-token' }
-    );
+    const response = await apiClient.post<{ token: string }>('/auth/refresh');
+    return response.data;
   },
 };
 

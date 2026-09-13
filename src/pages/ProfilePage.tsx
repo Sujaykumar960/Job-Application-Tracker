@@ -1,170 +1,374 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { PageHeader } from '../components/common/PageHeader';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
+import { userApi } from '../api/userApi';
+import { postApi } from '../api/postApi';
+import { PublicUserProfile, FeedPost } from '../types';
+import { Card } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
+import { PostCard } from '../components/feed/PostCard';
 import { EditProfileModal, ProfileFormData } from '../components/profile/EditProfileModal';
 import { RecruiterPrivacyCard } from '../components/profile/RecruiterPrivacyCard';
 import { ProfileCompletionCard } from '../components/profile/ProfileCompletionCard';
-import { Link, useNavigate } from 'react-router-dom';
+import { connectionApi } from '../api/connectionApi';
 import {
   MapPin,
-  Mail,
   Briefcase,
   Github,
   Linkedin,
   Globe,
-  FileText,
   Sparkles,
-  CheckCircle2,
   ShieldCheck,
-  Flame,
-  Target,
-  Trophy,
-  Award,
+  GraduationCap,
+  Code2,
   Calendar,
   ExternalLink,
   MessageSquare,
   UserPlus,
   UserCheck,
-  Users,
-  GraduationCap,
-  Code2,
-  TrendingUp,
-  Download,
-  ArrowUpRight,
+  UserMinus,
   Clock,
+  Check,
+  X,
+  Camera,
+  Layers,
+  AlertCircle,
+  Loader2,
+  FileText,
 } from 'lucide-react';
 
 export const ProfilePage: React.FC = () => {
-  const { user } = useAuth();
+  const { userId } = useParams<{ userId?: string }>();
+  const { user: currentUser } = useAuth();
   const navigate = useNavigate();
 
-  // Connection & Edit State
-  const [isConnected, setIsConnected] = useState(false);
+  const isOwnProfile = !userId || (currentUser && currentUser.id === userId);
+  const targetUserId = isOwnProfile ? currentUser?.id : userId;
+
+  // Profile data & UI states
+  const [profile, setProfile] = useState<PublicUserProfile | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Authored posts
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [postsLoading, setPostsLoading] = useState<boolean>(false);
+
+  // Edit & Avatar upload states
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<string>('none');
+  const [requestId, setRequestId] = useState<string | null>(null);
+  const [isSubmittingConnection, setIsSubmittingConnection] = useState<boolean>(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  // Profile data state
-  const [profileData, setProfileData] = useState<ProfileFormData>({
-    name: user?.name || 'Alex Rivera',
-    headline:
-      user?.headline ||
-      'Distributed Systems & Backend Platform Engineer | Go, TypeScript, PostgreSQL | Ex-CloudScale Intern | B.S. CS @ Univ. of Washington',
-    location: user?.location || 'Seattle, WA (Open to Remote & Hybrid)',
-    bio:
-      user?.bio ||
-      'Software engineer obsessed with high-throughput backend architecture, concurrency models, and low-latency data pipelines. Experienced in designing distributed rate limiters, Kafka event-driven architectures, and transactional relational data models. Passionate about craftsmanship, 60fps local-first web applications, and writing clean, benchmarked Go and TypeScript code.',
-    github: 'https://github.com/alexrivera',
-    linkedin: 'https://linkedin.com/in/alexrivera-dev',
-    website: 'https://alexrivera.dev',
-  });
+  // Fetch profile and posts whenever targetUserId changes
+  useEffect(() => {
+    let isMounted = true;
 
-  const handleSaveProfile = (updated: ProfileFormData) => {
-    setProfileData(updated);
-    setIsEditModalOpen(false);
+    const fetchProfileData = async () => {
+      if (!targetUserId) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        if (isOwnProfile) {
+          // Fetch authenticated user's own profile
+          const ownProf = await userApi.getProfile();
+          if (isMounted) {
+            setProfile({
+              id: ownProf.id,
+              name: ownProf.name,
+              role: ownProf.role,
+              headline: ownProf.headline || '',
+              bio: ownProf.bio || '',
+              location: ownProf.location || 'Remote',
+              company: (ownProf as any).company || (ownProf as any).currentCompany || '',
+              avatarUrl: ownProf.avatar || '',
+              avatarInitials: ownProf.name ? ownProf.name.slice(0, 2).toUpperCase() : 'CX',
+              skills: ownProf.skills || [],
+              experiences: (ownProf as any).experiences || [],
+              education: (ownProf as any).education || [],
+              projects: (ownProf as any).projects || [],
+              certifications: (ownProf as any).certifications || [],
+              websiteUrl: (ownProf as any).website || '',
+              githubUrl: (ownProf as any).github || '',
+              linkedinUrl: (ownProf as any).linkedin || '',
+              connectionStatus: 'self',
+            });
+            setConnectionStatus('self');
+            setRequestId(null);
+          }
+        } else {
+          // Fetch target user's public profile
+          const publicProf = await userApi.getPublicProfile(targetUserId);
+          if (isMounted) {
+            setProfile(publicProf);
+            setConnectionStatus(publicProf.connectionStatus || 'none');
+            setRequestId(publicProf.requestId || null);
+          }
+        }
+      } catch (err: any) {
+        console.error('Failed to load profile:', err);
+        if (isMounted) {
+          setError(
+            err?.response?.status === 404
+              ? 'User profile not found.'
+              : 'Failed to load user profile. Please try again.'
+          );
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    const fetchUserPosts = async () => {
+      if (!targetUserId) return;
+      setPostsLoading(true);
+      try {
+        const userPosts = await postApi.getUserPosts(targetUserId);
+        if (isMounted) setPosts(userPosts);
+      } catch (err) {
+        console.error('Failed to load user posts:', err);
+      } finally {
+        if (isMounted) setPostsLoading(false);
+      }
+    };
+
+    fetchProfileData();
+    fetchUserPosts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [targetUserId, isOwnProfile]);
+
+  // Connection Action Handlers
+  const handleConnect = async () => {
+    if (!targetUserId || isSubmittingConnection) return;
+    setIsSubmittingConnection(true);
+    try {
+      const res = await connectionApi.sendConnectionRequest(targetUserId);
+      setConnectionStatus('pending_sent');
+      if (res.id) setRequestId(res.id);
+    } catch (err) {
+      console.error('Failed to send connection request:', err);
+    } finally {
+      setIsSubmittingConnection(false);
+    }
   };
 
-  // Work Experience
-  const experiences = [
-    {
-      company: 'CloudScale Infrastructure',
-      role: 'Backend Software Engineer Intern',
-      period: 'Jun 2025 - Sep 2025 (4 mos)',
-      location: 'San Francisco, CA (Hybrid)',
-      bullets: [
-        'Architected a distributed sliding-window rate limiter in Go and atomic Redis Lua scripts, throttling 45M+ daily requests and reducing p99 latency spikes by 38%.',
-        'Implemented Kafka partition rebalancing hooks and dead-letter queues, cutting event processing drops to 0.00%.',
-        'Profiled memory footprint in Go telemetry services using ppprof, reclaiming 2.1 GB of heap allocations across production pods.',
-      ],
-      skills: ['Go', 'Redis Lua', 'Kafka', 'Docker', 'pprof'],
-    },
-    {
-      company: 'University of Washington Distributed Systems Lab',
-      role: 'Undergraduate Systems Researcher',
-      period: 'Sep 2024 - Jun 2025 (10 mos)',
-      location: 'Seattle, WA',
-      bullets: [
-        'Researched conflict-free replicated data types (CRDTs) and consensus protocols (Raft) for collaborative document sync.',
-        'Co-authored technical benchmark paper evaluating multi-master PostgreSQL replication vs DynamoDB transaction isolation.',
-      ],
-      skills: ['C++', 'Distributed Systems', 'PostgreSQL', 'Raft'],
-    },
-  ];
-
-  // Featured Projects
-  const projects = [
-    {
-      title: 'Distributed Event Streaming Broker',
-      tech: ['Go', 'Kafka', 'Redis', 'Docker'],
-      impact: '12k msg/sec throughput with zero message loss and transactional outbox guarantees.',
-      link: 'https://github.com/alexrivera/distributed-broker',
-      date: 'Aug 2026',
-    },
-    {
-      title: 'Sliding-Window Rate Limiter Service',
-      tech: ['Go', 'Redis Lua', 'gRPC', 'Protobuf'],
-      impact: 'Throttles 45M+ daily requests with atomic Redis scripts and <10ms p99 latency.',
-      link: 'https://github.com/alexrivera/go-rate-limiter',
-      date: 'Jul 2026',
-    },
-    {
-      title: 'Local-First Issue Tracker UI',
-      tech: ['React', 'TypeScript', 'WebSockets', 'Tailwind CSS'],
-      impact: 'Sub-200ms initial load, CRDT collaborative sync, and 60fps micro-interactions.',
-      link: 'https://github.com/alexrivera/linear-clone',
-      date: 'Jun 2026',
-    },
-    {
-      title: 'High-Throughput Telemetry Aggregator',
-      tech: ['Python', 'PostgreSQL', 'Docker', 'Grafana'],
-      impact: 'Ingests microservice latency spans with partition sharding and B-Tree indexes.',
-      link: 'https://github.com/alexrivera/telemetry-engine',
-      date: 'May 2026',
-    },
-  ];
-
-  // Categorized Skills
-  const skillsMatrix = {
-    'Languages': ['Go (Golang)', 'TypeScript', 'Python', 'SQL', 'C++', 'JavaScript'],
-    'Distributed Architecture': ['Event-Driven (Kafka)', 'gRPC & Protobuf', 'Microservices', 'Rate Limiting', 'Concurrency'],
-    'Databases & Caching': ['PostgreSQL (B-Trees)', 'Redis (Lua)', 'DynamoDB', 'MongoDB', 'ACID Isolation'],
-    'Cloud & Infrastructure': ['Docker', 'Kubernetes (CKA)', 'AWS (ECS, S3, RDS)', 'Linux Internals', 'CI/CD Pipelines'],
-    'Frontend': ['React 19', 'Next.js', 'Tailwind CSS', 'WebSockets', 'State Machines'],
+  const handleCancelRequest = async () => {
+    if (!targetUserId || isSubmittingConnection) return;
+    setIsSubmittingConnection(true);
+    try {
+      await connectionApi.cancelConnectionRequest(requestId || targetUserId);
+      setConnectionStatus('none');
+      setRequestId(null);
+    } catch (err) {
+      console.error('Failed to cancel connection request:', err);
+    } finally {
+      setIsSubmittingConnection(false);
+    }
   };
 
-  // Certifications
-  const certifications = [
-    {
-      name: 'AWS Certified Solutions Architect - Associate',
-      issuer: 'Amazon Web Services',
-      issueDate: 'Jul 2026',
-      credentialId: 'AWS-PSA-849204',
-    },
-    {
-      name: 'Certified Kubernetes Administrator (CKA)',
-      issuer: 'Cloud Native Computing Foundation (CNCF)',
-      issueDate: 'Aug 2026',
-      credentialId: 'CKA-992015-LF',
-    },
-    {
-      name: 'Meta Advanced React & Architecture Certification',
-      issuer: 'Meta / Coursera',
-      issueDate: 'May 2026',
-      credentialId: 'META-REACT-34821',
-    },
-  ];
+  const handleAcceptRequest = async () => {
+    if (!targetUserId || isSubmittingConnection) return;
+    setIsSubmittingConnection(true);
+    try {
+      await connectionApi.acceptConnectionRequest(requestId || targetUserId);
+      setConnectionStatus('connected');
+    } catch (err) {
+      console.error('Failed to accept connection request:', err);
+    } finally {
+      setIsSubmittingConnection(false);
+    }
+  };
 
-  // Achievements
-  const achievements = [
-    { title: '100 Questions Solved', date: 'Aug 2026', icon: Target, badge: 'Algorithmic Mastery' },
-    { title: '14 Day Coding Streak', date: 'Sep 2026', icon: Flame, badge: 'Top 5% Consistency' },
-    { title: 'Senior Backend Verified', date: 'Aug 2026', icon: Trophy, badge: '94% Score (Top 6%)' },
-    { title: '88% ATS Resume Score', date: 'Sep 2026', icon: Sparkles, badge: 'FAANG Ready' },
-  ];
+  const handleRejectRequest = async () => {
+    if (!targetUserId || isSubmittingConnection) return;
+    setIsSubmittingConnection(true);
+    try {
+      await connectionApi.rejectConnectionRequest(requestId || targetUserId);
+      setConnectionStatus('none');
+      setRequestId(null);
+    } catch (err) {
+      console.error('Failed to decline connection request:', err);
+    } finally {
+      setIsSubmittingConnection(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!targetUserId || isSubmittingConnection) return;
+    setIsSubmittingConnection(true);
+    try {
+      await connectionApi.removeConnection(targetUserId);
+      setConnectionStatus('none');
+      setRequestId(null);
+    } catch (err) {
+      console.error('Failed to remove connection:', err);
+    } finally {
+      setIsSubmittingConnection(false);
+    }
+  };
+
+  // Handle Profile Update
+  const handleSaveProfile = async (updated: ProfileFormData) => {
+    try {
+      const saved = await userApi.updateProfile({
+        name: updated.name,
+        headline: updated.headline,
+        location: updated.location,
+        bio: updated.bio,
+      });
+
+      // Update local and context
+      if (profile) {
+        setProfile({
+          ...profile,
+          name: saved.name,
+          headline: saved.headline || '',
+          location: saved.location || '',
+          bio: saved.bio || '',
+          websiteUrl: updated.website,
+          githubUrl: updated.github,
+          linkedinUrl: updated.linkedin,
+        });
+      }
+      setIsEditModalOpen(false);
+    } catch (err) {
+      console.error('Failed to save profile:', err);
+      alert('Failed to save profile changes. Please try again.');
+    }
+  };
+
+  // Handle Avatar Upload
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Avatar file exceeds maximum size of 10 MB.');
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('avatar_file', file);
+      const res = await userApi.uploadAvatar(formData);
+
+      if (profile) {
+        setProfile({ ...profile, avatarUrl: res.avatarUrl });
+      }
+    } catch (err) {
+      console.error('Failed to upload avatar:', err);
+      alert('Failed to upload avatar photo. Please try again.');
+    } finally {
+      setIsUploadingAvatar(false);
+      e.target.value = '';
+    }
+  };
+
+  // Handle Post Interactions
+  const handleLike = async (postId: string) => {
+    try {
+      const res = await postApi.likePost(postId);
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? { ...p, isLiked: res.isLiked, likesCount: res.likesCount }
+            : p
+        )
+      );
+    } catch (err) {
+      console.error('Failed to like post:', err);
+    }
+  };
+
+  const handleSave = async (postId: string) => {
+    try {
+      const res = await postApi.bookmarkPost(postId);
+      setPosts((prev) =>
+        prev.map((p) => (p.id === postId ? { ...p, isSaved: res.isSaved } : p))
+      );
+    } catch (err) {
+      console.error('Failed to bookmark post:', err);
+    }
+  };
+
+  const handleShare = (postId: string) => {
+    navigator.clipboard.writeText(`${window.location.origin}/feed`);
+  };
+
+  const handleAddComment = async (postId: string, content: string) => {
+    try {
+      const comment = await postApi.addComment(postId, content);
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                comments: [comment, ...p.comments],
+                commentsCount: p.commentsCount + 1,
+              }
+            : p
+        )
+      );
+    } catch (err) {
+      console.error('Failed to add comment:', err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-3">
+        <Loader2 className="w-8 h-8 text-[#0A66C2] animate-spin" />
+        <p className="text-xs font-mono text-[#788896]">Loading professional profile...</p>
+      </div>
+    );
+  }
+
+  if (error || !profile) {
+    return (
+      <div className="p-8 max-w-lg mx-auto text-center space-y-4">
+        <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto shadow-xs">
+          <AlertCircle className="w-6 h-6" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-lg font-bold text-[#1D2226]">Profile Not Available</h2>
+          <p className="text-xs text-[#56687A]">{error || 'Unable to display this profile.'}</p>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => navigate('/feed')}>
+          Return to Feed
+        </Button>
+      </div>
+    );
+  }
+
+  const avatarInitials =
+    profile.avatarInitials ||
+    (profile.name ? profile.name.slice(0, 2).toUpperCase() : 'CX');
 
   return (
     <div className="space-y-6">
+      {/* Hidden File Input for Avatar Upload */}
+      {isOwnProfile && (
+        <input
+          type="file"
+          ref={avatarInputRef}
+          accept="image/png,image/jpeg,image/webp"
+          className="hidden"
+          onChange={handleAvatarFileChange}
+        />
+      )}
+
       {/* ========================================================================= */}
       {/* 1. HERO PROFILE CARD                                                      */}
       {/* ========================================================================= */}
@@ -172,191 +376,262 @@ export const ProfilePage: React.FC = () => {
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
           {/* Left: Avatar + Details */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-            {/* Avatar with Status Ring */}
-            <div className="relative flex-shrink-0">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-600 via-indigo-700 to-[#1D2226] border-2 border-[#0A66C2]/50 flex items-center justify-center text-white font-extrabold text-2xl shadow-md">
-                {profileData.name.slice(0, 2).toUpperCase()}
-              </div>
-              <span
-                className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-emerald-500 text-white font-mono font-bold text-[9px] border-2 border-white shadow"
-                title="Actively Interviewing"
-              >
-                OPEN
-              </span>
+            {/* Avatar with Upload Trigger */}
+            <div className="relative flex-shrink-0 group">
+              {profile.avatarUrl ? (
+                <img
+                  src={profile.avatarUrl}
+                  alt={profile.name}
+                  className="w-20 h-20 rounded-2xl object-cover border-2 border-[#0A66C2]/40 shadow-md"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-600 via-indigo-700 to-[#1D2226] border-2 border-[#0A66C2]/50 flex items-center justify-center text-white font-extrabold text-2xl shadow-md">
+                  {avatarInitials}
+                </div>
+              )}
+
+              {isOwnProfile && (
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={isUploadingAvatar}
+                  className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center text-white text-[10px] font-mono shadow"
+                  title="Upload profile photo"
+                >
+                  {isUploadingAvatar ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Camera className="w-4 h-4 mb-0.5" />
+                      <span>Update</span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
 
             <div className="space-y-1.5">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl font-extrabold text-[#1D2226] tracking-tight">
-                  {profileData.name}
+                  {profile.name}
                 </h1>
                 <Badge variant="brand" size="sm" className="flex items-center gap-1">
                   <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                  Verified Engineer
+                  Verified Member
                 </Badge>
-                <Badge variant="success" size="sm">
-                  ATS: 88%
-                </Badge>
+                {profile.role && (
+                  <Badge variant="neutral" size="sm" className="capitalize">
+                    {profile.role}
+                  </Badge>
+                )}
               </div>
 
-              <p className="text-xs text-[#56687A] font-medium max-w-2xl leading-relaxed">
-                {profileData.headline}
-              </p>
+              {profile.headline ? (
+                <p className="text-xs text-[#56687A] font-medium max-w-2xl leading-relaxed">
+                  {profile.headline}
+                </p>
+              ) : (
+                <p className="text-xs text-[#788896] italic">No headline specified</p>
+              )}
 
               <div className="flex items-center gap-4 text-xs text-[#788896] flex-wrap pt-0.5 font-mono text-[11px]">
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-3 h-3 text-[#788896]" />
-                  {profileData.location}
-                </span>
-                <span className="flex items-center gap-1 text-[#56687A]">
-                  <Briefcase className="w-3 h-3 text-[#788896]" />
-                  Actively Interviewing
-                </span>
+                {profile.location && (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-[#788896]" />
+                    {profile.location}
+                  </span>
+                )}
+                {profile.company && (
+                  <span className="flex items-center gap-1 text-[#56687A]">
+                    <Briefcase className="w-3 h-3 text-[#788896]" />
+                    {profile.company}
+                  </span>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Right: Actions (Edit Profile, Connect, Message) */}
+          {/* Right: Actions */}
           <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap w-full sm:w-auto justify-end">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setIsEditModalOpen(true)}
-            >
-              Edit Profile
-            </Button>
+            {isOwnProfile ? (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsEditModalOpen(true)}
+                >
+                  Edit Profile
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => avatarInputRef.current?.click()}
+                  icon={<Camera className="w-3.5 h-3.5" />}
+                >
+                  Change Photo
+                </Button>
+              </>
+            ) : (
+              <>
+                {connectionStatus === 'connected' && (
+                  <>
+                    <Badge variant="success" className="py-1 px-2.5 text-xs flex items-center gap-1">
+                      <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      1st-Degree Connection
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => navigate(`/messages?user=${targetUserId}`)}
+                      icon={<MessageSquare className="w-3.5 h-3.5" />}
+                    >
+                      Message
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={isSubmittingConnection}
+                      onClick={handleDisconnect}
+                      icon={<UserMinus className="w-3.5 h-3.5 text-gray-500" />}
+                    >
+                      Disconnect
+                    </Button>
+                  </>
+                )}
 
-            <Button
-              size="sm"
-              variant={isConnected ? 'outline' : 'secondary'}
-              onClick={() => setIsConnected(!isConnected)}
-              icon={
-                isConnected ? (
-                  <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                ) : (
-                  <UserPlus className="w-3.5 h-3.5" />
-                )
-              }
-            >
-              {isConnected ? 'Connected ✓' : 'Connect'}
-            </Button>
+                {connectionStatus === 'pending_sent' && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled
+                      icon={<Clock className="w-3.5 h-3.5 text-amber-500" />}
+                    >
+                      Pending Request
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={isSubmittingConnection}
+                      onClick={handleCancelRequest}
+                    >
+                      Withdraw
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => navigate(`/messages?user=${targetUserId}`)}
+                      icon={<MessageSquare className="w-3.5 h-3.5" />}
+                    >
+                      Message
+                    </Button>
+                  </>
+                )}
 
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => navigate('/messages')}
-              icon={<MessageSquare className="w-3.5 h-3.5" />}
-            >
-              Message
-            </Button>
+                {connectionStatus === 'pending_received' && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      disabled={isSubmittingConnection}
+                      onClick={handleAcceptRequest}
+                      icon={<Check className="w-3.5 h-3.5" />}
+                    >
+                      Accept
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={isSubmittingConnection}
+                      onClick={handleRejectRequest}
+                      icon={<X className="w-3.5 h-3.5" />}
+                    >
+                      Decline
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => navigate(`/messages?user=${targetUserId}`)}
+                      icon={<MessageSquare className="w-3.5 h-3.5" />}
+                    >
+                      Message
+                    </Button>
+                  </>
+                )}
 
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => navigate('/network')}
-              icon={<Users className="w-3.5 h-3.5 text-[#0A66C2]" />}
-            >
-              Network
-            </Button>
+                {(connectionStatus === 'none' || connectionStatus === 'not_connected') && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      disabled={isSubmittingConnection}
+                      onClick={handleConnect}
+                      icon={<UserPlus className="w-3.5 h-3.5" />}
+                    >
+                      Connect
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => navigate(`/messages?user=${targetUserId}`)}
+                      icon={<MessageSquare className="w-3.5 h-3.5" />}
+                    >
+                      Message
+                    </Button>
+                  </>
+                )}
+              </>
+            )}
           </div>
         </div>
 
         {/* Links Bar */}
-        <div className="pt-4 border-t border-[#E8E8E8] flex items-center justify-between flex-wrap gap-3 text-xs">
-          <div className="flex items-center gap-3 flex-wrap">
-            {profileData.github && (
-              <a
-                href={profileData.github}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1 text-[#56687A] hover:text-[#1D2226] transition font-mono text-[11px]"
-              >
-                <Github className="w-3.5 h-3.5" />
-                <span>alexrivera</span>
-              </a>
-            )}
-            {profileData.linkedin && (
-              <a
-                href={profileData.linkedin}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1 text-[#0A66C2] hover:text-[#004182] transition font-mono text-[11px]"
-              >
-                <Linkedin className="w-3.5 h-3.5 text-[#0A66C2]" />
-                <span>LinkedIn</span>
-              </a>
-            )}
-            {profileData.website && (
-              <a
-                href={profileData.website}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1 text-[#56687A] hover:text-[#1D2226] transition font-mono text-[11px]"
-              >
-                <Globe className="w-3.5 h-3.5 text-emerald-600" />
-                <span>alexrivera.dev</span>
-              </a>
-            )}
+        {(profile.githubUrl || profile.linkedinUrl || profile.websiteUrl) && (
+          <div className="pt-4 border-t border-[#E8E8E8] flex items-center justify-between flex-wrap gap-3 text-xs">
+            <div className="flex items-center gap-4 flex-wrap">
+              {profile.githubUrl && (
+                <a
+                  href={profile.githubUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 text-[#56687A] hover:text-[#1D2226] transition font-mono text-[11px]"
+                >
+                  <Github className="w-3.5 h-3.5" />
+                  <span>GitHub</span>
+                  <ExternalLink className="w-2.5 h-2.5 text-[#788896]" />
+                </a>
+              )}
+              {profile.linkedinUrl && (
+                <a
+                  href={profile.linkedinUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 text-[#0A66C2] hover:text-[#004182] transition font-mono text-[11px]"
+                >
+                  <Linkedin className="w-3.5 h-3.5" />
+                  <span>LinkedIn</span>
+                  <ExternalLink className="w-2.5 h-2.5 text-[#788896]" />
+                </a>
+              )}
+              {profile.websiteUrl && (
+                <a
+                  href={profile.websiteUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 text-[#56687A] hover:text-[#1D2226] transition font-mono text-[11px]"
+                >
+                  <Globe className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Portfolio</span>
+                  <ExternalLink className="w-2.5 h-2.5 text-[#788896]" />
+                </a>
+              )}
+            </div>
           </div>
-
-          {/* Resume Quick Badge */}
-          <Link
-            to="/resume"
-            className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#F3F6F8] hover:bg-[#E8E8E8] border border-[#D9D9D9] text-[#0A66C2] hover:text-[#004182] transition font-mono text-[11px]"
-          >
-            <FileText className="w-3 h-3 text-[#0A66C2]" />
-            <span>Alex_Rivera_Distributed_Systems.pdf</span>
-            <ExternalLink className="w-2.5 h-2.5 ml-0.5 text-[#788896]" />
-          </Link>
-        </div>
+        )}
       </Card>
 
       {/* ========================================================================= */}
-      {/* 2. CODING STATISTICS BAR                                                  */}
-      {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-        <div className="p-3.5 rounded-xl bg-white border border-[#D9D9D9] space-y-0.5 shadow-xs">
-          <span className="text-[10px] uppercase font-mono text-[#788896]">Questions Solved</span>
-          <p className="text-lg font-bold text-[#1D2226] font-mono">142 / 150</p>
-          <span className="text-[10px] text-emerald-600 font-mono">Top 5% Volume</span>
-        </div>
-
-        <div className="p-3.5 rounded-xl bg-white border border-[#D9D9D9] space-y-0.5 shadow-xs">
-          <span className="text-[10px] uppercase font-mono text-[#788896]">Coding Streak</span>
-          <p className="text-lg font-bold text-[#8A6100] font-mono flex items-center gap-1">
-            <Flame className="w-4 h-4 text-amber-500" />
-            14 Days
-          </p>
-          <span className="text-[10px] text-[#8A6100] font-mono">Active Streak</span>
-        </div>
-
-        <div className="p-3.5 rounded-xl bg-white border border-[#D9D9D9] space-y-0.5 shadow-xs">
-          <span className="text-[10px] uppercase font-mono text-[#788896]">First-Submit Acc</span>
-          <p className="text-lg font-bold text-emerald-600 font-mono">93.4%</p>
-          <span className="text-[10px] text-emerald-600 font-mono">Verified Tests</span>
-        </div>
-
-        <div className="p-3.5 rounded-xl bg-white border border-[#D9D9D9] space-y-0.5 shadow-xs">
-          <span className="text-[10px] uppercase font-mono text-[#788896]">ATS Resume Score</span>
-          <p className="text-lg font-bold text-[#0A66C2] font-mono">88%</p>
-          <span className="text-[10px] text-[#0A66C2] font-mono">FAANG Ready</span>
-        </div>
-
-        <div className="p-3.5 rounded-xl bg-white border border-[#D9D9D9] space-y-0.5 shadow-xs">
-          <span className="text-[10px] uppercase font-mono text-[#788896]">Tracked Languages</span>
-          <p className="text-lg font-bold text-[#1D2226] font-mono">15</p>
-          <span className="text-[10px] text-sky-600 font-mono">Go, TS, Python...</span>
-        </div>
-
-        <div className="p-3.5 rounded-xl bg-white border border-[#D9D9D9] space-y-0.5 shadow-xs">
-          <span className="text-[10px] uppercase font-mono text-[#788896]">Career Readiness</span>
-          <p className="text-lg font-bold text-[#1D2226] font-mono">94%</p>
-          <span className="text-[10px] text-emerald-600 font-mono">Offer Stage</span>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 3. MAIN 2-COLUMN LAYOUT: CONTENT ON LEFT, WIDGETS ON RIGHT                */}
+      {/* 2. MAIN 2-COLUMN LAYOUT: CONTENT ON LEFT, WIDGETS ON RIGHT                */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* ==================== LEFT COLUMN (8 COLS) ==================== */}
@@ -365,343 +640,259 @@ export const ProfilePage: React.FC = () => {
           <Card className="p-5 bg-white border border-[#D9D9D9] space-y-2.5 shadow-sm">
             <h3 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-2">
               <Sparkles className="w-3.5 h-3.5 text-[#0A66C2]" />
-              About & Engineering Philosophy
+              About
             </h3>
-            <p className="text-xs text-[#38434F] leading-relaxed whitespace-pre-wrap font-sans">
-              {profileData.bio}
-            </p>
+            {profile.bio ? (
+              <p className="text-xs text-[#38434F] leading-relaxed whitespace-pre-wrap font-sans">
+                {profile.bio}
+              </p>
+            ) : (
+              <p className="text-xs text-[#788896] italic font-mono">
+                {isOwnProfile
+                  ? 'No bio added yet. Click "Edit Profile" to share your background and engineering focus.'
+                  : 'This member has not written an about section yet.'}
+              </p>
+            )}
           </Card>
 
-          {/* EXPERIENCE SECTION */}
+          {/* ACTIVITY / AUTHORED POSTS (LINKEDIN-STYLE) */}
           <Card className="p-5 bg-white border border-[#D9D9D9] space-y-4 shadow-sm">
             <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8]">
               <h3 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-2">
-                <Briefcase className="w-3.5 h-3.5 text-[#0A66C2]" />
-                Work Experience ({experiences.length})
+                <Layers className="w-3.5 h-3.5 text-[#0A66C2]" />
+                Activity & Posts ({posts.length})
               </h3>
-              <Badge variant="brand" size="sm">
-                Verified
+              <Badge variant="neutral" size="sm">
+                Real-time
               </Badge>
             </div>
 
-            <div className="space-y-4">
-              {experiences.map((exp, i) => (
-                <div key={i} className="p-4 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] space-y-2.5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                    <div>
-                      <h4 className="text-sm font-bold text-[#1D2226]">{exp.role}</h4>
-                      <p className="text-xs text-[#0A66C2] font-semibold">{exp.company}</p>
-                    </div>
-                    <div className="text-left sm:text-right font-mono text-[11px] text-[#788896]">
-                      <p>{exp.period}</p>
-                      <p className="text-[#788896]">{exp.location}</p>
-                    </div>
-                  </div>
-
-                  <ul className="space-y-1.5 list-disc list-inside text-xs text-[#38434F] leading-relaxed">
-                    {exp.bullets.map((b, idx) => (
-                      <li key={idx} className="leading-relaxed">
-                        {b}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {exp.skills.map((s) => (
-                      <span
-                        key={s}
-                        className="px-2 py-0.5 rounded bg-white border border-[#D9D9D9] text-[10px] font-mono text-[#56687A]"
-                      >
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+            {postsLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="w-5 h-5 text-[#0A66C2] animate-spin" />
+              </div>
+            ) : posts.length > 0 ? (
+              <div className="space-y-3.5">
+                {posts.map((post) => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    onLike={handleLike}
+                    onSave={handleSave}
+                    onShare={handleShare}
+                    onAddComment={handleAddComment}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 text-center space-y-2 bg-[#F3F6F8] rounded-xl border border-[#E8E8E8]">
+                <Layers className="w-7 h-7 text-[#788896] mx-auto opacity-70" />
+                <p className="text-xs font-bold text-[#1D2226]">No activity published yet</p>
+                <p className="text-[11px] text-[#56687A] max-w-sm mx-auto">
+                  {isOwnProfile
+                    ? 'Share technical discussions, photos, videos, and project updates in the feed.'
+                    : 'When this member publishes a post, it will appear here.'}
+                </p>
+                {isOwnProfile && (
+                  <Button size="xs" variant="primary" onClick={() => navigate('/feed')}>
+                    Create a Post
+                  </Button>
+                )}
+              </div>
+            )}
           </Card>
 
-          {/* FEATURED PROJECTS */}
-          <Card className="p-5 bg-white border border-[#D9D9D9] space-y-4 shadow-sm">
-            <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8]">
+          {/* SKILLS SECTION */}
+          {profile.skills && profile.skills.length > 0 && (
+            <Card className="p-5 bg-white border border-[#D9D9D9] space-y-3 shadow-sm">
               <h3 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-2">
                 <Code2 className="w-3.5 h-3.5 text-[#0A66C2]" />
-                Production Engineering Projects ({projects.length})
+                Skills & Technologies ({profile.skills.length})
               </h3>
-              <Badge variant="brand" size="sm">
-                Live Repos
-              </Badge>
-            </div>
+              <div className="flex flex-wrap gap-1.5">
+                {profile.skills.map((skill) => (
+                  <span
+                    key={skill}
+                    className="px-2.5 py-1 rounded-lg bg-[#F3F6F8] border border-[#D9D9D9] text-xs font-mono text-[#1D2226] hover:border-[#0A66C2]/40 transition"
+                  >
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            </Card>
+          )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {projects.map((proj) => (
-                <div
-                  key={proj.title}
-                  className="p-3.5 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] flex flex-col justify-between space-y-3 hover:border-[#0A66C2]/40 transition group"
-                >
-                  <div className="space-y-1.5">
-                    <div className="flex items-start justify-between gap-1">
-                      <h4 className="text-xs font-bold text-[#1D2226] group-hover:text-[#0A66C2] transition line-clamp-1">
-                        {proj.title}
-                      </h4>
-                      <a
-                        href={proj.link}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[#788896] hover:text-[#1D2226]"
-                      >
-                        <ArrowUpRight className="w-3.5 h-3.5" />
-                      </a>
-                    </div>
-                    <p className="text-[11px] text-[#38434F] leading-relaxed line-clamp-2">
-                      {proj.impact}
-                    </p>
-                  </div>
+          {/* EXPERIENCE SECTION */}
+          {profile.experiences && profile.experiences.length > 0 && (
+            <Card className="p-5 bg-white border border-[#D9D9D9] space-y-4 shadow-sm">
+              <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8]">
+                <h3 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-2">
+                  <Briefcase className="w-3.5 h-3.5 text-[#0A66C2]" />
+                  Work Experience ({profile.experiences.length})
+                </h3>
+              </div>
 
-                  <div className="space-y-2 pt-2 border-t border-[#E8E8E8]">
-                    <div className="flex flex-wrap gap-1">
-                      {proj.tech.map((t) => (
-                        <span
-                          key={t}
-                          className="px-1.5 py-0.2 rounded bg-white text-[#56687A] border border-[#D9D9D9] text-[10px] font-mono"
-                        >
-                          {t}
-                        </span>
-                      ))}
+              <div className="space-y-4">
+                {profile.experiences.map((exp, i) => (
+                  <div key={i} className="p-4 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                      <div>
+                        <h4 className="text-sm font-bold text-[#1D2226]">{exp.role || exp.title}</h4>
+                        <p className="text-xs text-[#0A66C2] font-semibold">{exp.company}</p>
+                      </div>
+                      <div className="text-left sm:text-right font-mono text-[11px] text-[#788896]">
+                        {exp.period && <p>{exp.period}</p>}
+                        {exp.location && <p className="text-[#788896]">{exp.location}</p>}
+                      </div>
                     </div>
-                    <span className="text-[10px] font-mono text-[#788896] block">
-                      Published: {proj.date}
-                    </span>
+                    {exp.description && (
+                      <p className="text-xs text-[#38434F] leading-relaxed">{exp.description}</p>
+                    )}
+                    {exp.bullets && exp.bullets.length > 0 && (
+                      <ul className="space-y-1 list-disc list-inside text-xs text-[#38434F] leading-relaxed">
+                        {exp.bullets.map((b, idx) => (
+                          <li key={idx}>{b}</li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
-                </div>
-              ))}
-            </div>
-          </Card>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* PROJECTS SECTION */}
+          {profile.projects && profile.projects.length > 0 && (
+            <Card className="p-5 bg-white border border-[#D9D9D9] space-y-4 shadow-sm">
+              <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8]">
+                <h3 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-2">
+                  <Code2 className="w-3.5 h-3.5 text-[#0A66C2]" />
+                  Projects ({profile.projects.length})
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {profile.projects.map((proj, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3.5 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] flex flex-col justify-between space-y-2"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-1">
+                        <h4 className="text-xs font-bold text-[#1D2226]">{proj.title}</h4>
+                        {proj.link && (
+                          <a
+                            href={proj.link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[#788896] hover:text-[#1D2226]"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-[#38434F] leading-relaxed mt-1">
+                        {proj.impact || proj.description}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
 
           {/* EDUCATION SECTION */}
-          <Card className="p-5 bg-white border border-[#D9D9D9] space-y-3 shadow-sm">
-            <h3 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-2">
-              <GraduationCap className="w-3.5 h-3.5 text-sky-600" />
-              Education & Academic Credentials
-            </h3>
-
-            <div className="p-4 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="space-y-1">
-                <h4 className="text-sm font-bold text-[#1D2226]">University of Washington</h4>
-                <p className="text-xs text-[#0A66C2]">
-                  Bachelor of Science in Computer Science (B.S. CS)
-                </p>
-                <p className="text-[11px] text-[#56687A]">
-                  Relevant Coursework: Distributed Systems, Operating Systems, Relational Databases, Advanced Algorithms.
-                </p>
-              </div>
-
-              <div className="text-left sm:text-right font-mono text-xs space-y-0.5">
-                <span className="font-bold text-emerald-600">GPA: 3.8 / 4.0</span>
-                <p className="text-[10px] text-[#788896]">Dean's Honor List</p>
-                <p className="text-[10px] text-[#788896]">Graduated: June 2024</p>
-              </div>
-            </div>
-          </Card>
-
-          {/* CAREER TIMELINE PREVIEW */}
-          <Card className="p-5 bg-white border border-[#D9D9D9] space-y-3 shadow-sm">
-            <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8]">
+          {profile.education && profile.education.length > 0 && (
+            <Card className="p-5 bg-white border border-[#D9D9D9] space-y-3 shadow-sm">
               <h3 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-2">
-                <Calendar className="w-3.5 h-3.5 text-[#0A66C2]" />
-                Career Growth Trajectory
+                <GraduationCap className="w-3.5 h-3.5 text-sky-600" />
+                Education ({profile.education.length})
               </h3>
-              <Link to="/progress" className="text-xs text-[#0A66C2] hover:text-[#004182] font-semibold flex items-center gap-1">
-                Full Progress Analytics <ArrowUpRight className="w-3 h-3" />
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-mono">
-              <div className="p-3 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] space-y-1">
-                <span className="text-[10px] text-[#788896] uppercase">Phase 1: Foundation</span>
-                <p className="font-bold text-[#1D2226]">UW B.S. CS (3.8 GPA)</p>
-                <span className="text-[10px] text-emerald-600">Completed ✓</span>
+              <div className="space-y-3">
+                {profile.education.map((edu, idx) => (
+                  <div key={idx} className="p-3.5 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8]">
+                    <h4 className="text-xs font-bold text-[#1D2226]">{edu.school}</h4>
+                    <p className="text-xs text-[#0A66C2]">{edu.degree} {edu.fieldOfStudy ? `in ${edu.fieldOfStudy}` : ''}</p>
+                    {edu.period && <p className="text-[10px] font-mono text-[#788896] mt-0.5">{edu.period}</p>}
+                  </div>
+                ))}
               </div>
-              <div className="p-3 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] space-y-1">
-                <span className="text-[10px] text-[#788896] uppercase">Phase 2: Mastery</span>
-                <p className="font-bold text-[#1D2226]">142 Problems (93% Acc)</p>
-                <span className="text-[10px] text-emerald-600">Top 5% Tier ✓</span>
-              </div>
-              <div className="p-3 rounded-xl bg-[#E8F3FF] border border-[#0A66C2]/30 space-y-1">
-                <span className="text-[10px] text-[#0A66C2] uppercase">Phase 3: Placement</span>
-                <p className="font-bold text-[#1D2226]">Stripe / Linear Pipeline</p>
-                <span className="text-[10px] text-[#8A6100]">Active Rounds</span>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          )}
         </div>
 
         {/* ==================== RIGHT COLUMN (4 COLS) ==================== */}
         <div className="lg:col-span-4 space-y-5">
-          {/* PROFILE COMPLETION WIDGET */}
-          <ProfileCompletionCard />
+          {isOwnProfile ? (
+            <>
+              {/* PROFILE COMPLETION WIDGET */}
+              <ProfileCompletionCard />
 
-          {/* RECRUITER PRIVACY CONTROLS */}
-          <RecruiterPrivacyCard />
-
-          {/* VERIFIED RESUME CARD */}
-          <Card className="p-4 bg-white border border-[#D9D9D9] space-y-3 shadow-sm">
-            <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8]">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-[#0A66C2]" />
-                <h3 className="text-xs font-bold text-[#1D2226]">Attached Resume</h3>
-              </div>
-              <Badge variant="success" size="sm">
-                88% ATS Score
-              </Badge>
-            </div>
-
-            <div className="p-3 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] space-y-2">
-              <p className="text-xs font-bold text-[#1D2226] truncate">
-                Alex_Rivera_Distributed_Systems.pdf
-              </p>
-              <p className="text-[11px] text-[#56687A]">
-                Optimized for Senior Backend & Distributed Systems engineering rubrics.
-              </p>
-              <div className="flex items-center justify-between text-[10px] font-mono text-[#788896] pt-1">
-                <span>PDF • 2.4 MB</span>
-                <span>Updated Sep 02, 2026</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <Link to="/resume" className="w-full">
-                <Button size="xs" variant="outline" className="w-full text-[11px]">
-                  Inspect in ATS
-                </Button>
-              </Link>
-              <Button
-                size="xs"
-                variant="primary"
-                className="w-full text-[11px]"
-                icon={<Download className="w-3 h-3" />}
-                onClick={() => {
-                  const element = document.createElement('a');
-                  const file = new Blob(
-                    [`Alex Rivera - Full Stack & Distributed Systems Engineer\nResume Version: 2026.09\nATS Score: 88%\nSkills: Go, TypeScript, Python, PostgreSQL, Kafka, Redis, Docker, Kubernetes`],
-                    { type: 'text/plain' }
-                  );
-                  element.href = URL.createObjectURL(file);
-                  element.download = 'Alex_Rivera_Distributed_Systems.txt';
-                  document.body.appendChild(element);
-                  element.click();
-                  document.body.removeChild(element);
-                }}
-              >
-                Download PDF
-              </Button>
-            </div>
-          </Card>
-
-          {/* CERTIFICATIONS CARD */}
-          <Card className="p-4 bg-white border border-[#D9D9D9] space-y-3 shadow-sm">
-            <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8]">
-              <h3 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                Certifications ({certifications.length})
+              {/* RECRUITER PRIVACY CONTROLS */}
+              <RecruiterPrivacyCard />
+            </>
+          ) : (
+            /* PUBLIC SIDEBAR SUMMARY */
+            <Card className="p-5 bg-white border border-[#D9D9D9] space-y-4 shadow-sm">
+              <h3 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-2">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#0A66C2]" />
+                Professional Summary
               </h3>
-              <Badge variant="success" size="sm">
-                Verified
-              </Badge>
-            </div>
+              <div className="space-y-3 text-xs">
+                <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8]">
+                  <span className="text-[#788896]">Profile Status</span>
+                  <Badge variant="success" size="sm">Active</Badge>
+                </div>
+                {profile.company && (
+                  <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8]">
+                    <span className="text-[#788896]">Organization</span>
+                    <span className="font-semibold text-[#1D2226]">{profile.company}</span>
+                  </div>
+                )}
+                {profile.location && (
+                  <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8]">
+                    <span className="text-[#788896]">Location</span>
+                    <span className="font-mono text-[#1D2226] text-[11px]">{profile.location}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-[#788896]">Community Posts</span>
+                  <span className="font-mono font-bold text-[#0A66C2]">{posts.length}</span>
+                </div>
+              </div>
 
-            <div className="space-y-2.5">
-              {certifications.map((cert) => (
-                <div
-                  key={cert.name}
-                  className="p-3 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] space-y-1"
+              <div className="pt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => navigate('/network')}
                 >
-                  <p className="text-xs font-bold text-[#1D2226] leading-snug">{cert.name}</p>
-                  <p className="text-[11px] text-[#56687A]">{cert.issuer}</p>
-                  <div className="flex items-center justify-between text-[10px] font-mono pt-1 text-[#788896]">
-                    <span>{cert.credentialId}</span>
-                    <span className="text-emerald-600 font-bold">{cert.issueDate}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          {/* ACHIEVEMENTS CARD */}
-          <Card className="p-4 bg-white border border-[#D9D9D9] space-y-3 shadow-sm">
-            <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8]">
-              <h3 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-1.5">
-                <Trophy className="w-3.5 h-3.5 text-amber-500" />
-                Key Achievements ({achievements.length})
-              </h3>
-            </div>
-
-            <div className="space-y-2">
-              {achievements.map((ach) => {
-                const Icon = ach.icon;
-                return (
-                  <div
-                    key={ach.title}
-                    className="p-2.5 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] flex items-center justify-between text-xs"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Icon className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-                      <div>
-                        <p className="font-semibold text-[#1D2226]">{ach.title}</p>
-                        <span className="text-[10px] text-[#56687A] font-mono">{ach.badge}</span>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-mono text-[#788896]">{ach.date}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-
-          {/* CATEGORIZED SKILLS MATRIX */}
-          <Card className="p-4 bg-white border border-[#D9D9D9] space-y-3 shadow-sm">
-            <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8]">
-              <h3 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-1.5">
-                <Code2 className="w-3.5 h-3.5 text-[#0A66C2]" />
-                Verified Skills Matrix
-              </h3>
-              <Link to="/skills" className="text-[11px] text-[#0A66C2] hover:text-[#004182] font-semibold">
-                Gap Matrix →
-              </Link>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              {Object.entries(skillsMatrix).map(([category, skills]) => (
-                <div key={category} className="space-y-1.5">
-                  <span className="text-[10px] font-mono text-[#788896] uppercase font-semibold block">
-                    {category}
-                  </span>
-                  <div className="flex flex-wrap gap-1">
-                    {skills.map((s) => (
-                      <span
-                        key={s}
-                        className="px-2 py-0.5 rounded bg-[#F3F6F8] text-[#56687A] border border-[#D9D9D9] font-mono text-[10px]"
-                      >
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
+                  Explore More Peers
+                </Button>
+              </div>
+            </Card>
+          )}
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* 4. EDIT PROFILE MODAL                                                     */}
-      {/* ========================================================================= */}
-      <EditProfileModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        onSave={handleSaveProfile}
-        initialData={profileData}
-      />
+      {/* Edit Profile Modal */}
+      {isOwnProfile && (
+        <EditProfileModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSave={handleSaveProfile}
+          initialData={{
+            name: profile.name,
+            headline: profile.headline || '',
+            location: profile.location || '',
+            bio: profile.bio || '',
+            github: profile.githubUrl || '',
+            linkedin: profile.linkedinUrl || '',
+            website: profile.websiteUrl || '',
+          }}
+        />
+      )}
     </div>
   );
 };

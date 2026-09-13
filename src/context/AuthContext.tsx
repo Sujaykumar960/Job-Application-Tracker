@@ -25,27 +25,74 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize auth state on mount
+  // Initialize auth state on mount and revalidate with real backend session
   useEffect(() => {
-    try {
+    let isMounted = true;
+
+    const initAuth = async () => {
       const storedToken = authApi.getToken();
       const storedUser = authApi.getCurrentUser();
-      if (storedToken && storedUser) {
+
+      if (!storedToken) {
+        if (isMounted) {
+          setToken(null);
+          setUser(null);
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      // Optimistically retain stored session to avoid UI flash
+      if (storedUser && isMounted) {
         setToken(storedToken);
         setUser(storedUser);
-      } else {
-        setToken(null);
-        setUser(null);
       }
-    } finally {
-      setIsLoading(false);
-    }
+
+      // Verify token freshness against real backend /auth/me
+      try {
+        const freshProfile = await authApi.getMe();
+        if (isMounted) {
+          setUser(freshProfile);
+          setToken(storedToken);
+          localStorage.setItem('careerx_auth_user', JSON.stringify(freshProfile));
+        }
+      } catch (err: any) {
+        // If 401 Unauthorized, token has expired or user was revoked
+        if (err?.response?.status === 401) {
+          if (isMounted) {
+            setToken(null);
+            setUser(null);
+          }
+          localStorage.removeItem('careerx_auth_token');
+          localStorage.removeItem('careerx_auth_user');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    initAuth();
+
+    // Global listener for token expiration / unauthorized responses
+    const handleUnauthorized = () => {
+      setToken(null);
+      setUser(null);
+      localStorage.removeItem('careerx_auth_token');
+      localStorage.removeItem('careerx_auth_user');
+    };
+    window.addEventListener('careerx:unauthorized', handleUnauthorized);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('careerx:unauthorized', handleUnauthorized);
+    };
   }, []);
 
   const clearError = () => setError(null);
 
   const login = async (credentials: LoginCredentials) => {
-    setIsLoading(true);
     setError(null);
     try {
       const response = await authApi.login(credentials);
@@ -55,13 +102,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const message = err instanceof Error ? err.message : 'Login failed';
       setError(message);
       throw err;
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const register = async (data: RegisterData) => {
-    setIsLoading(true);
     setError(null);
     try {
       const response = await authApi.register(data);
@@ -71,8 +115,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const message = err instanceof Error ? err.message : 'Registration failed';
       setError(message);
       throw err;
-    } finally {
-      setIsLoading(false);
     }
   };
 

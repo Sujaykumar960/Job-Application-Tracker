@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card } from '../common/Card';
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
-import { FeedPost, FeedComment, PostType } from '../../data/mockFeed';
+import { FeedPost, FeedComment, PostType } from '../../types';
 import {
   Heart,
   MessageSquare,
@@ -70,18 +71,39 @@ export const PostCard: React.FC<PostCardProps> = ({
     setNewComment('');
   };
 
+  const authorProfileId = post.author?.id || post.authorId;
+  const authorProfileLink = authorProfileId ? `/profile/${authorProfileId}` : '/profile';
+
   return (
     <Card className="p-4 bg-white border border-[#D9D9D9] space-y-3.5 shadow-sm hover:border-[#0A66C2]/40 transition">
       {/* Header: Author + Post Type Badge */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-[#E8F3FF] border border-[#d0e6fc] flex items-center justify-center text-[#0A66C2] font-bold text-xs flex-shrink-0">
-            {post.author.avatarInitials}
-          </div>
+          <Link
+            to={authorProfileLink}
+            className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-[#0A66C2]/30"
+          >
+            {post.author.avatarUrl ? (
+              <img
+                src={post.author.avatarUrl}
+                alt={post.author.name}
+                className="w-full h-full object-cover border border-[#d0e6fc]"
+              />
+            ) : (
+              <div className="w-full h-full bg-[#E8F3FF] border border-[#d0e6fc] flex items-center justify-center text-[#0A66C2] font-bold text-xs hover:border-[#0A66C2] transition">
+                {post.author.avatarInitials}
+              </div>
+            )}
+          </Link>
 
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <h4 className="text-xs font-bold text-[#1D2226] truncate">{post.author.name}</h4>
+              <Link
+                to={authorProfileLink}
+                className="text-xs font-bold text-[#1D2226] hover:text-[#0A66C2] hover:underline transition truncate"
+              >
+                {post.author.name}
+              </Link>
               {post.author.isVerified && (
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
               )}
@@ -104,9 +126,42 @@ export const PostCard: React.FC<PostCardProps> = ({
       </div>
 
       {/* Main Post Content */}
-      <div className="text-xs text-[#38434F] leading-relaxed whitespace-pre-wrap font-sans">
-        {post.content}
-      </div>
+      {post.content && (
+        <div className="text-xs text-[#38434F] leading-relaxed whitespace-pre-wrap font-sans">
+          {post.content}
+        </div>
+      )}
+
+      {/* Media Attachments: Images & Videos */}
+      {post.media && post.media.length > 0 && (
+        <div className="space-y-2 pt-1">
+          {post.media.map((item) => (
+            <div
+              key={item.id}
+              className="rounded-xl overflow-hidden border border-[#E8E8E8] bg-slate-50 flex items-center justify-center"
+            >
+              {item.type === 'video' ? (
+                <video
+                  src={item.url}
+                  controls
+                  preload="metadata"
+                  playsInline
+                  className="w-full max-h-96 rounded-xl bg-black"
+                >
+                  Your browser does not support the video tag.
+                </video>
+              ) : (
+                <img
+                  src={item.url}
+                  alt={item.originalFilename || 'Post media attachment'}
+                  loading="lazy"
+                  className="w-full max-h-96 object-contain rounded-xl hover:opacity-95 transition"
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Code Snippet if present */}
       {post.codeSnippet && (

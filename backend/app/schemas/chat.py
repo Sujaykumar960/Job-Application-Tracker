@@ -1,3 +1,4 @@
+import uuid
 from typing import Any, List, Literal, Optional
 from pydantic import BaseModel, Field
 
@@ -6,7 +7,7 @@ AttachmentType = Literal["pdf", "image", "code", "doc"]
 
 
 class ChatAttachment(BaseModel):
-    id: str
+    id: Optional[str] = Field(default_factory=lambda: f"att-{uuid.uuid4().hex[:8]}")
     name: str
     size: str
     type: AttachmentType = "pdf"
@@ -26,14 +27,27 @@ class ChatMessage(BaseModel):
     isOutgoing: bool = False
     status: MessageStatus = "sent"
     attachment: Optional[ChatAttachment] = None
+    createdAt: Optional[str] = None
+    editedAt: Optional[str] = None
+    isEdited: Optional[bool] = False
 
 
 ChatMessageResponse = ChatMessage
 
 
 class MessageSendPayload(BaseModel):
-    content: str = Field(..., min_length=1, max_length=10000, description="Message text content")
+    content: str = Field(default="", max_length=10000, description="Message text content")
     attachment: Optional[ChatAttachment] = None
+    clientMessageId: Optional[str] = None
+    id: Optional[str] = None
+
+    def model_post_init(self, __context: Any) -> None:
+        if not self.content.strip() and not self.attachment:
+            raise ValueError("Message content or attachment is required.")
+
+
+class ChatMessageUpdate(BaseModel):
+    content: str = Field(..., min_length=1, max_length=10000, description="Updated message content")
 
 
 # Backward-compatible alias

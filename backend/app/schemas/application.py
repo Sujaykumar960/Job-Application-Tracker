@@ -2,7 +2,7 @@ from typing import Any, List, Literal, Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 ApplicationStatus = Literal[
-    "Applied", "Interview", "Offer", "Rejected", "Wishlist", "Interviewing", "Offered"
+    "Applied", "Screening", "Shortlisted", "Interview", "Offer", "Hired", "Rejected", "Wishlist", "Interviewing", "Offered"
 ]
 PriorityLevel = Literal["Low", "Medium", "High"]
 
@@ -15,11 +15,17 @@ def normalize_status(val: Any) -> Any:
         return "Interview"
     if s in ["offer", "offered"]:
         return "Offer"
-    if s == "applied":
+    if s in ["applied"]:
         return "Applied"
-    if s == "rejected":
+    if s in ["screening"]:
+        return "Screening"
+    if s in ["shortlist", "shortlisted"]:
+        return "Shortlisted"
+    if s in ["hired", "accepted"]:
+        return "Hired"
+    if s in ["rejected"]:
         return "Rejected"
-    if s == "wishlist":
+    if s in ["wishlist"]:
         return "Wishlist"
     return val.capitalize()
 
@@ -31,6 +37,8 @@ class ApplicationBase(BaseModel):
     roleTitle: Optional[str] = None
     location: str = "Remote"
     jobUrl: Optional[str] = None
+    jobId: Optional[str] = None
+    companyId: Optional[str] = None
     appliedDate: Optional[str] = None
     deadline: Optional[str] = None
     deadlineDate: Optional[str] = None
@@ -40,6 +48,7 @@ class ApplicationBase(BaseModel):
     priority: PriorityLevel = "Medium"
     notes: Optional[str] = None
     resume: Optional[str] = None
+    resumeId: Optional[str] = None
     matchScore: int = 85
     salaryRange: Optional[str] = None
     tags: List[str] = Field(default_factory=list)
@@ -61,6 +70,8 @@ class ApplicationUpdate(BaseModel):
     roleTitle: Optional[str] = None
     location: Optional[str] = None
     jobUrl: Optional[str] = None
+    jobId: Optional[str] = None
+    companyId: Optional[str] = None
     appliedDate: Optional[str] = None
     deadline: Optional[str] = None
     deadlineDate: Optional[str] = None
@@ -70,6 +81,7 @@ class ApplicationUpdate(BaseModel):
     priority: Optional[PriorityLevel] = None
     notes: Optional[str] = None
     resume: Optional[str] = None
+    resumeId: Optional[str] = None
     matchScore: Optional[int] = None
     salaryRange: Optional[str] = None
     tags: Optional[List[str]] = None
@@ -83,6 +95,11 @@ class ApplicationUpdate(BaseModel):
 class ApplicationResponse(ApplicationBase):
     id: str
     userId: Optional[str] = None
+    applicantName: Optional[str] = None
+    applicantEmail: Optional[str] = None
+    applicantHeadline: Optional[str] = None
+    applicantAvatar: Optional[str] = None
+    resumeUrl: Optional[str] = None
     createdAt: Optional[str] = None
     updatedAt: Optional[str] = None
 

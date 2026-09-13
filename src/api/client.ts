@@ -40,7 +40,11 @@ apiClient.interceptors.response.use(
     switch (status) {
       case 401:
         console.warn('[CareerX API 401] Unauthorized: Session expired or invalid JWT token.');
-        // If expired in production, clear token or notify AuthContext
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('careerx_auth_token');
+          localStorage.removeItem('careerx_auth_user');
+          window.dispatchEvent(new CustomEvent('careerx:unauthorized'));
+        }
         break;
 
       case 403:
@@ -71,17 +75,6 @@ apiClient.interceptors.response.use(
   }
 );
 
-/**
- * Executes an API promise with automatic fallback to mock data if the backend is offline or errors.
- */
-export async function withFallback<T>(apiPromise: Promise<{ data: T }>, fallback: T): Promise<T> {
-  try {
-    const response = await apiPromise;
-    return response.data;
-  } catch (err) {
-    // Graceful fallback to mock data
-    return fallback;
-  }
-}
+
 
 export default apiClient;

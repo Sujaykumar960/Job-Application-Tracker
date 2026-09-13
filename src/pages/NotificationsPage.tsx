@@ -1,19 +1,19 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { PageHeader } from '../components/common/PageHeader';
 import { Card } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
 import {
-  INITIAL_NOTIFICATIONS,
   CareerNotification,
   NotificationCategory,
-} from '../data/mockNotifications';
+} from '../types';
+import { notificationApi } from '../api/notificationApi';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Bell,
   Calendar,
   Clock,
-  AlertCircle,
+  AlertCircle as AlertIcon,
   MessageSquare,
   UserPlus,
   Sparkles,
@@ -24,61 +24,129 @@ import {
   ArrowRight,
   ShieldCheck,
   CheckCheck,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
-
-const NOTIFICATIONS_STORAGE_KEY = 'careerx_notifications_v2';
 
 export const NotificationsPage: React.FC = () => {
   const navigate = useNavigate();
 
-  const [notifications, setNotifications] = useState<CareerNotification[]>(() => {
-    const saved = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return INITIAL_NOTIFICATIONS;
-      }
-    }
-    return INITIAL_NOTIFICATIONS;
-  });
+  const [notifications, setNotifications] = useState<CareerNotification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
 
-  const syncNotifications = (updated: CareerNotification[]) => {
-    setNotifications(updated);
-    localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(updated));
-  };
+  // Fetch notifications from backend
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await notificationApi.getNotifications();
+        setNotifications(data);
+      } catch (err) {
+        setError('Failed to load notifications. Please try again.');
+        console.error('Notifications fetch error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchNotifications();
+  }, []);
 
   // Mark all as read
-  const handleMarkAllAsRead = () => {
-    const updated = notifications.map((n) => ({ ...n, isRead: true }));
-    syncNotifications(updated);
+  const handleMarkAllAsRead = async () => {
+    try {
+      await notificationApi.markAllAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    } catch (err) {
+      console.error('Failed to mark all as read:', err);
+    }
   };
 
   // Mark single notification as read
-  const handleToggleRead = (id: string) => {
-    const updated = notifications.map((n) => (n.id === id ? { ...n, isRead: !n.isRead } : n));
-    syncNotifications(updated);
+  const handleToggleRead = async (id: string) => {
+    try {
+      await notificationApi.markAsRead(id);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: !n.isRead } : n))
+      );
+    } catch (err) {
+      console.error('Failed to mark as read:', err);
+    }
   };
 
   // Delete notification
-  const handleDelete = (id: string) => {
-    const updated = notifications.filter((n) => n.id !== id);
-    syncNotifications(updated);
+  const handleDelete = async (id: string) => {
+    try {
+      await notificationApi.deleteNotification(id);
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+    } catch (err) {
+      console.error('Failed to delete notification:', err);
+    }
   };
 
   // Clear all read
-  const handleClearRead = () => {
-    const updated = notifications.filter((n) => !n.isRead);
-    syncNotifications(updated);
+  const handleClearRead = async () => {
+    try {
+      await notificationApi.clearRead();
+      setNotifications((prev) => prev.filter((n) => !n.isRead));
+    } catch (err) {
+      console.error('Failed to clear read:', err);
+    }
   };
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.isRead).length,
     [notifications]
   );
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-[#0A66C2]" />
+        <span className="ml-3 text-[#56687A]">Loading notifications...</span>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <AlertCircle className="w-12 h-12 text-[#E6395A]" />
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-[#1D2226]">Unable to load notifications</h3>
+          <p className="text-[#56687A] mt-1">{error}</p>
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => window.location.reload()}
+            className="mt-4"
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (notifications.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <Bell className="w-12 h-12 text-[#788896]" />
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-[#1D2226]">No notifications</h3>
+          <p className="text-[#56687A] mt-1">You're all caught up!</p>
+        </div>
+      </div>
+    );
+  }
 
   // Category Icon & Color Mapping
   const getCategoryConfig = (category: NotificationCategory) => {
@@ -124,6 +192,36 @@ export const NotificationsPage: React.FC = () => {
           icon: Flame,
           label: 'Learning',
           color: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
+        };
+      case 'connection_accepted':
+        return {
+          icon: UserPlus,
+          label: 'Connected',
+          color: 'text-[#137333] bg-[#E6F4EA] border-[#c6ecd2]',
+        };
+      case 'post_like':
+        return {
+          icon: Flame,
+          label: 'Post Reaction',
+          color: 'text-[#0A66C2] bg-[#E8F3FF] border-[#d0e6fc]',
+        };
+      case 'post_comment':
+        return {
+          icon: MessageSquare,
+          label: 'Comment',
+          color: 'text-[#0A66C2] bg-[#E8F3FF] border-[#d0e6fc]',
+        };
+      case 'calendar_event':
+        return {
+          icon: Calendar,
+          label: 'Calendar Event',
+          color: 'text-[#0A66C2] bg-[#E8F3FF] border-[#d0e6fc]',
+        };
+      default:
+        return {
+          icon: Bell,
+          label: 'Notification',
+          color: 'text-[#0A66C2] bg-[#E8F3FF] border-[#d0e6fc]',
         };
     }
   };
@@ -220,7 +318,15 @@ export const NotificationsPage: React.FC = () => {
       {/* 2. NOTIFICATIONS STREAM                                                   */}
       {/* ========================================================================= */}
       <div className="space-y-3 max-w-4xl">
-        {filteredNotifications.length === 0 ? (
+        {notifications.length === 0 ? (
+          <div className="p-12 text-center border border-dashed border-[#D9D9D9] rounded-2xl bg-[#F3F6F8] space-y-2">
+            <Bell className="w-8 h-8 text-[#788896] mx-auto" />
+            <p className="text-sm font-semibold text-[#1D2226]">No notifications.</p>
+            <p className="text-xs text-[#56687A]">
+              You are all caught up! As interviews and deadlines approach, reminders will appear here.
+            </p>
+          </div>
+        ) : filteredNotifications.length === 0 ? (
           <div className="p-12 text-center border border-dashed border-[#D9D9D9] rounded-2xl bg-[#F3F6F8] space-y-2">
             <Bell className="w-8 h-8 text-[#788896] mx-auto" />
             <p className="text-sm font-semibold text-[#1D2226]">No notifications in this category</p>

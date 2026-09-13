@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 from app.schemas.post import FeedAuthor
@@ -20,6 +20,7 @@ class PostModel(BaseModel):
     author: FeedAuthor
     type: str = "Technical Discussion"
     content: str
+    media: List[Dict[str, Any]] = Field(default_factory=list)
     tags: List[str] = Field(default_factory=list)
     codeSnippet: Optional[str] = None
     likes: List[str] = Field(default_factory=list)  # User IDs who liked

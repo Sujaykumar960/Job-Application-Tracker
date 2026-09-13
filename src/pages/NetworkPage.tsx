@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { PageHeader } from '../components/common/PageHeader';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
 import { CandidateCard } from '../components/network/CandidateCard';
 import { ConnectionRequestCard } from '../components/network/ConnectionRequestCard';
-import { INITIAL_NETWORK_USERS, NetworkUser, ConnectionState } from '../data/mockNetwork';
+import { NetworkUser } from '../types';
+import { connectionApi } from '../api/connectionApi';
 import { useNavigate } from 'react-router-dom';
 import {
   Users,
@@ -17,97 +18,138 @@ import {
   Building2,
   CheckCircle2,
   Share2,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 
-type NetworkTab = 'suggestions' | 'requests' | 'connections' | 'following';
-
-const NETWORK_STORAGE_KEY = 'careerx_network_users_v2';
+type NetworkTab = 'discover' | 'suggestions' | 'requests' | 'connections' | 'following';
 
 export const NetworkPage: React.FC = () => {
   const navigate = useNavigate();
 
-  // Load and persist network state
-  const [users, setUsers] = useState<NetworkUser[]>(() => {
-    const saved = localStorage.getItem(NETWORK_STORAGE_KEY);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return INITIAL_NETWORK_USERS;
-      }
-    }
-    return INITIAL_NETWORK_USERS;
-  });
+  const [users, setUsers] = useState<NetworkUser[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<NetworkTab>('suggestions');
+  const [activeTab, setActiveTab] = useState<NetworkTab>('discover');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCompany, setSelectedCompany] = useState('All');
 
-  const syncUsers = (updated: NetworkUser[]) => {
-    setUsers(updated);
-    localStorage.setItem(NETWORK_STORAGE_KEY, JSON.stringify(updated));
-  };
+  // Fetch network data based on active tab
+  useEffect(() => {
+    const fetchNetworkData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        let data: NetworkUser[] = [];
+
+        switch (activeTab) {
+          case 'discover':
+            data = await connectionApi.discoverUsers();
+            break;
+          case 'suggestions':
+            data = await connectionApi.getSuggestedConnections();
+            break;
+          case 'requests':
+            data = await connectionApi.getConnectionRequests();
+            break;
+          case 'connections':
+            data = await connectionApi.getConnections();
+            break;
+          case 'following':
+            data = await connectionApi.getConnections();
+            break;
+        }
+
+        setUsers(data);
+      } catch (err) {
+        setError('Failed to load network data. Please try again.');
+        console.error('Network fetch error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchNetworkData();
+  }, [activeTab]);
 
   // Toggle Connect state between 'Connect' and 'Pending'
-  const handleConnectToggle = (userId: string) => {
-    const updated = users.map((u) => {
-      if (u.id === userId) {
-        const nextState: ConnectionState = u.connectionState === 'Connect' ? 'Pending' : 'Connect';
-        return {
-          ...u,
-          connectionState: nextState,
-          isIncomingRequest: false,
-        };
+  const handleConnectToggle = async (userId: string) => {
+    try {
+      const target = users.find((u) => u.id === userId);
+      if (target?.connectionState === 'pending') {
+        const reqId = target.requestId || userId;
+        await connectionApi.cancelConnectionRequest(reqId);
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === userId
+              ? { ...u, connectionState: 'not_connected' as const, requestId: undefined }
+              : u
+          )
+        );
+      } else {
+        const res = await connectionApi.sendConnectionRequest(userId);
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === userId
+              ? { ...u, connectionState: 'pending' as const, requestId: res.id || u.requestId }
+              : u
+          )
+        );
       }
-      return u;
-    });
-    syncUsers(updated);
+    } catch (err) {
+      console.error('Failed to update connection request:', err);
+      alert('Failed to update connection request. Please try again.');
+    }
   };
 
   // Accept incoming request -> sets state to 'Connected'
-  const handleAcceptRequest = (userId: string) => {
-    const updated = users.map((u) => {
-      if (u.id === userId) {
-        return {
-          ...u,
-          connectionState: 'Connected' as const,
-          isIncomingRequest: false,
-          connectedDate: 'Just now',
-        };
-      }
-      return u;
-    });
-    syncUsers(updated);
+  const handleAcceptRequest = async (userId: string) => {
+    try {
+      const targetUser = users.find((u) => u.id === userId);
+      const reqId = targetUser?.requestId || userId;
+      await connectionApi.acceptConnectionRequest(reqId);
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId
+            ? { ...u, connectionState: 'connected' as const, isIncomingRequest: false }
+            : u
+        )
+      );
+    } catch (err) {
+      console.error('Failed to accept request:', err);
+      alert('Failed to accept request. Please try again.');
+    }
   };
 
   // Ignore incoming request
-  const handleIgnoreRequest = (userId: string) => {
-    const updated = users.map((u) => {
-      if (u.id === userId) {
-        return {
-          ...u,
-          connectionState: 'Connect' as const,
-          isIncomingRequest: false,
-        };
-      }
-      return u;
-    });
-    syncUsers(updated);
+  const handleIgnoreRequest = async (userId: string) => {
+    try {
+      const targetUser = users.find((u) => u.id === userId);
+      const reqId = targetUser?.requestId || userId;
+      await connectionApi.rejectConnectionRequest(reqId);
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+    } catch (err) {
+      console.error('Failed to ignore request:', err);
+      alert('Failed to ignore request. Please try again.');
+    }
   };
 
   // Toggle Following
-  const handleToggleFollowing = (userId: string) => {
-    const updated = users.map((u) => {
-      if (u.id === userId) {
-        return {
-          ...u,
-          isFollowing: !u.isFollowing,
-        };
-      }
-      return u;
-    });
-    syncUsers(updated);
+  const handleToggleFollowing = async (userId: string) => {
+    try {
+      await connectionApi.followUser(userId);
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId
+            ? { ...u, isFollowing: !u.isFollowing }
+            : u
+        )
+      );
+    } catch (err) {
+      console.error('Failed to toggle follow:', err);
+    }
   };
 
   // Handle direct message navigation
@@ -117,17 +159,17 @@ export const NetworkPage: React.FC = () => {
 
   // Calculate Tab Counts
   const incomingRequests = useMemo(
-    () => users.filter((u) => u.isIncomingRequest && u.connectionState === 'Pending'),
+    () => users.filter((u) => u.isIncomingRequest && u.connectionState === 'pending'),
     [users]
   );
 
   const outgoingPending = useMemo(
-    () => users.filter((u) => !u.isIncomingRequest && u.connectionState === 'Pending'),
+    () => users.filter((u) => !u.isIncomingRequest && u.connectionState === 'pending'),
     [users]
   );
 
   const connections = useMemo(
-    () => users.filter((u) => u.connectionState === 'Connected'),
+    () => users.filter((u) => u.connectionState === 'connected'),
     [users]
   );
 
@@ -137,14 +179,46 @@ export const NetworkPage: React.FC = () => {
   );
 
   const suggestions = useMemo(
-    () => users.filter((u) => u.connectionState !== 'Connected' && !u.isIncomingRequest),
+    () => users.filter((u) => u.connectionState !== 'connected' && !u.isIncomingRequest),
     [users]
   );
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-[#0A66C2]" />
+        <span className="ml-3 text-[#56687A]">Loading network...</span>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <AlertCircle className="w-12 h-12 text-[#E6395A]" />
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-[#1D2226]">Unable to load network</h3>
+          <p className="text-[#56687A] mt-1">{error}</p>
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => window.location.reload()}
+            className="mt-4"
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   // Filtered Users for Current Tab
   const displayedUsers = useMemo(() => {
     let source: NetworkUser[] = [];
-    if (activeTab === 'suggestions') source = suggestions;
+    if (activeTab === 'discover') source = users.filter((u) => u.connectionState !== 'connected' && !u.isIncomingRequest);
+    else if (activeTab === 'suggestions') source = suggestions;
     else if (activeTab === 'requests') source = incomingRequests;
     else if (activeTab === 'connections') source = connections;
     else if (activeTab === 'following') source = followingUsers;
@@ -155,15 +229,15 @@ export const NetworkPage: React.FC = () => {
         !q ||
         u.name.toLowerCase().includes(q) ||
         u.headline.toLowerCase().includes(q) ||
-        u.company.toLowerCase().includes(q) ||
+        (u.company && u.company.toLowerCase().includes(q)) ||
         u.skills.some((s) => s.toLowerCase().includes(q));
 
       const matchesCompany =
-        selectedCompany === 'All' || u.company.toLowerCase() === selectedCompany.toLowerCase();
+        selectedCompany === 'All' || (u.company && u.company.toLowerCase() === selectedCompany.toLowerCase());
 
       return matchesSearch && matchesCompany;
     });
-  }, [activeTab, suggestions, incomingRequests, connections, followingUsers, searchQuery, selectedCompany]);
+  }, [activeTab, users, suggestions, incomingRequests, connections, followingUsers, searchQuery, selectedCompany]);
 
   const companiesList = ['All', 'Stripe', 'Linear', 'Vercel', 'Datadog', 'Netflix', 'Microsoft'];
 
@@ -175,7 +249,7 @@ export const NetworkPage: React.FC = () => {
         description="Expand your technical network, review inbound recruiter connection requests, and stay in touch with engineering peers."
         badge={
           <Badge variant="brand" size="sm">
-            {connections.length + 280} Active Connections
+            {connections.length} Active Connections
           </Badge>
         }
         actions={
@@ -205,7 +279,7 @@ export const NetworkPage: React.FC = () => {
         >
           <div>
             <span className="text-[10px] uppercase font-mono text-[#788896] block">Connections</span>
-            <span className="text-xl font-bold text-[#1D2226] font-mono">{connections.length + 280}</span>
+            <span className="text-xl font-bold text-[#1D2226] font-mono">{connections.length}</span>
           </div>
           <UserCheck className="w-5 h-5 text-emerald-600" />
         </div>
@@ -258,7 +332,7 @@ export const NetworkPage: React.FC = () => {
         >
           <div>
             <span className="text-[10px] uppercase font-mono text-[#788896] block">Following</span>
-            <span className="text-xl font-bold text-[#1D2226] font-mono">{followingUsers.length + 38}</span>
+            <span className="text-xl font-bold text-[#1D2226] font-mono">{followingUsers.length}</span>
           </div>
           <Users className="w-5 h-5 text-sky-600" />
         </div>
@@ -271,6 +345,19 @@ export const NetworkPage: React.FC = () => {
         {/* Tab Switcher Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
           <button
+            onClick={() => setActiveTab('discover')}
+            className={cn(
+              'px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5',
+              activeTab === 'discover'
+                ? 'bg-[#0A66C2] text-white shadow-sm'
+                : 'text-[#56687A] hover:text-[#1D2226] hover:bg-[#F3F6F8]'
+            )}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Discover Engineers</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('suggestions')}
             className={cn(
               'px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5',
@@ -280,13 +367,7 @@ export const NetworkPage: React.FC = () => {
             )}
           >
             <UserPlus className="w-3.5 h-3.5" />
-            <span>People Suggestions</span>
-            <span className={cn(
-              'text-[10px] font-mono px-1.5 py-0.2 rounded-full',
-              activeTab === 'suggestions' ? 'bg-[#004182] text-white' : 'bg-[#F3F6F8] text-[#56687A]'
-            )}>
-              {suggestions.length}
-            </span>
+            <span>Recommendations</span>
           </button>
 
           <button
@@ -341,7 +422,7 @@ export const NetworkPage: React.FC = () => {
               'text-[10px] font-mono px-1.5 py-0.2 rounded-full',
               activeTab === 'following' ? 'bg-[#004182] text-white' : 'bg-[#F3F6F8] text-[#56687A]'
             )}>
-              {followingUsers.length + 38}
+              {followingUsers.length}
             </span>
           </button>
         </div>
@@ -459,9 +540,17 @@ export const NetworkPage: React.FC = () => {
 
           {displayedUsers.length === 0 ? (
             <div className="p-12 text-center border border-dashed border-[#D9D9D9] rounded-2xl bg-[#F3F6F8] space-y-2">
-              <p className="text-sm font-semibold text-[#1D2226]">No profiles found</p>
+              <p className="text-sm font-semibold text-[#1D2226]">
+                {activeTab === 'connections' && connections.length === 0
+                  ? 'No connections yet.'
+                  : activeTab === 'suggestions' && suggestions.length === 0
+                  ? 'No suggestions found.'
+                  : 'No profiles found'}
+              </p>
               <p className="text-xs text-[#56687A]">
-                Try adjusting your search query or company filter.
+                {activeTab === 'connections' && connections.length === 0
+                  ? 'Browse suggested engineers above to build your engineering network.'
+                  : 'Try adjusting your search query or company filter.'}
               </p>
               <Button
                 size="xs"

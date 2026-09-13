@@ -2,6 +2,7 @@ from typing import Any, Dict, Optional
 from fastapi import status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.config import settings
 from app.middleware.error_handler import AppException
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import (
@@ -26,6 +27,12 @@ class AuthService:
 
     async def register(self, data: RegisterData) -> AuthResponse:
         email = data.email.strip().lower()
+        if data.role == "admin" and settings.ENVIRONMENT == "production":
+            raise AppException(
+                message="Administrator accounts cannot be self-registered in production.",
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
+
         existing = await self.user_repo.get_by_email(email)
         if existing:
             raise AppException(

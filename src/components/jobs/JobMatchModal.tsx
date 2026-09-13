@@ -47,10 +47,14 @@ export const JobMatchModal: React.FC<JobMatchModalProps> = ({
             <span className="text-xs font-semibold text-[#0A66C2]">Overall Match Probability</span>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-extrabold text-[#1D2226] font-mono">{job.matchScore}%</span>
-              <span className="text-xs font-semibold text-emerald-700">Strong Alignment</span>
+              <span className={`text-xs font-semibold ${
+                job.matchScore >= 80 ? 'text-emerald-700' : job.matchScore >= 60 ? 'text-[#8A6100]' : 'text-[#B3261E]'
+              }`}>
+                {job.matchScore >= 80 ? 'Strong Alignment' : job.matchScore >= 60 ? 'Moderate Alignment' : 'Developing Alignment'}
+              </span>
             </div>
             <p className="text-[11px] text-[#56687A]">
-              Your profile satisfies {matched.length} of {job.skills.length} core technical requirements.
+              Your profile satisfies {matched.length} of {job.skills.length || 'specified'} core technical requirements.
             </p>
           </div>
 
@@ -119,7 +123,18 @@ export const JobMatchModal: React.FC<JobMatchModalProps> = ({
             <span>AI Resume Tailoring Advice</span>
           </div>
           <p className="text-xs text-[#38434F] leading-relaxed">
-            Highlight your experience with <span className="text-[#0A66C2] font-semibold">{matched.map((m) => m.name).join(', ')}</span> in your project summaries. If applying today, mention familiarity with <span className="text-[#8A6100] font-semibold">{missing.map((m) => m.name).join(', ')}</span> in your cover letter.
+            {matched.length > 0 ? (
+              <>
+                Highlight your experience with <span className="text-[#0A66C2] font-semibold">{matched.map((m) => m.name).join(', ')}</span> in your project summaries.{' '}
+                {missing.length > 0 && (
+                  <>If applying today, mention familiarity with <span className="text-[#8A6100] font-semibold">{missing.map((m) => m.name).join(', ')}</span> in your cover letter.</>
+                )}
+              </>
+            ) : (
+              <>
+                Review the core requirements for this position and add your relevant proficiencies to your profile or active resume to increase compatibility.
+              </>
+            )}
           </p>
         </div>
 

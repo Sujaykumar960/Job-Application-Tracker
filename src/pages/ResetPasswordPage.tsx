@@ -10,8 +10,8 @@ import { Lock, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
 
 const resetPasswordSchema = z
   .object({
-    password: z.string().min(6, 'Password must be at least 6 characters'),
-    confirmPassword: z.string().min(6, 'Please confirm your new password'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string().min(8, 'Please confirm your new password'),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',
@@ -22,7 +22,7 @@ type ResetPasswordData = z.infer<typeof resetPasswordSchema>;
 
 export const ResetPasswordPage: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token') || 'demo_token';
+  const token = searchParams.get('token') || '';
   const navigate = useNavigate();
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -37,6 +37,10 @@ export const ResetPasswordPage: React.FC = () => {
 
   const onSubmit = async (data: ResetPasswordData) => {
     setErrorMsg(null);
+    if (!token) {
+      setErrorMsg('Invalid or missing password reset token. Please request a new link from the forgot password page.');
+      return;
+    }
     try {
       await authApi.resetPassword(token, data.password);
       setSuccess(true);

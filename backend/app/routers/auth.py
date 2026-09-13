@@ -1,8 +1,10 @@
 from datetime import datetime, timezone
+import secrets
 from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.config import settings
 from app.dependencies import get_current_active_user, get_db, get_optional_user
 from app.schemas.auth import (
     AuthResponse,
@@ -114,7 +116,7 @@ async def forgot_password(
     body: ForgotPasswordRequest,
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
-    """Dispatch password reset token (simulated for development or integrated with SMTP)."""
+    """Dispatch password reset token with cryptographic randomness and expiration lifecycle."""
     email = body.email.strip().lower()
     user = await db.users.find_one({"email": email})
     if not user:
@@ -124,14 +126,24 @@ async def forgot_password(
             message="If an account with this email exists, a password reset link has been dispatched.",
         )
 
-    # In development, we generate a mock token and store it
-    user_id_str = user.get("id") or str(user.get("_id"))
-    reset_token = f"reset_tok_{email[:4]}_{user_id_str}"
-    await db.users.update_one({"_id": user["_id"]}, {"$set": {"resetToken": reset_token}})
+    # Cryptographically secure random token (32 bytes urlsafe)
+    now_ts = int(datetime.now(timezone.utc).timestamp())
+    reset_token = f"tok_{secrets.token_urlsafe(32)}"
+    expires_at = now_ts + 900  # 15 minutes TTL
+
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"resetToken": reset_token, "resetTokenExpiresAt": expires_at}},
+    )
+
+    if settings.ENVIRONMENT == "production":
+        message = f"If an account with this email exists, password reset instructions have been dispatched to {email}."
+    else:
+        message = f"Password reset instructions dispatched to {email}. Token for local testing: {reset_token}"
 
     return StandardSuccessResponse(
         success=True,
-        message=f"Password reset instructions dispatched to {email}. Token for local testing: {reset_token}",
+        message=message,
     )
 
 
@@ -140,16 +152,26 @@ async def reset_password(
     body: ResetPasswordRequest,
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
-    """Reset password using provided token."""
-    # Find user by resetToken or demo token
+    """Reset password using verified, non-expired cryptographic reset token."""
     token = body.token.strip()
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password reset token is required.",
+        )
+
+    now_ts = int(datetime.now(timezone.utc).timestamp())
     user = await db.users.find_one({"resetToken": token})
-    if not user:
-        # Check if demo token
-        if token in ["mock_token_demo", "mock-token-demo"]:
-            user = await db.users.find_one({"role": "seeker"})
 
     if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired password reset token.",
+        )
+
+    # Check token expiration
+    expires_at = user.get("resetTokenExpiresAt")
+    if expires_at and now_ts > expires_at:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired password reset token.",
@@ -158,7 +180,7 @@ async def reset_password(
     new_hash = hash_password(body.password)
     await db.users.update_one(
         {"_id": user["_id"]},
-        {"$set": {"passwordHash": new_hash}, "$unset": {"resetToken": ""}},
+        {"$set": {"passwordHash": new_hash}, "$unset": {"resetToken": "", "resetTokenExpiresAt": ""}},
     )
 
     return StandardSuccessResponse(

@@ -1,22 +1,5 @@
-import { apiClient, withFallback } from './client';
-import {
-  RecruiterCandidate,
-  INITIAL_RECRUITER_CANDIDATES,
-} from '../data/mockRecruiterData';
-
-const RECRUITER_STORAGE_KEY = 'careerx_recruiter_candidates_v2';
-
-function getLocalCandidates(): RecruiterCandidate[] {
-  const saved = localStorage.getItem(RECRUITER_STORAGE_KEY);
-  if (saved) {
-    try {
-      return JSON.parse(saved);
-    } catch {
-      return INITIAL_RECRUITER_CANDIDATES;
-    }
-  }
-  return INITIAL_RECRUITER_CANDIDATES;
-}
+import { apiClient } from './client';
+import { Application, JobItem, RecruiterCandidate } from '../types';
 
 export interface RecruiterMetrics {
   jobsPosted: number;
@@ -31,22 +14,8 @@ export const recruiterApi = {
    * Fetch recruiter top dashboard performance metrics
    */
   getRecruiterMetrics: async (): Promise<RecruiterMetrics> => {
-    const candidates = getLocalCandidates();
-    const shortlistedCount = candidates.filter((c) => c.isShortlisted).length;
-    const interviewsCount = candidates.filter((c) => c.interviewStage && c.interviewStage !== 'Not Started').length;
-
-    const fallback: RecruiterMetrics = {
-      jobsPosted: 6,
-      applicationsCount: 148,
-      shortlistedCount,
-      interviewsCount,
-      hiredCount: 5,
-    };
-
-    return withFallback(
-      apiClient.get<RecruiterMetrics>('/recruiter/metrics'),
-      fallback
-    );
+    const response = await apiClient.get<RecruiterMetrics>('/recruiter/metrics');
+    return response.data;
   },
 
   /**
@@ -60,69 +29,96 @@ export const recruiterApi = {
     minAssessmentScore?: number;
     minJobMatch?: number;
   }): Promise<RecruiterCandidate[]> => {
-    let list = getLocalCandidates();
-
-    if (filters) {
-      if (filters.role && filters.role !== 'All') {
-        list = list.filter((c) => c.role.toLowerCase().includes(filters.role!.toLowerCase()));
-      }
-      if (filters.skills && filters.skills !== 'All') {
-        list = list.filter((c) => c.skills.some((s) => s.toLowerCase() === filters.skills!.toLowerCase()));
-      }
-      if (filters.experience && filters.experience !== 'All') {
-        list = list.filter((c) => c.experienceLevel.toLowerCase().includes(filters.experience!.toLowerCase()));
-      }
-      if (filters.location && filters.location !== 'All') {
-        list = list.filter((c) => c.location.toLowerCase().includes(filters.location!.toLowerCase()));
-      }
-      if (filters.minAssessmentScore) {
-        list = list.filter((c) => c.assessmentScore >= filters.minAssessmentScore!);
-      }
-      if (filters.minJobMatch) {
-        list = list.filter((c) => c.jobMatch >= filters.minJobMatch!);
-      }
-    }
-
-    return withFallback(
-      apiClient.get<RecruiterCandidate[]>('/recruiter/candidates', { params: filters }),
-      list
-    );
+    const response = await apiClient.get<RecruiterCandidate[]>('/recruiter/candidates', { params: filters });
+    return response.data;
   },
 
   /**
    * Fetch candidate dossier by ID
    */
-  getCandidateById: async (id: string): Promise<RecruiterCandidate | null> => {
-    const list = getLocalCandidates();
-    const found = list.find((c) => c.id === id) || null;
-
-    return withFallback(
-      apiClient.get<RecruiterCandidate>(`/recruiter/candidates/${id}`),
-      found
-    );
+  getCandidateById: async (id: string): Promise<RecruiterCandidate> => {
+    const response = await apiClient.get<RecruiterCandidate>(`/recruiter/candidates/${id}`);
+    return response.data;
   },
 
   /**
    * Toggle candidate shortlist status
    */
   toggleShortlistCandidate: async (candidateId: string): Promise<{ isShortlisted: boolean }> => {
-    const list = getLocalCandidates();
-    let isShortlisted = false;
+    const response = await apiClient.post<{ isShortlisted: boolean }>(`/recruiter/candidates/${candidateId}/shortlist`);
+    return response.data;
+  },
 
-    const updated = list.map((c) => {
-      if (c.id === candidateId) {
-        isShortlisted = !c.isShortlisted;
-        return { ...c, isShortlisted };
-      }
-      return c;
+  /**
+   * Fetch all jobs posted by the authenticated recruiter
+   */
+  getRecruiterJobs: async (): Promise<JobItem[]> => {
+    const response = await apiClient.get<JobItem[]>('/recruiter/jobs');
+    return response.data;
+  },
+
+  /**
+   * Fetch applications for a specific job owned by the recruiter
+   */
+  getJobApplications: async (jobId: string): Promise<Application[]> => {
+    const response = await apiClient.get<Application[]>(`/recruiter/jobs/${jobId}/applications`);
+    return response.data;
+  },
+
+  /**
+   * Fetch all applications across all jobs owned by the recruiter
+   */
+  getAllApplications: async (jobId?: string): Promise<Application[]> => {
+    const response = await apiClient.get<Application[]>('/recruiter/applications', {
+      params: jobId ? { jobId } : undefined,
     });
+    return response.data;
+  },
 
-    localStorage.setItem(RECRUITER_STORAGE_KEY, JSON.stringify(updated));
-
-    return withFallback(
-      apiClient.post<{ isShortlisted: boolean }>(`/recruiter/candidates/${candidateId}/shortlist`),
-      { isShortlisted }
+  /**
+   * Update recruitment pipeline stage for a candidate application
+   */
+  updateApplicationStatus: async (
+    applicationId: string,
+    status: string,
+    notes?: string
+  ): Promise<Application> => {
+    const response = await apiClient.patch<Application>(
+      `/recruiter/applications/${applicationId}/status`,
+      { status, notes }
     );
+    return response.data;
+  },
+
+  /**
+   * Post a new job listing
+   */
+  createJob: async (jobData: Partial<JobItem>): Promise<JobItem> => {
+    const response = await apiClient.post<JobItem>('/jobs', jobData);
+    return response.data;
+  },
+
+  /**
+   * Update an existing job listing
+   */
+  updateJob: async (jobId: string, jobData: Partial<JobItem>): Promise<JobItem> => {
+    const response = await apiClient.patch<JobItem>(`/jobs/${jobId}`, jobData);
+    return response.data;
+  },
+
+  /**
+   * Delete a job listing
+   */
+  deleteJob: async (jobId: string): Promise<{ success: boolean; message: string }> => {
+    const response = await apiClient.delete<{ success: boolean; message: string }>(`/jobs/${jobId}`);
+    return response.data;
+  },
+
+  /**
+   * Get resume download/view URL for an applicant
+   */
+  getResumeDownloadUrl: (applicationId: string): string => {
+    return `/api/recruiter/applications/${applicationId}/resume`;
   },
 };
 

@@ -67,8 +67,19 @@ class DatabaseManager:
             await cls.db.applications.create_index([("userId", ASCENDING), ("status", ASCENDING)])
             await cls.db.applications.create_index([("userId", ASCENDING), ("appliedDate", DESCENDING)])
             await cls.db.applications.create_index([("userId", ASCENDING), ("deadlineDate", ASCENDING)])
+            await cls.db.applications.create_index([("jobId", ASCENDING)])
+            await cls.db.applications.create_index([("companyId", ASCENDING)])
+            await cls.db.applications.create_index(
+                [("jobId", ASCENDING), ("userId", ASCENDING)],
+                unique=True,
+                partialFilterExpression={"jobId": {"$type": "string"}},
+            )
 
             # 4. Jobs Collection (company, role/title, location, filters, active, postedDate)
+            await cls.db.jobs.create_index([("recruiterId", ASCENDING)])
+            await cls.db.jobs.create_index([("postedBy", ASCENDING)])
+            await cls.db.jobs.create_index([("companyId", ASCENDING)])
+            await cls.db.jobs.create_index([("status", ASCENDING)])
             await cls.db.jobs.create_index([("company", ASCENDING)])
             await cls.db.jobs.create_index([("companyName", ASCENDING)])
             await cls.db.jobs.create_index([("title", ASCENDING)])
@@ -115,6 +126,9 @@ class DatabaseManager:
             await cls.db.connections.create_index([("status", ASCENDING)])
             await cls.db.connections.create_index([("requesterId", ASCENDING)])
             await cls.db.connections.create_index([("receiverId", ASCENDING)])
+            await cls.db.connection_requests.create_index([("senderId", ASCENDING), ("recipientId", ASCENDING)])
+            await cls.db.connection_requests.create_index([("recipientId", ASCENDING), ("status", ASCENDING)])
+            await cls.db.connection_requests.create_index([("senderId", ASCENDING), ("status", ASCENDING)])
             await cls.db.follows.create_index(
                 [("followerId", ASCENDING), ("targetUserId", ASCENDING)],
                 unique=True,
@@ -155,6 +169,21 @@ class DatabaseManager:
             # 13. Companies
             await cls.db.companies.create_index([("slug", ASCENDING)], unique=True)
             await cls.db.companies.create_index([("name", ASCENDING)])
+            await cls.db.companies.create_index([("ownerId", ASCENDING)])
+            await cls.db.companies.create_index([("recruiterIds", ASCENDING)])
+
+            # 14. Learning Progress Collection
+            await cls.db.learning_progress.create_index(
+                [("userId", ASCENDING), ("courseId", ASCENDING)],
+                unique=True,
+            )
+            await cls.db.learning_progress.create_index([("userId", ASCENDING), ("updatedAt", DESCENDING)])
+
+            # 15. Calendar Events Collection
+            await cls.db.calendar_events.create_index([("userId", ASCENDING), ("date", ASCENDING)])
+            await cls.db.calendar_events.create_index([("userId", ASCENDING), ("createdAt", DESCENDING)])
+            await cls.db.calendar_events.create_index([("participants", ASCENDING)])
+
 
             logger.info("All domain MongoDB indexes verified / created successfully.")
         except Exception as e:

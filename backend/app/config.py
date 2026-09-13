@@ -24,7 +24,15 @@ class Settings(BaseSettings):
     # File Storage Configuration
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE_BYTES: int = 10 * 1024 * 1024  # 10 MB
+    RESUME_MAX_UPLOAD_SIZE_BYTES: int = 10 * 1024 * 1024  # 10 MB
+    FEED_MAX_IMAGE_SIZE_BYTES: int = 10 * 1024 * 1024  # 10 MB
+    FEED_MAX_VIDEO_SIZE_BYTES: int = 50 * 1024 * 1024  # 50 MB
+    FEED_MAX_MEDIA_PER_POST: int = 5
     STORAGE_BACKEND: str = "local"
+
+    # Groq AI Service Configuration (server-side only)
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -34,9 +42,9 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> List[str]:
-        """Parse comma-separated CORS origins into a list."""
-        origins = [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
-        if self.FRONTEND_ORIGIN and self.FRONTEND_ORIGIN not in origins:
+        """Parse comma-separated CORS origins into a list, preventing dangerous wildcard with credentials."""
+        origins = [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip() and origin.strip() != "*"]
+        if self.FRONTEND_ORIGIN and self.FRONTEND_ORIGIN not in origins and self.FRONTEND_ORIGIN != "*":
             origins.append(self.FRONTEND_ORIGIN)
         return origins
 

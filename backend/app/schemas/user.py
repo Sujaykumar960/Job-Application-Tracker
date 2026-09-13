@@ -69,3 +69,27 @@ class PrivacySettingsUpdate(ProfilePrivacySettings):
 
 class AvatarUploadResponse(BaseModel):
     avatarUrl: str
+
+
+class PublicUserProfileResponse(BaseModel):
+    id: str
+    name: str
+    role: Optional[str] = "seeker"
+    headline: Optional[str] = None
+    bio: Optional[str] = None
+    location: Optional[str] = None
+    company: Optional[str] = None
+    avatarUrl: Optional[str] = None
+    avatarInitials: Optional[str] = None
+    avatarGradient: Optional[str] = None
+    skills: List[str] = Field(default_factory=list)
+    experiences: List[Dict[str, Any]] = Field(default_factory=list)
+    education: List[Dict[str, Any]] = Field(default_factory=list)
+    projects: List[Dict[str, Any]] = Field(default_factory=list)
+    certifications: List[Dict[str, Any]] = Field(default_factory=list)
+    websiteUrl: Optional[str] = None
+    githubUrl: Optional[str] = None
+    linkedinUrl: Optional[str] = None
+    connectionStatus: Optional[str] = "none"
+    requestId: Optional[str] = None
+    createdAt: Optional[str] = None

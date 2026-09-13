@@ -76,4 +76,13 @@ class ForgotPasswordRequest(BaseModel):
 
 class ResetPasswordRequest(BaseModel):
     token: str
-    password: str = Field(..., min_length=8, description="New password")
+    password: Optional[str] = Field(None, min_length=8, description="New password")
+    newPassword: Optional[str] = Field(None, min_length=8, description="New password alias")
+
+    @model_validator(mode="after")
+    def populate_password(self) -> "ResetPasswordRequest":
+        if not self.password and self.newPassword:
+            self.password = self.newPassword
+        if not self.password or len(self.password) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        return self

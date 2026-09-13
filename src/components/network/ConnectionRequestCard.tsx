@@ -1,7 +1,8 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Card } from '../common/Card';
 import { Button } from '../common/Button';
-import { NetworkUser } from '../../data/mockNetwork';
+import { NetworkUser } from '../../types';
 import { Check, X, Users, MapPin, ShieldCheck, Clock } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
@@ -20,18 +21,24 @@ export const ConnectionRequestCard: React.FC<ConnectionRequestCardProps> = ({
     <Card className="p-4 bg-white border border-[#D9D9D9] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm hover:border-[#0A66C2]/40 transition">
       {/* Left: Avatar + Details + Personal Note */}
       <div className="flex items-start gap-3.5 min-w-0 flex-1">
-        <div
+        <Link
+          to={`/profile/${user.id}`}
           className={cn(
-            'w-12 h-12 rounded-2xl bg-gradient-to-br flex items-center justify-center text-white font-extrabold text-sm flex-shrink-0 shadow border border-surface-700/60',
+            'w-12 h-12 rounded-2xl bg-gradient-to-br flex items-center justify-center text-white font-extrabold text-sm flex-shrink-0 shadow border border-surface-700/60 transition hover:opacity-90',
             user.avatarGradient
           )}
         >
           {user.avatarInitials}
-        </div>
+        </Link>
 
         <div className="space-y-1.5 min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <h4 className="text-xs font-bold text-[#1D2226] truncate">{user.name}</h4>
+            <Link
+              to={`/profile/${user.id}`}
+              className="text-xs font-bold text-[#1D2226] hover:text-[#0A66C2] transition truncate"
+            >
+              {user.name}
+            </Link>
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
             <span className="text-[10px] text-[#788896] font-mono flex items-center gap-1">
               <Clock className="w-2.5 h-2.5" />

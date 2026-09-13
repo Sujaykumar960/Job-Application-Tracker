@@ -7,7 +7,7 @@ import { ApplicationKanbanView } from '../components/applications/ApplicationKan
 import { ApplicationModal } from '../components/applications/ApplicationModal';
 import { ApplicationDetailModal } from '../components/applications/ApplicationDetailModal';
 import { Application, ApplicationStatus, PriorityLevel } from '../types';
-import { MOCK_APPLICATIONS } from '../data/mockData';
+import { applicationApi } from '../api/applicationApi';
 import {
   Plus,
   Search,
@@ -22,23 +22,15 @@ import {
   XCircle,
   Clock,
   Sparkles,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 
-const STORAGE_KEY = 'careerx_applications_v2';
-
 export const ApplicationsPage: React.FC = () => {
-  // --- STATE WITH LOCALSTORAGE PERSISTENCE ---
-  const [applications, setApplications] = useState<Application[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return MOCK_APPLICATIONS;
-      }
-    }
-    return MOCK_APPLICATIONS;
-  });
+  // --- STATE FROM BACKEND ---
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [searchQuery, setSearchQuery] = useState('');
@@ -51,36 +43,70 @@ export const ApplicationsPage: React.FC = () => {
   const [editingApp, setEditingApp] = useState<Application | null>(null);
   const [viewingApp, setViewingApp] = useState<Application | null>(null);
 
-  // Sync to localStorage
+  // Fetch applications from backend
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(applications));
-  }, [applications]);
+    const fetchApplications = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await applicationApi.getApplications();
+        setApplications(data);
+      } catch (err) {
+        setError('Failed to load applications. Please try again.');
+        console.error('Applications fetch error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchApplications();
+  }, []);
 
   // --- CRUD OPERATIONS ---
-  const handleSaveApplication = (appData: Application) => {
-    setApplications((prev) => {
-      const exists = prev.some((item) => item.id === appData.id);
-      if (exists) {
-        return prev.map((item) => (item.id === appData.id ? appData : item));
+  const handleSaveApplication = async (appData: Application) => {
+    try {
+      if (appData.id) {
+        // Update existing
+        const updated = await applicationApi.updateApplication(appData.id, appData);
+        setApplications((prev) => prev.map((item) => (item.id === appData.id ? updated : item)));
+      } else {
+        // Create new
+        const created = await applicationApi.createApplication(appData);
+        setApplications((prev) => [created, ...prev]);
       }
-      return [appData, ...prev];
-    });
-    setEditingApp(null);
-  };
-
-  const handleDeleteApplication = (id: string) => {
-    if (window.confirm('Are you sure you want to remove this application?')) {
-      setApplications((prev) => prev.filter((item) => item.id !== id));
-      if (viewingApp?.id === id) setViewingApp(null);
+      setEditingApp(null);
+    } catch (err) {
+      console.error('Failed to save application:', err);
+      alert('Failed to save application. Please try again.');
     }
   };
 
-  const handleStatusChange = (id: string, newStatus: ApplicationStatus) => {
-    setApplications((prev) =>
-      prev.map((app) => (app.id === id ? { ...app, status: newStatus } : app))
-    );
-    if (viewingApp && viewingApp.id === id) {
-      setViewingApp((prev) => (prev ? { ...prev, status: newStatus } : null));
+  const handleDeleteApplication = async (id: string) => {
+    if (window.confirm('Are you sure you want to remove this application?')) {
+      try {
+        await applicationApi.deleteApplication(id);
+        setApplications((prev) => prev.filter((item) => item.id !== id));
+        if (viewingApp?.id === id) setViewingApp(null);
+      } catch (err) {
+        console.error('Failed to delete application:', err);
+        alert('Failed to delete application. Please try again.');
+      }
+    }
+  };
+
+  const handleStatusChange = async (id: string, newStatus: ApplicationStatus) => {
+    try {
+      const app = applications.find((a) => a.id === id);
+      if (app) {
+        const updated = await applicationApi.updateApplication(id, { ...app, status: newStatus });
+        setApplications((prev) => prev.map((a) => (a.id === id ? updated : a)));
+        if (viewingApp && viewingApp.id === id) {
+          setViewingApp((prev) => (prev ? { ...prev, status: newStatus } : null));
+        }
+      }
+    } catch (err) {
+      console.error('Failed to update status:', err);
+      alert('Failed to update status. Please try again.');
     }
   };
 
@@ -135,6 +161,58 @@ export const ApplicationsPage: React.FC = () => {
       rejected: applications.filter((a) => a.status === 'Rejected').length,
     };
   }, [applications]);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-[#0A66C2]" />
+        <span className="ml-3 text-[#56687A]">Loading applications...</span>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <AlertCircle className="w-12 h-12 text-[#E6395A]" />
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-[#1D2226]">Unable to load applications</h3>
+          <p className="text-[#56687A] mt-1">{error}</p>
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => window.location.reload()}
+            className="mt-4"
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (applications.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <Briefcase className="w-12 h-12 text-[#788896]" />
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-[#1D2226]">No applications yet</h3>
+          <p className="text-[#56687A] mt-1">Start tracking your job applications here.</p>
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => setIsModalOpen(true)}
+            className="mt-4"
+          >
+            Add Your First Application
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

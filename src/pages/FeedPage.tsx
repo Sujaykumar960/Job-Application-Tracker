@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { PageHeader } from '../components/common/PageHeader';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
@@ -6,7 +6,8 @@ import { LeftProfileSummary } from '../components/feed/LeftProfileSummary';
 import { CreatePostCard } from '../components/feed/CreatePostCard';
 import { PostCard } from '../components/feed/PostCard';
 import { RightTrendingSidebar } from '../components/feed/RightTrendingSidebar';
-import { INITIAL_FEED_POSTS, FeedPost, PostType } from '../../src/data/mockFeed';
+import { FeedPost, PostType } from '../types';
+import { postApi } from '../api/postApi';
 import {
   MessageSquare,
   Sparkles,
@@ -15,101 +16,117 @@ import {
   Filter,
   Bookmark,
   Share2,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 
-const FEED_STORAGE_KEY = 'careerx_feed_posts_v2';
-
 export const FeedPage: React.FC = () => {
-  const [posts, setPosts] = useState<FeedPost[]>(() => {
-    const saved = localStorage.getItem(FEED_STORAGE_KEY);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return INITIAL_FEED_POSTS;
-      }
-    }
-    return INITIAL_FEED_POSTS;
-  });
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [selectedType, setSelectedType] = useState<string>('All');
   const [feedSearch, setFeedSearch] = useState('');
 
-  // Persist feed updates to localStorage
-  const syncPosts = (newPosts: FeedPost[]) => {
-    setPosts(newPosts);
-    localStorage.setItem(FEED_STORAGE_KEY, JSON.stringify(newPosts));
-  };
+  // Fetch posts from backend
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await postApi.getPosts();
+        setPosts(data);
+      } catch (err) {
+        setError('Failed to load feed. Please try again.');
+        console.error('Feed fetch error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, []);
 
   // Publish New Post
-  const handlePublishPost = (newPost: FeedPost) => {
-    const updated = [newPost, ...posts];
-    syncPosts(updated);
+  const handlePublishPost = async (newPost: FeedPost | FormData) => {
+    try {
+      let created: FeedPost;
+      if (newPost instanceof FormData) {
+        created = await postApi.createPost(newPost);
+      } else {
+        created = await postApi.createPost({
+          content: newPost.content,
+          type: newPost.type,
+          tags: newPost.tags,
+          codeSnippet: newPost.codeSnippet,
+        });
+      }
+      setPosts((prev) => [created, ...prev]);
+    } catch (err) {
+      console.error('Failed to publish post:', err);
+      alert('Failed to publish post. Please try again.');
+    }
   };
 
   // Like Toggle
-  const handleLike = (postId: string) => {
-    const updated = posts.map((p) => {
-      if (p.id === postId) {
-        return {
-          ...p,
-          isLiked: !p.isLiked,
-          likesCount: p.isLiked ? p.likesCount - 1 : p.likesCount + 1,
-        };
-      }
-      return p;
-    });
-    syncPosts(updated);
+  const handleLike = async (postId: string) => {
+    try {
+      const result = await postApi.likePost(postId);
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? { ...p, isLiked: result.isLiked, likesCount: result.likesCount }
+            : p
+        )
+      );
+    } catch (err) {
+      console.error('Failed to like post:', err);
+    }
   };
 
   // Save / Bookmark Toggle
-  const handleSave = (postId: string) => {
-    const updated = posts.map((p) => {
-      if (p.id === postId) {
-        return {
-          ...p,
-          isSaved: !p.isSaved,
-        };
-      }
-      return p;
-    });
-    syncPosts(updated);
+  const handleSave = async (postId: string) => {
+    try {
+      const result = await postApi.bookmarkPost(postId);
+      setPosts((prev) =>
+        prev.map((p) => (p.id === postId ? { ...p, isSaved: result.isSaved } : p))
+      );
+    } catch (err) {
+      console.error('Failed to bookmark post:', err);
+    }
   };
 
   // Share Increment
   const handleShare = (postId: string) => {
-    const updated = posts.map((p) => {
-      if (p.id === postId) {
-        return {
-          ...p,
-          sharesCount: p.sharesCount + 1,
-        };
-      }
-      return p;
-    });
-    syncPosts(updated);
+    // For now, just increment locally (backend share endpoint not implemented)
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId
+          ? { ...p, sharesCount: p.sharesCount + 1 }
+          : p
+      )
+    );
   };
 
   // Add Comment
-  const handleAddComment = (postId: string, commentText: string) => {
-    const updated = posts.map((p) => {
-      if (p.id === postId) {
-        const newC = {
-          id: `c-${Date.now()}`,
-          authorName: 'Alex Rivera',
-          authorHeadline: 'Distributed Systems & Backend Engineer',
-          content: commentText,
-          createdAt: 'Just now',
-        };
-        return {
-          ...p,
-          comments: [newC, ...p.comments],
-          commentsCount: p.commentsCount + 1,
-        };
-      }
-      return p;
-    });
-    syncPosts(updated);
+  const handleAddComment = async (postId: string, commentText: string) => {
+    try {
+      const newComment = await postApi.addComment(postId, commentText);
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                comments: [newComment, ...p.comments],
+                commentsCount: p.commentsCount + 1,
+              }
+            : p
+        )
+      );
+    } catch (err) {
+      console.error('Failed to add comment:', err);
+      alert('Failed to add comment. Please try again.');
+    }
   };
 
   // Filtered Posts
@@ -136,6 +153,50 @@ export const FeedPage: React.FC = () => {
   }, [posts, feedSearch, selectedType]);
 
   const savedCount = useMemo(() => posts.filter((p) => p.isSaved).length, [posts]);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-[#0A66C2]" />
+        <span className="ml-3 text-[#56687A]">Loading feed...</span>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <AlertCircle className="w-12 h-12 text-[#E6395A]" />
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-[#1D2226]">Unable to load feed</h3>
+          <p className="text-[#56687A] mt-1">{error}</p>
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => window.location.reload()}
+            className="mt-4"
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (posts.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <MessageSquare className="w-12 h-12 text-[#788896]" />
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-[#1D2226]">No posts yet</h3>
+          <p className="text-[#56687A] mt-1">Be the first to share something with the community.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -187,13 +248,20 @@ export const FeedPage: React.FC = () => {
           )}
 
           {/* Feed Posts List */}
-          {filteredPosts.length === 0 ? (
+          {posts.length === 0 ? (
+            <div className="p-12 text-center border border-dashed border-[#D9D9D9] rounded-2xl bg-[#F3F6F8] space-y-2">
+              <p className="text-sm font-semibold text-[#1D2226]">No posts yet.</p>
+              <p className="text-xs text-[#56687A]">
+                Be the first to publish a discussion or learning update.
+              </p>
+            </div>
+          ) : filteredPosts.length === 0 ? (
             <div className="p-12 text-center border border-dashed border-[#D9D9D9] rounded-2xl bg-[#F3F6F8] space-y-2">
               <p className="text-sm font-semibold text-[#1D2226]">No posts found in this category</p>
               <p className="text-xs text-[#56687A]">
                 {selectedType === 'Saved'
                   ? 'You have not saved any posts yet.'
-                  : 'Be the first to publish a discussion or learning update.'}
+                  : 'Try selecting a different topic filter.'}
               </p>
               <Button size="xs" variant="outline" onClick={() => setSelectedType('All')}>
                 View All Posts

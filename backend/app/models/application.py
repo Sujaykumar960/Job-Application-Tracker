@@ -3,7 +3,9 @@ from pydantic import BaseModel, Field
 
 from app.utils.helpers import utc_now_iso
 
-ApplicationStatus = Literal["Applied", "Interview", "Offer", "Rejected"]
+ApplicationStatus = Literal[
+    "Applied", "Screening", "Shortlisted", "Interview", "Offer", "Hired", "Rejected", "Wishlist"
+]
 PriorityLevel = Literal["Low", "Medium", "High"]
 
 
@@ -11,6 +13,7 @@ class ApplicationModel(BaseModel):
     id: Optional[str] = None
     userId: str
     jobId: Optional[str] = None
+    companyId: Optional[str] = None
     company: str
     role: str
     companyName: Optional[str] = None
@@ -26,6 +29,7 @@ class ApplicationModel(BaseModel):
     priority: PriorityLevel = "Medium"
     notes: Optional[str] = None
     resume: Optional[str] = None
+    resumeId: Optional[str] = None
     resumeUrl: Optional[str] = None
     salaryRange: Optional[str] = None
     matchScore: int = 85

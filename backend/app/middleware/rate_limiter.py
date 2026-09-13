@@ -4,6 +4,9 @@ from typing import Dict, List
 from fastapi import HTTPException, Request, status
 
 
+from app.config import settings
+
+
 class SlidingWindowRateLimiter:
     """Thread-safe in-memory sliding window rate limiter per client IP."""
 
@@ -13,6 +16,9 @@ class SlidingWindowRateLimiter:
         self.requests: Dict[str, List[float]] = defaultdict(list)
 
     async def __call__(self, request: Request) -> None:
+        if settings.ENVIRONMENT in ("testing", "e2e"):
+            return
+
         client_ip = (
             request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
             or (request.client.host if request.client else "127.0.0.1")

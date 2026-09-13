@@ -15,3 +15,4 @@ export * from './recruiterApi';
 export * from './notificationApi';
 export * from './calendarSync';
 export * from './codeExecution';
+export * from './dashboardApi';

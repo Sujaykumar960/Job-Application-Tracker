@@ -1,153 +1,72 @@
-import { apiClient, withFallback } from './client';
-import { FeedPost, FeedComment, PostType, INITIAL_FEED_POSTS } from '../data/mockFeed';
-
-const FEED_STORAGE_KEY = 'careerx_feed_posts_v2';
-
-function getLocalPosts(): FeedPost[] {
-  const saved = localStorage.getItem(FEED_STORAGE_KEY);
-  if (saved) {
-    try {
-      return JSON.parse(saved);
-    } catch {
-      return INITIAL_FEED_POSTS;
-    }
-  }
-  return INITIAL_FEED_POSTS;
-}
+import { apiClient } from './client';
+import { FeedPost, FeedComment, PostType } from '../types';
 
 export const postApi = {
   /**
-   * Fetch social engineering posts with optional category filter
+   * Fetch social engineering posts with optional category or filter params
    */
-  getPosts: async (category?: PostType | 'All'): Promise<FeedPost[]> => {
-    let posts = getLocalPosts();
-    if (category && category !== 'All') {
-      posts = posts.filter((p) => p.type === category);
+  getPosts: async (
+    filter?: { category?: string; tag?: string; authorId?: string; search?: string } | (PostType | 'All')
+  ): Promise<FeedPost[]> => {
+    let params: any = {};
+    if (typeof filter === 'string') {
+      params = { category: filter === 'All' ? undefined : filter };
+    } else if (filter && typeof filter === 'object') {
+      params = filter;
     }
-
-    return withFallback(
-      apiClient.get<FeedPost[]>('/posts', { params: { category } }),
-      posts
-    );
+    const response = await apiClient.get<FeedPost[]>('/posts', { params });
+    return response.data;
   },
 
   /**
-   * Publish a new post to the technical social feed
+   * Fetch posts authored by a specific user for profile activity
    */
-  createPost: async (postData: {
-    content: string;
-    type: PostType;
-    tags: string[];
-    codeSnippet?: string;
-  }): Promise<FeedPost> => {
-    const newPost: FeedPost = {
-      id: `post-${Date.now()}`,
-      author: {
-        name: 'Alex Rivera',
-        headline: 'Distributed Systems & Backend Platform Engineer',
-        avatarInitials: 'AR',
-        isVerified: true,
-      },
-      type: postData.type,
-      createdAt: 'Just now',
-      content: postData.content,
-      tags: postData.tags,
-      codeSnippet: postData.codeSnippet,
-      likesCount: 0,
-      isLiked: false,
-      commentsCount: 0,
-      isSaved: false,
-      sharesCount: 0,
-      comments: [],
-    };
+  getUserPosts: async (userId: string): Promise<FeedPost[]> => {
+    const response = await apiClient.get<FeedPost[]>(`/posts/user/${userId}`);
+    return response.data;
+  },
 
-    const existing = getLocalPosts();
-    localStorage.setItem(FEED_STORAGE_KEY, JSON.stringify([newPost, ...existing]));
-
-    return withFallback(
-      apiClient.post<FeedPost>('/posts', postData),
-      newPost
-    );
+  /**
+   * Publish a new post to the technical social feed (supports JSON and multipart FormData)
+   */
+  createPost: async (
+    postData:
+      | FormData
+      | {
+          content?: string;
+          type?: PostType;
+          tags?: string[];
+          codeSnippet?: string;
+          media?: any[];
+        }
+  ): Promise<FeedPost> => {
+    const headers = postData instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {};
+    const response = await apiClient.post<FeedPost>('/posts', postData, { headers });
+    return response.data;
   },
 
   /**
    * Like or unlike a post
    */
   likePost: async (postId: string): Promise<{ likesCount: number; isLiked: boolean }> => {
-    const existing = getLocalPosts();
-    let res = { likesCount: 0, isLiked: false };
-
-    const updated = existing.map((p) => {
-      if (p.id === postId) {
-        const nextLiked = !p.isLiked;
-        const count = nextLiked ? p.likesCount + 1 : p.likesCount - 1;
-        res = { likesCount: count, isLiked: nextLiked };
-        return { ...p, isLiked: nextLiked, likesCount: count };
-      }
-      return p;
-    });
-
-    localStorage.setItem(FEED_STORAGE_KEY, JSON.stringify(updated));
-
-    return withFallback(
-      apiClient.post<{ likesCount: number; isLiked: boolean }>(`/posts/${postId}/like`),
-      res
-    );
+    const response = await apiClient.post<{ likesCount: number; isLiked: boolean }>(`/posts/${postId}/like`);
+    return response.data;
   },
 
   /**
    * Add a comment to an engineering thread
    */
   addComment: async (postId: string, content: string): Promise<FeedComment> => {
-    const newComment: FeedComment = {
-      id: `c-${Date.now()}`,
-      authorName: 'Alex Rivera',
-      authorHeadline: 'Distributed Systems & Backend Platform Engineer',
-      content,
-      createdAt: 'Just now',
-    };
-
-    const existing = getLocalPosts();
-    const updated = existing.map((p) => {
-      if (p.id === postId) {
-        return {
-          ...p,
-          commentsCount: p.commentsCount + 1,
-          comments: [...p.comments, newComment],
-        };
-      }
-      return p;
-    });
-
-    localStorage.setItem(FEED_STORAGE_KEY, JSON.stringify(updated));
-
-    return withFallback(
-      apiClient.post<FeedComment>(`/posts/${postId}/comments`, { content }),
-      newComment
-    );
+    const response = await apiClient.post<FeedComment>(`/posts/${postId}/comments`, { content });
+    return response.data;
   },
 
   /**
    * Save or unsave a post to bookmarks
    */
   bookmarkPost: async (postId: string): Promise<{ isSaved: boolean }> => {
-    const existing = getLocalPosts();
-    let isSaved = false;
-
-    const updated = existing.map((p) => {
-      if (p.id === postId) {
-        isSaved = !p.isSaved;
-        return { ...p, isSaved };
-      }
-      return p;
-    });
-
-    localStorage.setItem(FEED_STORAGE_KEY, JSON.stringify(updated));
-
-    return withFallback(
-      apiClient.post<{ isSaved: boolean }>(`/posts/${postId}/bookmark`),
-      { isSaved }
-    );
+    const response = await apiClient.post<{ isSaved: boolean }>(`/posts/${postId}/bookmark`);
+    return response.data;
   },
 };
 

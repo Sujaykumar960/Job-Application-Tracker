@@ -1,5 +1,5 @@
 from typing import Any, List, Literal, Optional
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 WorkType = Literal["Remote", "Hybrid", "On-site"]
 JobType = Literal["Full-time", "Internship", "Contract"]
@@ -33,6 +33,10 @@ class JobBase(BaseModel):
     jobUrl: Optional[str] = None
     applicantsCount: Optional[int] = 0
     isActive: bool = True
+    recruiterId: Optional[str] = None
+    postedBy: Optional[str] = None
+    companyId: Optional[str] = None
+    status: Literal["draft", "published", "closed"] = "published"
 
     @field_validator("skills", mode="before")
     @classmethod
@@ -76,13 +80,27 @@ class JobUpdate(BaseModel):
     jobUrl: Optional[str] = None
     applicantsCount: Optional[int] = None
     isActive: Optional[bool] = None
+    companyId: Optional[str] = None
+    status: Optional[Literal["draft", "published", "closed"]] = None
 
 
 class JobResponse(JobBase):
     id: str
-    postedDate: str
+    postedDate: Optional[str] = None
     postedAgo: Optional[str] = None
-    matchScore: int = 85
+    matchScore: int = 0
+    recruiterId: Optional[str] = None
+    postedBy: Optional[str] = None
+    companyId: Optional[str] = None
+    status: str = "published"
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_posted_date(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if not data.get("postedDate"):
+                data["postedDate"] = data.get("createdAt") or ""
+        return data
 
 
 # Backward-compatible alias for frontend
@@ -109,8 +127,34 @@ class JobFilterQuery(BaseModel):
     page: Optional[int] = None
 
 
+class JobPartialSkillItem(BaseModel):
+    name: str
+    note: str
+
+
+class JobMissingSkillItem(BaseModel):
+    name: str
+    priority: Literal["High", "Medium", "Low"] = "Medium"
+    module: str = "Learning Hub"
+
+
+class JobRecommendationItem(BaseModel):
+    title: str
+    desc: str
+    action: str = "Launch Module"
+    link: str = "/learning"
+
+
 class JobMatchAnalysis(BaseModel):
     matchScore: int
-    matchedSkills: List[str]
-    missingSkills: List[str]
-    recommendations: List[str]
+    overallScore: int
+    matchedSkills: List[str] = Field(default_factory=list)
+    partialSkills: List[JobPartialSkillItem] = Field(default_factory=list)
+    missingSkills: List[Any] = Field(default_factory=list)
+    recommendations: List[Any] = Field(default_factory=list)
+    jobId: Optional[str] = None
+    jobTitle: Optional[str] = None
+    company: Optional[str] = None
+    resumeId: Optional[str] = None
+    resumeName: Optional[str] = None
+

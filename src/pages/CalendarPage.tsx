@@ -1,18 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { PageHeader } from '../components/common/PageHeader';
 import { Card } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
 import { Modal } from '../components/common/Modal';
-import {
-  INITIAL_CALENDAR_EVENTS,
-} from '../data/mockCalendarEvents';
-import {
-  CalendarEvent,
-  CalendarEventType,
-  calendarSyncApi,
-  GoogleCalendarSyncResult,
-} from '../api/calendarSync';
+import { calendarSyncApi, CalendarEvent, CalendarEventType, GoogleCalendarSyncResult } from '../api/calendarSync';
 import { Link } from 'react-router-dom';
 import {
   Calendar as CalendarIcon,
@@ -31,34 +23,40 @@ import {
   AlertCircle,
   FileText,
   Briefcase,
+  Loader2,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 
-const CALENDAR_STORAGE_KEY = 'careerx_calendar_events_v2';
-
 export const CalendarPage: React.FC = () => {
-  const [events, setEvents] = useState<CalendarEvent[]>(() => {
-    const saved = localStorage.getItem(CALENDAR_STORAGE_KEY);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return INITIAL_CALENDAR_EVENTS;
-      }
-    }
-    return INITIAL_CALENDAR_EVENTS;
-  });
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [selectedEventType, setSelectedEventType] = useState<string>('All');
+
+  // Fetch events from backend
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await calendarSyncApi.getEvents();
+        setEvents(data);
+      } catch (err) {
+        setError('Failed to load calendar events. Please try again.');
+        console.error('Calendar fetch error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSyncingGoogle, setIsSyncingGoogle] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<GoogleCalendarSyncResult>({
-    success: true,
-    syncedCount: 6,
-    lastSyncedAt: 'Today 10:15 AM',
-    accountEmail: 'alex.rivera.dev@gmail.com',
-  });
+  const [syncStatus, setSyncStatus] = useState<GoogleCalendarSyncResult | null>(null);
 
   // Current calendar month state (defaulting to September 2026)
   const [currentYear, setCurrentYear] = useState(2026);
@@ -71,11 +69,6 @@ export const CalendarPage: React.FC = () => {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  const syncEvents = (updated: CalendarEvent[]) => {
-    setEvents(updated);
-    localStorage.setItem(CALENDAR_STORAGE_KEY, JSON.stringify(updated));
-  };
-
   // Google Calendar Sync Simulation
   const handleSyncGoogleCalendar = async () => {
     setIsSyncingGoogle(true);
@@ -84,7 +77,7 @@ export const CalendarPage: React.FC = () => {
       setSyncStatus(res);
       // Mark all as synced
       const updated = events.map((e) => ({ ...e, isSyncedWithGoogle: true }));
-      syncEvents(updated);
+      setEvents(updated);
       setSyncNotice(`✅ Synced ${res.syncedCount} events with Google Calendar (${res.accountEmail})`);
       setTimeout(() => setSyncNotice(null), 4000);
     } finally {
@@ -95,6 +88,46 @@ export const CalendarPage: React.FC = () => {
   // Export .ICS
   const handleExportIcs = () => {
     calendarSyncApi.downloadIcs(events);
+  };
+
+  // Handle Add Event
+  const handleAddEvent = async () => {
+    if (!newEvent.title.trim()) return;
+
+    const eventData: Partial<CalendarEvent> = {
+      title: newEvent.title,
+      type: newEvent.type,
+      date: newEvent.date,
+      time: newEvent.time,
+      company: newEvent.company.trim() || undefined,
+      locationOrUrl: newEvent.locationOrUrl.trim() || undefined,
+      notes: newEvent.notes.trim() || undefined,
+      isSyncedWithGoogle: true,
+    };
+
+    const created = await calendarSyncApi.createEvent(eventData);
+    setEvents((prev) => [...prev, created]);
+    setIsAddModalOpen(false);
+    setNewEvent({
+      title: '',
+      type: 'Interview',
+      date: '2026-09-08',
+      time: '10:00 AM',
+      company: '',
+      locationOrUrl: '',
+      notes: '',
+    });
+  };
+
+  // Handle Delete Event
+  const handleDeleteEvent = async (id: string) => {
+    try {
+      await calendarSyncApi.deleteEvent(id);
+      setEvents((prev) => prev.filter((e) => e.id !== id));
+      setSelectedEvent(null);
+    } catch (err) {
+      console.error('Failed to delete event:', err);
+    }
   };
 
   // Navigation: Previous & Next Month
@@ -121,6 +154,7 @@ export const CalendarPage: React.FC = () => {
     setCurrentMonth(8); // September 2026
   };
 
+
   // Form State for Add Event
   const [newEvent, setNewEvent] = useState<{
     title: string;
@@ -139,35 +173,6 @@ export const CalendarPage: React.FC = () => {
     locationOrUrl: '',
     notes: '',
   });
-
-  const handleCreateEvent = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newEvent.title.trim()) return;
-
-    const created: CalendarEvent = {
-      id: `evt-${Date.now()}`,
-      title: newEvent.title.trim(),
-      type: newEvent.type,
-      date: newEvent.date,
-      time: newEvent.time,
-      company: newEvent.company.trim() || undefined,
-      locationOrUrl: newEvent.locationOrUrl.trim() || undefined,
-      notes: newEvent.notes.trim() || undefined,
-      isSyncedWithGoogle: true,
-    };
-
-    syncEvents([...events, created]);
-    setIsAddModalOpen(false);
-    setNewEvent({
-      title: '',
-      type: 'Interview',
-      date: '2026-09-08',
-      time: '10:00 AM',
-      company: '',
-      locationOrUrl: '',
-      notes: '',
-    });
-  };
 
   // Color config for the 4 requested event types
   const eventTypeConfig: Record<
@@ -265,6 +270,37 @@ export const CalendarPage: React.FC = () => {
     return days;
   }, [currentYear, currentMonth, filteredEvents]);
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-[#0A66C2]" />
+        <span className="ml-3 text-[#56687A]">Loading calendar...</span>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <AlertCircle className="w-12 h-12 text-[#E6395A]" />
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-[#1D2226]">Unable to load calendar</h3>
+          <p className="text-[#56687A] mt-1">{error}</p>
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => window.location.reload()}
+            className="mt-4"
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       {/* Top Header */}
@@ -334,7 +370,11 @@ export const CalendarPage: React.FC = () => {
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             </div>
             <p className="text-[11px] text-[#56687A]">
-              Synced with <strong className="text-[#1D2226]">{syncStatus.accountEmail}</strong> • Last updated {syncStatus.lastSyncedAt}
+              {syncStatus ? (
+                <>Synced with <strong className="text-[#1D2226]">{syncStatus.accountEmail}</strong> • Last updated {syncStatus.lastSyncedAt}</>
+              ) : (
+                'Sync not yet performed'
+              )}
             </p>
           </div>
         </div>
@@ -505,43 +545,50 @@ export const CalendarPage: React.FC = () => {
           <span className="text-[11px] font-mono text-[#788896]">Chronological Order</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filteredEvents.slice(0, 6).map((evt) => {
-            const conf = eventTypeConfig[evt.type];
+        {filteredEvents.length === 0 ? (
+          <div className="p-8 text-center border border-dashed border-[#D9D9D9] rounded-xl bg-[#F3F6F8]">
+            <p className="text-xs font-semibold text-[#1D2226]">No events scheduled.</p>
+            <p className="text-[11px] text-[#788896] mt-1">Add your upcoming interviews, assessment deadlines, or follow-ups.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {filteredEvents.slice(0, 6).map((evt) => {
+              const conf = eventTypeConfig[evt.type];
 
-            return (
-              <div
-                key={evt.id}
-                onClick={() => setSelectedEvent(evt)}
-                className="p-3 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] hover:border-[#0A66C2]/40 transition cursor-pointer flex flex-col justify-between space-y-2 group shadow-xs"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <Badge variant={conf.badge} size="sm">
-                      {evt.type}
-                    </Badge>
-                    <span className="text-[10px] font-mono text-[#788896]">
-                      {evt.date} • {evt.time}
+              return (
+                <div
+                  key={evt.id}
+                  onClick={() => setSelectedEvent(evt)}
+                  className="p-3 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] hover:border-[#0A66C2]/40 transition cursor-pointer flex flex-col justify-between space-y-2 group shadow-xs"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <Badge variant={conf.badge} size="sm">
+                        {evt.type}
+                      </Badge>
+                      <span className="text-[10px] font-mono text-[#788896]">
+                        {evt.date} • {evt.time}
+                      </span>
+                    </div>
+                    <h4 className="text-xs font-bold text-[#1D2226] group-hover:text-[#0A66C2] transition truncate">
+                      {evt.title}
+                    </h4>
+                    {evt.company && (
+                      <p className="text-[11px] text-[#56687A] font-mono">{evt.company}</p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-[#E8E8E8] text-[10px] font-mono text-[#788896]">
+                    <span className="truncate">{evt.locationOrUrl || 'Virtual Session'}</span>
+                    <span className="text-[#0A66C2] font-semibold group-hover:translate-x-0.5 transition">
+                      Details →
                     </span>
                   </div>
-                  <h4 className="text-xs font-bold text-[#1D2226] group-hover:text-[#0A66C2] transition truncate">
-                    {evt.title}
-                  </h4>
-                  {evt.company && (
-                    <p className="text-[11px] text-[#56687A] font-mono">{evt.company}</p>
-                  )}
                 </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-[#E8E8E8] text-[10px] font-mono text-[#788896]">
-                  <span className="truncate">{evt.locationOrUrl || 'Virtual Session'}</span>
-                  <span className="text-[#0A66C2] font-semibold group-hover:translate-x-0.5 transition">
-                    Details →
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </Card>
 
       {/* ========================================================================= */}
@@ -588,22 +635,32 @@ export const CalendarPage: React.FC = () => {
               </div>
             )}
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E8E8E8]">
-              <Button size="xs" variant="ghost" onClick={() => setSelectedEvent(null)}>
-                Close
+            <div className="flex items-center justify-between pt-2 border-t border-[#E8E8E8]">
+              <Button
+                size="xs"
+                variant="danger"
+                icon={<Trash2 className="w-3 h-3" />}
+                onClick={() => handleDeleteEvent(selectedEvent.id)}
+              >
+                Delete Event
               </Button>
-              <Link to="/applications">
-                <Button size="xs" variant="outline" icon={<Briefcase className="w-3 h-3 text-[#0A66C2]" />}>
-                  Applications
+              <div className="flex items-center gap-2">
+                <Button size="xs" variant="ghost" onClick={() => setSelectedEvent(null)}>
+                  Close
                 </Button>
-              </Link>
-              {selectedEvent.locationOrUrl?.startsWith('http') && (
-                <a href={selectedEvent.locationOrUrl} target="_blank" rel="noreferrer">
-                  <Button size="xs" variant="primary" icon={<Video className="w-3 h-3" />}>
-                    Join Meeting
+                <Link to="/applications">
+                  <Button size="xs" variant="outline" icon={<Briefcase className="w-3 h-3 text-[#0A66C2]" />}>
+                    Applications
                   </Button>
-                </a>
-              )}
+                </Link>
+                {selectedEvent.locationOrUrl?.startsWith('http') && (
+                  <a href={selectedEvent.locationOrUrl} target="_blank" rel="noreferrer">
+                    <Button size="xs" variant="primary" icon={<Video className="w-3 h-3" />}>
+                      Join Meeting
+                    </Button>
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         </Modal>
@@ -620,7 +677,7 @@ export const CalendarPage: React.FC = () => {
           subtitle="Add a technical interview, application deadline, assessment cutoff, or follow-up"
           maxWidth="md"
         >
-          <form onSubmit={handleCreateEvent} className="space-y-3.5 text-xs">
+          <form onSubmit={(e) => { e.preventDefault(); handleAddEvent(); }} className="space-y-3.5 text-xs">
             <div>
               <label className="text-xs font-semibold text-[#38434F] block mb-1">
                 Event Title *

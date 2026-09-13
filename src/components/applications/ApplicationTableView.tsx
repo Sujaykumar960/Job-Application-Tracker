@@ -32,9 +32,13 @@ export const ApplicationTableView: React.FC<ApplicationTableViewProps> = ({
 }) => {
   const statusBadges: Record<ApplicationStatus, { variant: 'brand' | 'success' | 'warning' | 'danger'; label: string }> = {
     Applied: { variant: 'warning', label: 'Applied' },
+    Screening: { variant: 'brand', label: 'Screening' },
+    Shortlisted: { variant: 'brand', label: 'Shortlisted' },
     Interview: { variant: 'brand', label: 'Interview' },
     Offer: { variant: 'success', label: 'Offer' },
+    Hired: { variant: 'success', label: 'Hired' },
     Rejected: { variant: 'danger', label: 'Rejected' },
+    Wishlist: { variant: 'warning', label: 'Wishlist' },
   };
 
   const priorityColors = {

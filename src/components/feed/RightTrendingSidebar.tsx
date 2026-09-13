@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '../common/Card';
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
@@ -14,9 +14,24 @@ import {
   ShieldCheck,
   Hash,
 } from 'lucide-react';
+import { connectionApi } from '../../api/connectionApi';
+import { NetworkUser } from '../../types';
 
 export const RightTrendingSidebar: React.FC = () => {
   const [connectedPeers, setConnectedPeers] = useState<Set<string>>(new Set());
+  const [suggestedPeers, setSuggestedPeers] = useState<NetworkUser[]>([]);
+
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      try {
+        const data = await connectionApi.getSuggestedConnections();
+        setSuggestedPeers(data);
+      } catch (err) {
+        console.error('Failed to load suggestions:', err);
+      }
+    };
+    fetchSuggestions();
+  }, []);
 
   const trendingTopics = [
     { tag: 'RedisLuaScripts', count: '1.4k posts', category: 'Backend' },
@@ -26,37 +41,17 @@ export const RightTrendingSidebar: React.FC = () => {
     { tag: 'MonacoEditorSandbox', count: '380 posts', category: 'Frontend' },
   ];
 
-  const suggestedPeers = [
-    {
-      id: 'p-1',
-      name: 'Marcus Vance',
-      role: 'Staff SRE @ Stripe',
-      initials: 'MV',
-      mutuals: 8,
-    },
-    {
-      id: 'p-2',
-      name: 'Chloe Nguyen',
-      role: 'Tech Lead @ Linear',
-      initials: 'CN',
-      mutuals: 12,
-    },
-    {
-      id: 'p-3',
-      name: 'Ryan Sterling',
-      role: 'Infrastructure Mgr @ Netflix',
-      initials: 'RS',
-      mutuals: 5,
-    },
-  ];
-
-  const toggleConnect = (id: string) => {
-    setConnectedPeers((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const toggleConnect = async (id: string) => {
+    try {
+      await connectionApi.sendConnectionRequest(id);
+      setConnectedPeers((prev) => {
+        const next = new Set(prev);
+        next.add(id);
+        return next;
+      });
+    } catch (err) {
+      console.error('Failed to send connection request:', err);
+    }
   };
 
   return (
@@ -108,45 +103,49 @@ export const RightTrendingSidebar: React.FC = () => {
         </div>
 
         <div className="space-y-2.5">
-          {suggestedPeers.map((peer) => {
-            const isConn = connectedPeers.has(peer.id);
+          {suggestedPeers.length === 0 ? (
+            <p className="text-xs text-[#788896] text-center py-2">No connection suggestions right now.</p>
+          ) : (
+            suggestedPeers.slice(0, 4).map((peer) => {
+              const isConn = connectedPeers.has(peer.id) || peer.connectionState === 'pending' || peer.connectionState === 'connected';
 
-            return (
-              <div
-                key={peer.id}
-                className="p-2.5 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] flex items-center justify-between gap-2"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-[#E8F3FF] border border-[#d0e6fc] flex items-center justify-center text-xs font-bold text-[#0A66C2] flex-shrink-0">
-                    {peer.initials}
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="text-xs font-bold text-[#1D2226] truncate">{peer.name}</h4>
-                    <p className="text-[10px] text-[#56687A] truncate">{peer.role}</p>
-                    <span className="text-[9px] text-[#788896] font-mono">
-                      {peer.mutuals} mutual connections
-                    </span>
-                  </div>
-                </div>
-
-                <Button
-                  size="xs"
-                  variant={isConn ? 'outline' : 'secondary'}
-                  onClick={() => toggleConnect(peer.id)}
-                  className="flex-shrink-0 text-[10px] px-2"
-                  icon={
-                    isConn ? (
-                      <UserCheck className="w-3 h-3 text-emerald-600" />
-                    ) : (
-                      <UserPlus className="w-3 h-3" />
-                    )
-                  }
+              return (
+                <div
+                  key={peer.id}
+                  className="p-2.5 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] flex items-center justify-between gap-2"
                 >
-                  {isConn ? 'Sent' : 'Connect'}
-                </Button>
-              </div>
-            );
-          })}
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-[#E8F3FF] border border-[#d0e6fc] flex items-center justify-center text-xs font-bold text-[#0A66C2] flex-shrink-0">
+                      {peer.avatarInitials || peer.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-bold text-[#1D2226] truncate">{peer.name}</h4>
+                      <p className="text-[10px] text-[#56687A] truncate">{peer.headline}</p>
+                      <span className="text-[9px] text-[#788896] font-mono">
+                        {peer.mutualConnections || peer.mutualCount || 0} mutual connections
+                      </span>
+                    </div>
+                  </div>
+
+                  <Button
+                    size="xs"
+                    variant={isConn ? 'outline' : 'secondary'}
+                    onClick={() => toggleConnect(peer.id)}
+                    className="flex-shrink-0 text-[10px] px-2"
+                    icon={
+                      isConn ? (
+                        <UserCheck className="w-3 h-3 text-emerald-600" />
+                      ) : (
+                        <UserPlus className="w-3 h-3" />
+                      )
+                    }
+                  >
+                    {isConn ? 'Sent' : 'Connect'}
+                  </Button>
+                </div>
+              );
+            })
+          )}
         </div>
       </Card>
 

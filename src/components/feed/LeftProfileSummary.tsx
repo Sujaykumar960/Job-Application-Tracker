@@ -2,7 +2,7 @@ import React from 'react';
 import { Card } from '../common/Card';
 import { Badge } from '../common/Badge';
 import { Link } from 'react-router-dom';
-import { PostType } from '../../data/mockFeed';
+import { PostType } from '../../types';
 import {
   Flame,
   Target,
@@ -16,6 +16,7 @@ import {
   Code2,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { useAuth } from '../../context/AuthContext';
 
 export interface LeftProfileSummaryProps {
   selectedType: string;
@@ -28,6 +29,17 @@ export const LeftProfileSummary: React.FC<LeftProfileSummaryProps> = ({
   onSelectType,
   savedCount,
 }) => {
+  const { user } = useAuth();
+
+  const initials = user?.name
+    ? user.name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
+    : 'CX';
+
   const feedFilterTypes: Array<{ label: string; value: string }> = [
     { label: 'All Discussions', value: 'All' },
     { label: 'Technical Discussions', value: 'Technical Discussion' },
@@ -45,20 +57,22 @@ export const LeftProfileSummary: React.FC<LeftProfileSummaryProps> = ({
       <Card className="p-4 bg-white border border-[#D9D9D9] space-y-3.5 shadow-sm">
         <div className="flex items-start gap-3">
           <div className="w-12 h-12 rounded-xl bg-[#0A66C2] border border-[#004182] flex items-center justify-center text-white font-extrabold text-sm flex-shrink-0 shadow-sm">
-            AR
+            {initials}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <h3 className="text-sm font-bold text-[#1D2226] truncate">Alex Rivera</h3>
+              <h3 className="text-sm font-bold text-[#1D2226] truncate">{user?.name || 'Engineer'}</h3>
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
             </div>
             <p className="text-[11px] text-[#56687A] truncate font-medium">
-              Distributed Systems Engineer
+              {user?.headline || (user?.role === 'recruiter' ? 'Technical Recruiter' : 'Software Engineer')}
             </p>
-            <p className="text-[10px] text-[#788896] flex items-center gap-1 mt-0.5 font-mono">
-              <MapPin className="w-2.5 h-2.5 text-[#788896]" />
-              Seattle, WA
-            </p>
+            {user?.location && (
+              <p className="text-[10px] text-[#788896] flex items-center gap-1 mt-0.5 font-mono">
+                <MapPin className="w-2.5 h-2.5 text-[#788896]" />
+                {user.location}
+              </p>
+            )}
           </div>
         </div>
 

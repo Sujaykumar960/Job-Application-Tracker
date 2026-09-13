@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 import { PageHeader } from '../components/common/PageHeader';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
@@ -12,6 +13,7 @@ import {
   LearningModule,
 } from '../components/learning/LearningModuleCard';
 import { ModuleViewerModal } from '../components/learning/ModuleViewerModal';
+import { learningApi, CourseSummary, MyLearningSummary } from '../api/learningApi';
 import {
   Search,
   X,
@@ -24,242 +26,17 @@ import {
   Target,
   SlidersHorizontal,
   Code2,
+  Loader2,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
-
-const STORAGE_KEY = 'careerx_learning_modules_v2';
-
-const INITIAL_MODULES: LearningModule[] = [
-  // 1. Recommended / High-Priority Gap Modules
-  {
-    id: 'mod-1',
-    title: 'Event-Driven Architecture & Partitioning with Apache Kafka',
-    category: 'Backend Development',
-    difficulty: 'Advanced',
-    duration: '3.5 hrs',
-    lessonsCount: 6,
-    progress: 20,
-    isRecommended: true,
-    recommendationReason: '⚠ Closes Identified Skill Gap (Stripe & Datadog)',
-    description:
-      'Master producer idempotence, consumer rebalancing protocols, dead-letter queues, and high-throughput partition strategies.',
-    skillsCovered: ['Kafka', 'Distributed Systems', 'Event-Driven', 'Go'],
-  },
-  {
-    id: 'mod-2',
-    title: 'Atomic Rate Limiting with Redis & Lua Scripts',
-    category: 'System Design',
-    difficulty: 'Advanced',
-    duration: '2.0 hrs',
-    lessonsCount: 4,
-    progress: 0,
-    isRecommended: true,
-    recommendationReason: '🎯 Target Role Match (Stripe Senior Backend)',
-    description:
-      'Build production sliding-window rate limiters with atomic Redis evaluation scripts to handle 50k+ requests/sec with p99 <10ms.',
-    skillsCovered: ['Redis', 'System Design', 'Concurrency', 'Lua'],
-  },
-  {
-    id: 'mod-3',
-    title: 'Production AWS Cloud Architecture (ECS, S3, RDS)',
-    category: 'Backend Development',
-    difficulty: 'Intermediate',
-    duration: '4.0 hrs',
-    lessonsCount: 8,
-    progress: 45,
-    isRecommended: true,
-    recommendationReason: '⚠ Closes Identified Cloud Gap (Cloud & DevOps)',
-    description:
-      'Configure auto-scaling containerized services on AWS ECS Fargate with private VPC subnets and Aurora PostgreSQL clusters.',
-    skillsCovered: ['AWS', 'Docker', 'ECS', 'PostgreSQL'],
-  },
-  {
-    id: 'mod-4',
-    title: 'Distributed Systems Technical Mock Round (AI Recruiter)',
-    category: 'Mock Interview',
-    difficulty: 'Advanced',
-    duration: '45 mins',
-    lessonsCount: 3,
-    progress: 0,
-    isRecommended: true,
-    recommendationReason: '⚡ Based on 88% ATS Score & 92% DSA Diagnostic',
-    description:
-      'Simulated 45-minute live technical interview covering replication lag, CAP theorem tradeoffs, and consensus protocols.',
-    skillsCovered: ['System Design', 'Mock Interview', 'Communication'],
-  },
-
-  // 2. Programming Languages
-  {
-    id: 'mod-5',
-    title: 'Go Concurrency Patterns: Channels, Mutexes & Worker Pools',
-    category: 'Programming Languages',
-    difficulty: 'Intermediate',
-    duration: '3.0 hrs',
-    lessonsCount: 5,
-    progress: 75,
-    description:
-      'Deep dive into Go routines, channel synchronization, context propagation, and race condition prevention.',
-    skillsCovered: ['Go', 'Concurrency', 'Memory Model'],
-  },
-  {
-    id: 'mod-6',
-    title: 'Advanced TypeScript: Conditional Types & Type Gymnastics',
-    category: 'Programming Languages',
-    difficulty: 'Advanced',
-    duration: '2.5 hrs',
-    lessonsCount: 4,
-    progress: 100,
-    description:
-      'Master mapped types, recursive generics, template literal types, and type-safe API schemas.',
-    skillsCovered: ['TypeScript', 'Generics', 'Type Safety'],
-  },
-  {
-    id: 'mod-7',
-    title: 'Python AsyncIO & High-Performance Event Loops',
-    category: 'Programming Languages',
-    difficulty: 'Intermediate',
-    duration: '2.8 hrs',
-    lessonsCount: 5,
-    progress: 0,
-    description:
-      'Build non-blocking I/O microservices utilizing Python 3.12 asyncio event loops, tasks, and uvloop.',
-    skillsCovered: ['Python', 'AsyncIO', 'Performance'],
-  },
-
-  // 3. DSA
-  {
-    id: 'mod-8',
-    title: 'Dynamic Programming: 2D Grids, Knapsack & Memoization Patterns',
-    category: 'DSA',
-    difficulty: 'Advanced',
-    duration: '5.0 hrs',
-    lessonsCount: 10,
-    progress: 90,
-    description:
-      'Comprehensive pattern-based approach to state transition equations, bottom-up tabulations, and space optimization.',
-    skillsCovered: ['DSA', 'Dynamic Programming', 'Algorithms'],
-  },
-  {
-    id: 'mod-9',
-    title: 'Graph Traversal: Dijkstra, Topological Sort & Disjoint Sets',
-    category: 'DSA',
-    difficulty: 'Intermediate',
-    duration: '4.2 hrs',
-    lessonsCount: 8,
-    progress: 60,
-    description:
-      'Solve complex shortest-path, cycle detection, and dependency resolution algorithmic problems.',
-    skillsCovered: ['DSA', 'Graphs', 'Algorithms'],
-  },
-
-  // 4. Frontend Development
-  {
-    id: 'mod-10',
-    title: 'React 19 Server Components & Concurrent Mode Rendering',
-    category: 'Frontend Development',
-    difficulty: 'Advanced',
-    duration: '3.2 hrs',
-    lessonsCount: 6,
-    progress: 85,
-    description:
-      'Explore React Server Components (RSC), Suspense streaming boundaries, useActionState, and server actions.',
-    skillsCovered: ['React', 'Next.js', 'Web Performance'],
-  },
-  {
-    id: 'mod-11',
-    title: 'Core Web Vitals & Browser Paint/Layout Optimization',
-    category: 'Frontend Development',
-    difficulty: 'Intermediate',
-    duration: '2.0 hrs',
-    lessonsCount: 4,
-    progress: 100,
-    description:
-      'Diagnose and optimize Largest Contentful Paint (LCP), Interaction to Next Paint (INP), and Cumulative Layout Shift (CLS).',
-    skillsCovered: ['Performance', 'Web Vitals', 'JavaScript'],
-  },
-
-  // 5. Database / SQL
-  {
-    id: 'mod-12',
-    title: 'PostgreSQL Index Tuning, B-Trees & Query Optimization',
-    category: 'Database / SQL',
-    difficulty: 'Advanced',
-    duration: '3.8 hrs',
-    lessonsCount: 7,
-    progress: 70,
-    description:
-      'Analyze EXPLAIN ANALYZE execution plans, optimize composite B-Tree indexes, and eliminate sequential table scans.',
-    skillsCovered: ['PostgreSQL', 'SQL', 'Database Tuning'],
-  },
-  {
-    id: 'mod-13',
-    title: 'Database Sharding & High-Availability Read-Replicas',
-    category: 'Database / SQL',
-    difficulty: 'Advanced',
-    duration: '3.0 hrs',
-    lessonsCount: 5,
-    progress: 0,
-    description:
-      'Design horizontal partitioning schemes, consistent hashing rings, and failover topologies for multi-terabyte datasets.',
-    skillsCovered: ['PostgreSQL', 'Sharding', 'High Availability'],
-  },
-
-  // 6. System Design
-  {
-    id: 'mod-14',
-    title: 'Design a Global Distributed Cache (Memcached/Redis)',
-    category: 'System Design',
-    difficulty: 'Advanced',
-    duration: '3.5 hrs',
-    lessonsCount: 6,
-    progress: 50,
-    description:
-      'Architect consistent hashing distribution, LRU cache eviction algorithms, write-through vs write-back, and dogpiling prevention.',
-    skillsCovered: ['System Design', 'Caching', 'Redis'],
-  },
-
-  // 7. Interview Preparation
-  {
-    id: 'mod-15',
-    title: 'FAANG Behavioral Masterclass: The STAR Framework',
-    category: 'Interview Preparation',
-    difficulty: 'Beginner',
-    duration: '1.5 hrs',
-    lessonsCount: 3,
-    progress: 100,
-    description:
-      'Structure leadership stories, conflict resolution anecdotes, and technical failures using Amazon Leadership Principles.',
-    skillsCovered: ['Behavioral', 'STAR Method', 'Interview Prep'],
-  },
-
-  // 8. Assessments
-  {
-    id: 'mod-16',
-    title: 'Senior Backend Engineer Skill Verification Exam',
-    category: 'Assessments',
-    difficulty: 'Advanced',
-    duration: '60 mins',
-    lessonsCount: 1,
-    progress: 0,
-    description:
-      'Comprehensive benchmark testing concurrency, SQL query profiling, API design, and distributed systems fundamentals.',
-    skillsCovered: ['Assessment', 'Go', 'SQL', 'System Design'],
-  },
-];
 
 export const LearningHubPage: React.FC = () => {
-  // State with LocalStorage persistence
-  const [modules, setModules] = useState<LearningModule[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return INITIAL_MODULES;
-      }
-    }
-    return INITIAL_MODULES;
-  });
+  const [searchParams] = useSearchParams();
+  const targetCourseId = searchParams.get('courseId');
+
+  // Learning modules state fetched from backend
+  const [modules, setModules] = useState<LearningModule[]>([]);
+  const [mySummary, setMySummary] = useState<MyLearningSummary | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -267,10 +44,49 @@ export const LearningHubPage: React.FC = () => {
   const [selectedProgress, setSelectedProgress] = useState<string>('All');
   const [activeModalModule, setActiveModalModule] = useState<LearningModule | null>(null);
 
-  // Sync to localStorage
+  // Fetch live courses and real user progress
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(modules));
-  }, [modules]);
+    let isMounted = true;
+    setIsLoading(true);
+
+    Promise.all([
+      learningApi.getCourses().catch(() => []),
+      learningApi.getMyProgress().catch(() => null),
+    ])
+      .then(([courses, summary]) => {
+        if (!isMounted) return;
+        const formatted: LearningModule[] = courses.map((c) => ({
+          id: c.id,
+          title: c.title,
+          category: c.category,
+          difficulty: c.difficulty,
+          duration: c.duration,
+          lessonsCount: c.lessonsCount,
+          progress: c.progress,
+          isRecommended: c.isRecommended,
+          recommendationReason: c.recommendationReason,
+          description: c.description,
+          skillsCovered: c.skillsCovered,
+        }));
+        setModules(formatted);
+        setMySummary(summary);
+
+        // If a courseId was passed in the URL (e.g. from Skill Gap page), open it immediately
+        if (targetCourseId) {
+          const match = formatted.find((m) => m.id === targetCourseId);
+          if (match) {
+            setActiveModalModule(match);
+          }
+        }
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [targetCourseId]);
 
   // Handle Lesson Progress Update
   const handleUpdateProgress = (moduleId: string, newProgress: number) => {
@@ -281,6 +97,30 @@ export const LearningHubPage: React.FC = () => {
       setActiveModalModule((prev) => (prev ? { ...prev, progress: newProgress } : null));
     }
   };
+
+  // Dynamically calculate category stats from real modules
+  const dynamicCategories = useMemo(() => {
+    return LEARNING_CATEGORIES.map((cat) => {
+      const catModules =
+        cat.id === 'Recommended'
+          ? modules.filter((m) => m.isRecommended)
+          : modules.filter((m) => m.category === cat.id);
+
+      const count = catModules.length;
+      const avg =
+        count > 0
+          ? Math.round(
+              catModules.reduce((acc, curr) => acc + curr.progress, 0) / count
+            )
+          : 0;
+
+      return {
+        ...cat,
+        modulesCount: count,
+        avgCompletion: avg,
+      };
+    });
+  }, [modules]);
 
   // Filtered Modules
   const filteredModules = useMemo(() => {
@@ -312,7 +152,7 @@ export const LearningHubPage: React.FC = () => {
     });
   }, [modules, searchQuery, selectedCategory, selectedDifficulty, selectedProgress]);
 
-  // Recommended Modules List (Always based on mock user profile)
+  // Recommended Modules List
   const recommendedModules = useMemo(() => {
     return modules.filter((m) => m.isRecommended);
   }, [modules]);
@@ -333,7 +173,9 @@ export const LearningHubPage: React.FC = () => {
         badge={
           <Badge variant="warning" size="sm">
             <Flame className="w-3.5 h-3.5 text-amber-400" />
-            14-Day Study Streak
+            {mySummary && mySummary.streakDays > 0
+              ? `${mySummary.streakDays}-Day Study Streak`
+              : 'Active Study Track'}
           </Badge>
         }
         actions={
@@ -353,7 +195,7 @@ export const LearningHubPage: React.FC = () => {
       />
 
       {/* ========================================================================= */}
-      {/* 1. CATEGORY CARDS (10 Requested Categories)                                */}
+      {/* 1. CATEGORY CARDS (Dynamic from live modules)                             */}
       {/* ========================================================================= */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between">
@@ -372,7 +214,7 @@ export const LearningHubPage: React.FC = () => {
 
         {/* 5-col grid for laptop viewports */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-          {LEARNING_CATEGORIES.map((cat) => (
+          {dynamicCategories.map((cat) => (
             <LearningCategoryCard
               key={cat.id}
               category={cat}
@@ -386,38 +228,40 @@ export const LearningHubPage: React.FC = () => {
       {/* ========================================================================= */}
       {/* 2. PERSONALIZED SECTION: RECOMMENDED FOR YOU                              */}
       {/* ========================================================================= */}
-      <Card className="p-4 bg-[#E8F3FF] border border-[#d0e6fc] space-y-4 shadow-sm">
-        {/* Recommendation Context Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#d0e6fc]">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-500" />
-              <h3 className="text-sm font-bold text-[#1D2226] tracking-tight">Recommended For You</h3>
-              <Badge variant="brand" size="sm">
-                AI Customized
-              </Badge>
+      {recommendedModules.length > 0 && (
+        <Card className="p-4 bg-[#E8F3FF] border border-[#d0e6fc] space-y-4 shadow-sm">
+          {/* Recommendation Context Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#d0e6fc]">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                <h3 className="text-sm font-bold text-[#1D2226] tracking-tight">Recommended For You</h3>
+                <Badge variant="brand" size="sm">
+                  AI Customized
+                </Badge>
+              </div>
+              <p className="text-xs text-[#38434F]">
+                Personalized based on your active resume competencies, target market expectations, and identified skill gaps.
+              </p>
             </div>
-            <p className="text-xs text-[#38434F]">
-              Personalized based on your active resume (<span className="text-[#0A66C2] font-medium">Go & TypeScript</span>), target role (<span className="text-[#1D2226] font-medium">Stripe Senior Backend</span>), identified skill gaps (<span className="text-[#8A6100] font-medium">Kafka & Redis Lua</span>), and diagnostic score (<span className="text-emerald-700 font-medium">92% DSA</span>).
-            </p>
+
+            <Link to="/skills" className="text-xs text-[#0A66C2] hover:text-[#004182] font-semibold whitespace-nowrap flex items-center gap-1">
+              View Skill Gap Matrix →
+            </Link>
           </div>
 
-          <Link to="/skills" className="text-xs text-[#0A66C2] hover:text-[#004182] font-semibold whitespace-nowrap flex items-center gap-1">
-            View Skill Gap Matrix →
-          </Link>
-        </div>
-
-        {/* Recommended Cards Grid (4 Columns on Desktop/Laptop) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {recommendedModules.map((mod) => (
-            <LearningModuleCard
-              key={mod.id}
-              module={mod}
-              onOpen={(m) => setActiveModalModule(m)}
-            />
-          ))}
-        </div>
-      </Card>
+          {/* Recommended Cards Grid (4 Columns on Desktop/Laptop) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {recommendedModules.map((mod) => (
+              <LearningModuleCard
+                key={mod.id}
+                module={mod}
+                onOpen={(m) => setActiveModalModule(m)}
+              />
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* ========================================================================= */}
       {/* 3. TOOLBAR: SEARCH, CATEGORY, DIFFICULTY, PROGRESS FILTERS                */}
@@ -501,7 +345,12 @@ export const LearningHubPage: React.FC = () => {
       {/* ========================================================================= */}
       {/* 4. MAIN MODULES GRID (Responsive 3-Column on Laptop 1366px+)               */}
       {/* ========================================================================= */}
-      {filteredModules.length === 0 ? (
+      {isLoading ? (
+        <div className="p-16 flex items-center justify-center text-xs text-[#56687A] gap-2">
+          <Loader2 className="w-6 h-6 animate-spin text-[#0A66C2]" />
+          Loading technical courses and progress...
+        </div>
+      ) : filteredModules.length === 0 ? (
         <div className="p-12 text-center border border-dashed border-[#D9D9D9] rounded-2xl bg-[#F3F6F8] space-y-2">
           <p className="text-sm font-semibold text-[#1D2226]">No modules match your current filter</p>
           <p className="text-xs text-[#56687A]">Try broadening your category, difficulty, or search terms.</p>

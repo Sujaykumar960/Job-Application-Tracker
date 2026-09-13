@@ -2,13 +2,17 @@ from pydantic import BaseModel
 
 
 class ProgressOverview(BaseModel):
-    questionsSolved: int = 142
-    totalQuestions: int = 150
-    accuracy: float = 93.4
-    codingStreakDays: int = 14
-    currentAtsScore: int = 88
-    projectsCompleted: int = 4
-    certificationsCount: int = 3
+    questionsSolved: int = 0
+    totalQuestions: int = 0
+    accuracy: float = 0.0
+    codingStreakDays: int = 0
+    currentAtsScore: int = 0
+    projectsCompleted: int = 0
+    certificationsCount: int = 0
+    coursesEnrolled: int = 0
+    coursesCompleted: int = 0
+    lessonsCompleted: int = 0
+    totalStudyHours: float = 0.0
 
 
 class ActivityDataPoint(BaseModel):

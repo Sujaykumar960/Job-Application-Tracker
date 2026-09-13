@@ -8,7 +8,9 @@ import { JobDetailsPanel } from '../components/jobs/JobDetailsPanel';
 import { JobMatchModal } from '../components/jobs/JobMatchModal';
 import { JobFilters } from '../components/jobs/JobFilters';
 import { JobItem, JobFilterState, Application } from '../types';
-import { MOCK_JOBS } from '../data/mockData';
+import { jobApi } from '../api/jobApi';
+import { applicationApi } from '../api/applicationApi';
+import { resumeApi } from '../api/resumeApi';
 import {
   Building2,
   Sparkles,
@@ -19,32 +21,54 @@ import {
   TrendingUp,
   Search,
   UserCheck,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 
-const APPLICATIONS_STORAGE_KEY = 'careerx_applications_v2';
-
 export const JobsPage: React.FC = () => {
-  const [jobs, setJobs] = useState<JobItem[]>(MOCK_JOBS);
+  const [jobs, setJobs] = useState<JobItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedJob, setSelectedJob] = useState<JobItem | null>(null);
   const [matchAnalysisJob, setMatchAnalysisJob] = useState<JobItem | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Set of job IDs already applied to (checked against applications in localStorage)
-  const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(() => {
-    const existing = localStorage.getItem(APPLICATIONS_STORAGE_KEY);
-    if (existing) {
+  // Set of job IDs already applied to
+  const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
+
+  // Fetch jobs from backend
+  useEffect(() => {
+    const fetchJobs = async () => {
       try {
-        const apps: Application[] = JSON.parse(existing);
-        const companies = new Set(apps.map((a) => a.company.toLowerCase()));
-        return new Set(
-          MOCK_JOBS.filter((j) => companies.has(j.company.toLowerCase())).map((j) => j.id)
-        );
-      } catch {
-        return new Set();
+        setIsLoading(true);
+        setError(null);
+        const data = await jobApi.getJobs();
+        setJobs(data);
+      } catch (err) {
+        setError('Failed to load jobs. Please try again.');
+        console.error('Jobs fetch error:', err);
+      } finally {
+        setIsLoading(false);
       }
-    }
-    return new Set();
-  });
+    };
+
+    fetchJobs();
+  }, []);
+
+  // Fetch applications to track applied jobs
+  useEffect(() => {
+    const fetchApplications = async () => {
+      try {
+        const apps = await applicationApi.getApplications();
+        const jobIds = new Set(apps.map((a) => a.company + '-' + a.role));
+        setAppliedJobIds(jobIds);
+      } catch (err) {
+        console.error('Failed to fetch applications:', err);
+      }
+    };
+
+    fetchApplications();
+  }, []);
 
   // Filter State
   const [filters, setFilters] = useState<JobFilterState>({
@@ -131,28 +155,27 @@ export const JobsPage: React.FC = () => {
   }, [jobs, filters]);
 
   // Handle Application Preparation Record
-  const handleApply = (job: JobItem) => {
-    // 1. Create a structured Application record
-    const existingRaw = localStorage.getItem(APPLICATIONS_STORAGE_KEY);
-    let apps: Application[] = [];
-    if (existingRaw) {
-      try {
-        apps = JSON.parse(existingRaw);
-      } catch {
-        apps = [];
-      }
-    }
-
-    const alreadyExists = apps.some(
-      (a) => a.company.toLowerCase() === job.company.toLowerCase() && a.role.toLowerCase() === job.title.toLowerCase()
-    );
-
-    if (!alreadyExists) {
+  const handleApply = async (job: JobItem) => {
+    try {
       const deadlineDate = new Date();
       deadlineDate.setDate(deadlineDate.getDate() + 14);
 
+      let resumeName = '';
+      let resumeId = '';
+      try {
+        const activeRes = await resumeApi.getActiveResume();
+        if (activeRes) {
+          resumeName = activeRes.name;
+          resumeId = activeRes.id;
+        }
+      } catch {
+        // Fall back to server auto-attaching resume
+      }
+
       const newApp: Application = {
         id: `app-from-job-${Date.now()}`,
+        jobId: job.id,
+        companyId: job.companyId,
         company: job.company,
         role: job.title,
         companyName: job.company,
@@ -165,23 +188,26 @@ export const JobsPage: React.FC = () => {
         status: 'Applied',
         priority: job.matchScore >= 90 ? 'High' : 'Medium',
         notes: `Prepared via CareerX Marketplace. Matches ${job.matchScore}% of competencies. Attached candidate resume.`,
-        resume: 'Alex_Rivera_Distributed_Systems.pdf',
+        resume: resumeName || undefined,
+        resumeId: resumeId || undefined,
         matchScore: job.matchScore,
         salaryRange: job.salaryRange,
         tags: job.skills.map((s) => s.name),
       };
 
-      apps = [newApp, ...apps];
-      localStorage.setItem(APPLICATIONS_STORAGE_KEY, JSON.stringify(apps));
+      await applicationApi.createApplication(newApp);
+      setAppliedJobIds((prev) => new Set([...prev, job.id]));
+      setToastMessage(`Application submitted for ${job.title} at ${job.company}! Added to your Application Tracker.`);
+
+      // Auto-dismiss toast after 4 seconds
+      setTimeout(() => {
+        setToastMessage(null);
+      }, 4000);
+    } catch (err: any) {
+      console.error('Failed to apply:', err);
+      const msg = err.response?.data?.detail || 'Failed to submit application. Please try again.';
+      alert(msg);
     }
-
-    setAppliedJobIds((prev) => new Set([...prev, job.id]));
-    setToastMessage(`Application prepared for ${job.title} at ${job.company}! Added to your Application Tracker.`);
-
-    // Auto-dismiss toast after 4 seconds
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 4000);
   };
 
   const resetFilters = () => {

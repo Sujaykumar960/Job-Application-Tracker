@@ -7,9 +7,7 @@ import { ConversationList } from '../components/chat/ConversationList';
 import { ChatHeader } from '../components/chat/ChatHeader';
 import { MessageBubble } from '../components/chat/MessageBubble';
 import { MessageComposer } from '../components/chat/MessageComposer';
-import {
-  INITIAL_CONVERSATIONS,
-} from '../data/mockConversations';
+import { messageApi } from '../api/messageApi';
 import {
   ChatConversation,
   ChatMessage,
@@ -24,30 +22,63 @@ import {
   WifiOff,
   Clock,
   ArrowLeft,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 
-const MESSAGES_STORAGE_KEY = 'careerx_chat_conversations_v2';
-
 export const MessagesPage: React.FC = () => {
-  // Load and persist conversations
-  const [conversations, setConversations] = useState<ChatConversation[]>(() => {
-    const saved = localStorage.getItem(MESSAGES_STORAGE_KEY);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return INITIAL_CONVERSATIONS;
-      }
-    }
-    return INITIAL_CONVERSATIONS;
-  });
+  // Load conversations from backend
+  const [conversations, setConversations] = useState<ChatConversation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [activeConversationId, setActiveConversationId] = useState<string>(
-    conversations[0]?.id || 'conv-1'
-  );
-
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isPeerTyping, setIsPeerTyping] = useState(false);
+
+  // Fetch conversations from backend
+  useEffect(() => {
+    const fetchConversations = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await messageApi.getConversations();
+        setConversations(data);
+        if (data.length > 0 && !activeConversationId) {
+          setActiveConversationId(data[0].id);
+        }
+      } catch (err) {
+        setError('Failed to load conversations. Please try again.');
+        console.error('Conversations fetch error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchConversations();
+  }, []);
+
+  // Fetch messages for active conversation
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+
+  useEffect(() => {
+    if (!activeConversationId) return;
+
+    const fetchMessages = async () => {
+      try {
+        setIsLoadingMessages(true);
+        const data = await messageApi.getMessages(activeConversationId);
+        setMessages(data);
+      } catch (err) {
+        console.error('Messages fetch error:', err);
+      } finally {
+        setIsLoadingMessages(false);
+      }
+    };
+
+    fetchMessages();
+  }, [activeConversationId]);
   const [wsStatus, setWsStatus] = useState<WsConnectionStatus>('CLOSED');
 
   // Auto-scroll ref
@@ -85,11 +116,49 @@ export const MessagesPage: React.FC = () => {
     }
   }, [location, conversations]);
 
-  // Sync to localStorage
-  const syncConversations = (updated: ChatConversation[]) => {
-    setConversations(updated);
-    localStorage.setItem(MESSAGES_STORAGE_KEY, JSON.stringify(updated));
-  };
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-[#0A66C2]" />
+        <span className="ml-3 text-[#56687A]">Loading conversations...</span>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <AlertCircle className="w-12 h-12 text-[#E6395A]" />
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-[#1D2226]">Unable to load conversations</h3>
+          <p className="text-[#56687A] mt-1">{error}</p>
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => window.location.reload()}
+            className="mt-4"
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (conversations.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <MessageSquare className="w-12 h-12 text-[#788896]" />
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-[#1D2226]">No conversations yet</h3>
+          <p className="text-[#56687A] mt-1">Start connecting with recruiters and peers.</p>
+        </div>
+      </div>
+    );
+  }
 
   // WebSocket Connection Hookup (Ready for FastAPI remote endpoint)
   useEffect(() => {
@@ -135,106 +204,57 @@ export const MessagesPage: React.FC = () => {
   }, [activeConversation?.messages, isPeerTyping]);
 
   // Handle Select Conversation
-  const handleSelectConversation = (id: string) => {
+  const handleSelectConversation = async (id: string) => {
     setActiveConversationId(id);
     // Mark as read
-    const updated = conversations.map((c) => {
-      if (c.id === id) {
-        return {
-          ...c,
-          unreadCount: 0,
-          messages: c.messages.map((m) => ({ ...m, status: 'read' as const })),
-        };
-      }
-      return c;
-    });
-    syncConversations(updated);
+    try {
+      await messageApi.markAsRead(id);
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === id
+            ? { ...c, unreadCount: 0 }
+            : c
+        )
+      );
+    } catch (err) {
+      console.error('Failed to mark as read:', err);
+    }
   };
 
   // Handle Send Message
-  const handleSendMessage = (text: string, attachment?: ChatAttachment) => {
+  const handleSendMessage = async (text: string, attachment?: ChatAttachment) => {
     if (!activeConversation) return;
 
-    const newMsg: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      conversationId: activeConversation.id,
-      senderId: 'alex',
-      senderName: 'Alex Rivera',
-      content: text,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      isOutgoing: true,
-      status: 'sent',
-      attachment,
-    };
+    try {
+      const newMsg = await messageApi.sendMessage(
+        activeConversation.id,
+        text,
+        attachment ? { name: attachment.name, size: attachment.size } : undefined
+      );
 
-    // Forward to WebSocket if connected
-    chatWebSocket.send({
-      type: 'message',
-      payload: newMsg,
-    });
+      // Update local state
+      setMessages((prev) => [...prev, newMsg]);
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === activeConversation.id
+            ? {
+                ...c,
+                lastMessage: text || (attachment ? `Sent attachment: ${attachment.name}` : ''),
+                lastMessageTime: newMsg.timestamp,
+              }
+            : c
+        )
+      );
 
-    const updated = conversations.map((c) => {
-      if (c.id === activeConversation.id) {
-        return {
-          ...c,
-          lastMessage: text || (attachment ? `Sent attachment: ${attachment.name}` : ''),
-          lastMessageTime: newMsg.timestamp,
-          messages: [...c.messages, newMsg],
-        };
-      }
-      return c;
-    });
-
-    syncConversations(updated);
-
-    // Simulate realistic peer reply after 1.5s
-    simulatePeerResponse(activeConversation.id, text);
-  };
-
-  // Simulated peer response
-  const simulatePeerResponse = (conversationId: string, userText: string) => {
-    setIsPeerTyping(true);
-
-    setTimeout(() => {
-      setIsPeerTyping(false);
-
-      let replyContent =
-        'Got it, Alex! Thanks for sharing this. I have logged it in your interview notes and will update the hiring team.';
-      if (userText.toLowerCase().includes('schedule') || userText.toLowerCase().includes('onsite')) {
-        replyContent =
-          'The onsite schedule is locked in with the distributed systems panel! Let me know if you need any technical accommodations.';
-      } else if (userText.toLowerCase().includes('kafka') || userText.toLowerCase().includes('rate limiter')) {
-        replyContent =
-          'That architecture makes total sense. We will dive deeper into your transactional outbox guarantees during the systems design round!';
-      }
-
-      const replyMsg: ChatMessage = {
-        id: `reply-${Date.now()}`,
-        conversationId,
-        senderId: 'peer',
-        senderName: activeConversation.peer.name,
-        content: replyContent,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isOutgoing: false,
-        status: 'delivered',
-      };
-
-      setConversations((prev) => {
-        const nextConvs = prev.map((c) => {
-          if (c.id === conversationId) {
-            return {
-              ...c,
-              lastMessage: replyMsg.content,
-              lastMessageTime: replyMsg.timestamp,
-              messages: [...c.messages, replyMsg],
-            };
-          }
-          return c;
-        });
-        localStorage.setItem(MESSAGES_STORAGE_KEY, JSON.stringify(nextConvs));
-        return nextConvs;
+      // Forward to WebSocket if connected
+      chatWebSocket.send({
+        type: 'message',
+        payload: newMsg,
       });
-    }, 1800);
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      alert('Failed to send message. Please try again.');
+    }
   };
 
   return (

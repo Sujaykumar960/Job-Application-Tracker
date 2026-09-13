@@ -47,7 +47,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Calendar', path: '/calendar', icon: Calendar },
   { label: 'Notifications', path: '/notifications', icon: Bell, badgeCount: 4, badgeVariant: 'danger' },
   { label: 'Profile', path: '/profile', icon: User },
-  { label: 'Recruiter Discovery', path: '/recruiter', icon: UserCheck },
+  { label: 'Recruiter Portal', path: '/recruiter', icon: UserCheck },
   { label: 'Settings', path: '/settings', icon: Settings },
 ];
 

@@ -1,5 +1,5 @@
-from typing import List, Literal, Optional
-from pydantic import BaseModel, Field
+from typing import Any, List, Literal, Optional
+from pydantic import BaseModel, Field, model_validator
 
 PostType = Literal[
     "Achievement",
@@ -12,9 +12,25 @@ PostType = Literal[
 ]
 
 
+class PostMediaItem(BaseModel):
+    id: str
+    type: Literal["image", "video"]
+    url: str
+    storageKey: Optional[str] = None
+    mimeType: str
+    fileSizeBytes: int
+    width: Optional[int] = None
+    height: Optional[int] = None
+    duration: Optional[float] = None
+    originalFilename: Optional[str] = None
+    createdAt: str
+
+
 class FeedAuthor(BaseModel):
+    id: Optional[str] = None
     name: str
     headline: str
+    avatarUrl: Optional[str] = None
     avatarInitials: str = "CX"
     avatarGradient: Optional[str] = "from-brand-600 to-indigo-800"
     company: Optional[str] = None
@@ -44,10 +60,11 @@ class CommentUpdate(BaseModel):
 
 
 class PostCreate(BaseModel):
-    content: str = Field(..., min_length=1, max_length=15000, description="Post body")
+    content: Optional[str] = Field("", max_length=15000, description="Post body")
     type: PostType = "Technical Discussion"
     tags: List[str] = Field(default_factory=list, max_length=20)
     codeSnippet: Optional[str] = Field(None, max_length=50000)
+    media: List[PostMediaItem] = Field(default_factory=list)
 
 
 class PostUpdate(BaseModel):
@@ -55,14 +72,17 @@ class PostUpdate(BaseModel):
     type: Optional[PostType] = None
     tags: Optional[List[str]] = Field(None, max_length=20)
     codeSnippet: Optional[str] = Field(None, max_length=50000)
+    media: Optional[List[PostMediaItem]] = None
 
 
 class FeedPost(BaseModel):
     id: str
+    authorId: Optional[str] = None
     author: FeedAuthor
-    type: PostType
+    type: PostType = "Technical Discussion"
     createdAt: str
     content: str
+    media: List[PostMediaItem] = Field(default_factory=list)
     tags: List[str] = Field(default_factory=list)
     codeSnippet: Optional[str] = None
     likesCount: int = 0
@@ -71,6 +91,26 @@ class FeedPost(BaseModel):
     isSaved: bool = False
     sharesCount: int = 0
     comments: List[FeedComment] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_author(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "author" not in data or not data["author"]:
+                author_id = data.get("authorId") or data.get("userId")
+                data["author"] = {
+                    "id": author_id,
+                    "name": data.get("authorName") or "CareerX Member",
+                    "headline": data.get("authorHeadline") or "Software Engineer",
+                    "avatarUrl": data.get("authorAvatar") or data.get("avatarUrl"),
+                    "avatarInitials": "AS" if data.get("authorName") == "Alice Seeker" else "CX",
+                    "avatarGradient": "from-brand-600 to-indigo-800",
+                    "company": data.get("authorCompany") or data.get("company"),
+                    "isVerified": False,
+                }
+            if not data.get("type"):
+                data["type"] = "Technical Discussion"
+        return data
 
 
 # Backward-compatible alias

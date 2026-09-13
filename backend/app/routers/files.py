@@ -1,11 +1,12 @@
 from pathlib import Path
+import re
 from typing import Any, Dict, Optional
 import uuid
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.dependencies import get_current_user, get_db
+from app.dependencies import get_current_user, get_db, get_optional_user
 from app.repositories.file_repository import FileRepository
 from app.schemas.file import FileDeleteResponse, FileMetadataResponse
 from app.storage import get_storage_backend
@@ -22,7 +23,7 @@ async def upload_file(
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Securely upload a file, validate magic bytes, and persist to storage abstraction."""
-    valid_purposes = {"resume", "chat_attachment", "profile_avatar", "other"}
+    valid_purposes = {"resume", "chat_attachment", "profile_avatar", "feed_media", "other"}
     if purpose not in valid_purposes:
         purpose = "other"
 
@@ -68,7 +69,7 @@ async def upload_file(
 @router.get("/{file_id}")
 async def download_file(
     file_id: str,
-    user: Dict[str, Any] = Depends(get_current_user),
+    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Download/stream a file with strict multi-tenant authorization checks."""
@@ -81,21 +82,44 @@ async def download_file(
         )
 
     # 1. Authorization checks
-    is_owner = meta["ownerId"] == user["id"]
-    is_admin = user.get("role") == "admin"
-    is_avatar = meta.get("purpose") == "profile_avatar"
-    is_recruiter_viewing_resume = user.get("role") == "recruiter" and meta.get("purpose") == "resume"
+    is_public = meta.get("purpose") in {"profile_avatar", "feed_media"}
+    if is_public:
+        is_authorized = True
+    else:
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required to access this file.",
+            )
+        is_owner = meta["ownerId"] == user["id"]
+        is_admin = user.get("role") == "admin"
+        is_authorized = is_owner or is_admin
 
-    is_authorized = is_owner or is_admin or is_avatar or is_recruiter_viewing_resume
+        if not is_authorized and user.get("role") == "recruiter" and meta.get("purpose") == "resume":
+            # Recruiter can only access resume if candidate applied to a job posted by this recruiter
+            recruiter_id = user["id"]
+            jobs_cursor = db.jobs.find(
+                {"$or": [{"postedBy": recruiter_id}, {"recruiterId": recruiter_id}]},
+                {"id": 1, "_id": 1},
+            )
+            recruiter_job_ids = [j.get("id") or str(j.get("_id")) async for j in jobs_cursor]
+            if recruiter_job_ids:
+                has_app = await db.applications.find_one({
+                    "userId": meta["ownerId"],
+                    "jobId": {"$in": recruiter_job_ids},
+                })
+                if has_app:
+                    is_authorized = True
 
-    if not is_authorized and meta.get("purpose") == "chat_attachment":
-        # Check if user is a participant in a conversation referencing this file
-        conv = await db.conversations.find_one({
-            "participants": user["id"],
-            "messages.attachment.url": {"$regex": f".*{file_id}.*"},
-        })
-        if conv:
-            is_authorized = True
+        if not is_authorized and meta.get("purpose") == "chat_attachment":
+            # Check if user is a participant in a conversation referencing this file
+            safe_file_id = re.escape(file_id)
+            conv = await db.conversations.find_one({
+                "participants": user["id"],
+                "messages.attachment.url": {"$regex": f".*{safe_file_id}.*"},
+            })
+            if conv:
+                is_authorized = True
 
     if not is_authorized:
         raise HTTPException(

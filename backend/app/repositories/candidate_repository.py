@@ -245,24 +245,12 @@ class CandidateRepository(BaseRepository):
         super().__init__(db, "candidates")
         self.interactions_repo = BaseRepository(db, "recruiter_interactions")
 
-    async def seed_if_empty(self) -> None:
-        """Seed initial reference candidates if collection is empty."""
-        count = await self.collection.count_documents({})
-        if count == 0:
-            import copy
-            for cand in SEED_CANDIDATES:
-                doc = copy.deepcopy(cand)
-                doc.pop("_id", None)
-                doc["createdAt"] = utc_now_iso()
-                await self.collection.insert_one(doc)
-
     async def search_candidates(
         self,
         query: CandidateFilterQuery,
         recruiter_id: Optional[str] = None,
         recruiter_company: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        await self.seed_if_empty()
         filter_q: Dict[str, Any] = {}
 
         # Mandatory rule: not_looking candidates are never discoverable to recruiters
@@ -338,7 +326,6 @@ class CandidateRepository(BaseRepository):
         recruiter_id: Optional[str] = None,
         recruiter_company: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
-        await self.seed_if_empty()
         doc = await self.get_by_id(candidate_id)
         if not doc:
             return None

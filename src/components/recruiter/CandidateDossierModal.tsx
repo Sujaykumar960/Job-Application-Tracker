@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Modal } from '../common/Modal';
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
-import { RecruiterCandidate } from '../../data/mockRecruiterData';
+import { RecruiterCandidate } from '../../types';
 import {
   ShieldCheck,
   MapPin,

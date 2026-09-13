@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PageHeader } from '../components/common/PageHeader';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
@@ -23,6 +23,8 @@ import {
   ShieldCheck,
   Zap,
   ArrowUpRight,
+  Lock,
+  Plus,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
@@ -39,215 +41,104 @@ import {
   CartesianGrid,
   Legend,
 } from 'recharts';
+import { useAuth } from '../context/AuthContext';
+import { progressApi, ProgressOverview, ActivityDataPoint, SkillTrajectory } from '../api/progressApi';
 
 export const ProgressPage: React.FC = () => {
+  const { user } = useAuth();
   const [viewMode, setViewMode] = useState<'student' | 'recruiter'>('student');
-  const [activityTimeframe, setActivityTimeframe] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
+  const [activityTimeframe, setActivityTimeframe] = useState<'daily' | 'weekly' | 'monthly'>('daily');
 
-  // Daily Activity Data (Hours & Questions over 7 days)
-  const dailyActivityData = [
-    { day: 'Mon', questions: 6, hours: 2.5, commits: 8 },
-    { day: 'Tue', questions: 8, hours: 3.2, commits: 12 },
-    { day: 'Wed', questions: 5, hours: 2.0, commits: 5 },
-    { day: 'Thu', questions: 11, hours: 4.5, commits: 15 },
-    { day: 'Fri', questions: 9, hours: 3.8, commits: 10 },
-    { day: 'Sat', questions: 14, hours: 5.2, commits: 18 },
-    { day: 'Sun', questions: 7, hours: 2.8, commits: 6 },
-  ];
+  const [overview, setOverview] = useState<ProgressOverview>({
+    questionsSolved: 0,
+    totalQuestions: 0,
+    accuracy: 0,
+    codingStreakDays: 0,
+    currentAtsScore: 0,
+    projectsCompleted: 0,
+    certificationsCount: 0,
+    coursesEnrolled: 0,
+    coursesCompleted: 0,
+    lessonsCompleted: 0,
+    totalStudyHours: 0,
+  });
+  const [activityData, setActivityData] = useState<ActivityDataPoint[]>([]);
+  const [skillTrajectories, setSkillTrajectories] = useState<SkillTrajectory[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Weekly Activity Data (Past 6 Weeks)
-  const weeklyActivityData = [
-    { week: 'W1 (Jul 25)', questions: 18, hours: 14.5, points: 720 },
-    { week: 'W2 (Aug 01)', questions: 22, hours: 16.0, points: 880 },
-    { week: 'W3 (Aug 08)', questions: 26, hours: 18.5, points: 1040 },
-    { week: 'W4 (Aug 15)', questions: 24, hours: 17.0, points: 960 },
-    { week: 'W5 (Aug 22)', questions: 31, hours: 21.0, points: 1240 },
-    { week: 'W6 (Aug 29)', questions: 34, hours: 23.5, points: 1360 },
-  ];
+  useEffect(() => {
+    const fetchProgress = async () => {
+      try {
+        setIsLoading(true);
+        const [ovData, actData, skillData] = await Promise.all([
+          progressApi.getProgressOverview().catch(() => ({
+            questionsSolved: 0,
+            totalQuestions: 0,
+            accuracy: 0,
+            codingStreakDays: 0,
+            currentAtsScore: 0,
+            projectsCompleted: 0,
+            certificationsCount: 0,
+            coursesEnrolled: 0,
+            coursesCompleted: 0,
+            lessonsCompleted: 0,
+            totalStudyHours: 0,
+          })),
+          progressApi.getActivityHistory(activityTimeframe).catch(() => []),
+          progressApi.getSkillTrajectories().catch(() => []),
+        ]);
+        setOverview(ovData);
+        setActivityData(actData);
+        setSkillTrajectories(skillData);
+      } catch (err) {
+        console.error('Failed to load progress data:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  // Monthly Activity Data (Past 6 Months)
-  const monthlyActivityData = [
-    { month: 'Apr', questions: 45, hours: 38, score: 72 },
-    { month: 'May', questions: 62, hours: 46, score: 76 },
-    { month: 'Jun', questions: 78, hours: 54, score: 80 },
-    { month: 'Jul', questions: 95, hours: 62, score: 84 },
-    { month: 'Aug', questions: 122, hours: 78, score: 87 },
-    { month: 'Sep', questions: 142, hours: 85, score: 91 },
-  ];
+    fetchProgress();
+  }, [activityTimeframe]);
 
-  // Skill Growth Progression (April to September)
-  const skillGrowthData = [
-    { month: 'Apr', go: 40, distributed: 30, sql: 55, dsa: 60 },
-    { month: 'May', go: 55, distributed: 45, sql: 65, dsa: 72 },
-    { month: 'Jun', go: 68, distributed: 58, sql: 75, dsa: 80 },
-    { month: 'Jul', go: 78, distributed: 68, sql: 82, dsa: 85 },
-    { month: 'Aug', go: 88, distributed: 78, sql: 86, dsa: 90 },
-    { month: 'Sep', go: 92, distributed: 88, sql: 90, dsa: 92 },
-  ];
-
-  // Resume ATS Growth Over Versions
-  const resumeGrowthData = [
-    { version: 'v1.0 (Jun)', atsScore: 68, keywordMatch: 62, impactScore: 58 },
-    { version: 'v1.2 (Jul)', atsScore: 74, keywordMatch: 70, impactScore: 68 },
-    { version: 'v2.0 (Aug)', atsScore: 82, keywordMatch: 82, impactScore: 76 },
-    { version: 'v2.4 (Sep)', atsScore: 88, keywordMatch: 92, impactScore: 84 },
-  ];
-
-  // Achievements
+  // Dynamic Achievements computed from real metrics
   const achievements = [
     {
       id: 'ach-1',
-      title: '100 Questions Solved',
-      desc: 'Solved over 100 algorithmic problems across arrays, trees, graphs, and dynamic programming.',
-      date: 'Aug 14, 2026',
-      icon: Target,
-      color: 'text-[#137333] bg-[#E6F4EA] border-[#c6ecd2]',
-      isUnlocked: true,
+      title: 'First Lesson Mastery',
+      desc: 'Completed your first interactive technical lesson in the Learning Hub.',
+      icon: BookOpen,
+      isUnlocked: (overview.lessonsCompleted || 0) >= 1,
+      metric: `${overview.lessonsCompleted || 0}/1 Lessons`,
+      color: 'text-[#0A66C2] bg-[#E8F3FF] border-[#d0e6fc]',
     },
     {
       id: 'ach-2',
-      title: '7 Day Streak',
-      desc: 'Maintained 7 consecutive days of code submissions and architectural study.',
-      date: 'Aug 20, 2026',
-      icon: Flame,
-      color: 'text-[#8A6100] bg-[#FFF4CC] border-[#ffe899]',
-      isUnlocked: true,
+      title: 'Course Completion',
+      desc: 'Finished 100% of the lessons in a full technical curriculum track.',
+      icon: Trophy,
+      isUnlocked: (overview.coursesCompleted || 0) >= 1,
+      metric: `${overview.coursesCompleted || 0}/1 Courses`,
+      color: 'text-emerald-700 bg-[#E6F4EA] border-[#c6ecd2]',
     },
     {
       id: 'ach-3',
-      title: 'Backend Assessment Completed',
-      desc: 'Scored 94% on Senior Backend Skills Verification exam (Top 6% nationwide).',
-      date: 'Aug 28, 2026',
-      icon: Trophy,
-      color: 'text-[#0A66C2] bg-[#E8F3FF] border-[#d0e6fc]',
-      isUnlocked: true,
+      title: 'Active Study Consistency',
+      desc: 'Maintained 3 or more consecutive days of learning and problem-solving.',
+      icon: Flame,
+      isUnlocked: (overview.codingStreakDays || 0) >= 3,
+      metric: `${overview.codingStreakDays || 0}/3 Days`,
+      color: 'text-[#8A6100] bg-[#FFF4CC] border-[#ffe899]',
     },
     {
       id: 'ach-4',
-      title: 'ATS Score Improved',
-      desc: 'Optimized resume content with quantified STAR metrics, raising ATS compatibility from 68% to 88%.',
-      date: 'Sep 01, 2026',
+      title: 'ATS High-Readiness',
+      desc: 'Optimized resume content with quantified STAR metrics achieving 75%+ ATS score.',
       icon: TrendingUp,
+      isUnlocked: (overview.currentAtsScore || 0) >= 75,
+      metric: `${overview.currentAtsScore || 0}/75 ATS`,
       color: 'text-[#0A66C2] bg-[#E8F3FF] border-[#d0e6fc]',
-      isUnlocked: true,
     },
   ];
-
-  // Projects Added
-  const projects = [
-    {
-      title: 'Distributed Event Streaming Broker',
-      tech: ['Go', 'Kafka', 'Redis', 'Docker'],
-      impact: '12k msg/sec throughput with zero message loss and transactional outbox pattern.',
-      link: 'https://github.com/alexrivera/distributed-broker',
-      date: 'Aug 2026',
-    },
-    {
-      title: 'Sliding-Window Rate Limiter Service',
-      tech: ['Go', 'Redis Lua', 'gRPC', 'Protobuf'],
-      impact: 'Throttles 45M+ daily requests with atomic Redis scripts and <10ms latency.',
-      link: 'https://github.com/alexrivera/go-rate-limiter',
-      date: 'Jul 2026',
-    },
-    {
-      title: 'Local-First Issue Tracker UI',
-      tech: ['React', 'TypeScript', 'WebSockets', 'Tailwind CSS'],
-      impact: 'Sub-200ms initial load, CRDT collaborative sync, and 60fps micro-interactions.',
-      link: 'https://github.com/alexrivera/linear-clone',
-      date: 'Jun 2026',
-    },
-    {
-      title: 'High-Throughput Telemetry Aggregator',
-      tech: ['Python', 'PostgreSQL', 'Docker', 'Grafana'],
-      impact: 'Ingests and aggregates microservice latency spans with sharded PostgreSQL partitions.',
-      link: 'https://github.com/alexrivera/telemetry-engine',
-      date: 'May 2026',
-    },
-  ];
-
-  // Certifications Added
-  const certifications = [
-    {
-      name: 'AWS Certified Solutions Architect - Associate',
-      issuer: 'Amazon Web Services',
-      issueDate: 'Jul 2026',
-      credentialId: 'AWS-PSA-849204',
-      badgeColor: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
-    },
-    {
-      name: 'Certified Kubernetes Administrator (CKA)',
-      issuer: 'Cloud Native Computing Foundation (CNCF)',
-      issueDate: 'Aug 2026',
-      credentialId: 'CKA-992015-LF',
-      badgeColor: 'text-sky-400 bg-sky-500/10 border-sky-500/30',
-    },
-    {
-      name: 'Meta Advanced React & Architecture Certification',
-      issuer: 'Meta / Coursera',
-      issueDate: 'May 2026',
-      credentialId: 'META-REACT-34821',
-      badgeColor: 'text-brand-300 bg-brand-500/10 border-brand-500/30',
-    },
-  ];
-
-  // Career Growth Timeline Milestones
-  const timelineMilestones = [
-    {
-      date: 'Sep 02, 2026',
-      title: 'Interview Stage Offer Pipeline Activated',
-      category: 'Career Milestone',
-      desc: 'Advanced to interview stage with Stripe and Linear. Overall ATS score reached 88% (Top 8%).',
-      badge: 'Current Stage',
-      badgeVariant: 'brand' as const,
-    },
-    {
-      date: 'Aug 28, 2026',
-      title: 'Scored 94% in Senior Backend Skills Assessment',
-      category: 'Assessment',
-      desc: 'Validated deep competency in Go concurrency patterns, memory models, and PostgreSQL indexing.',
-      badge: 'Verified Score',
-      badgeVariant: 'success' as const,
-    },
-    {
-      date: 'Aug 20, 2026',
-      title: 'Published Distributed Event Streaming Broker',
-      category: 'Engineering Portfolio',
-      desc: 'Released open-source Kafka message broker implementing transactional outbox semantics.',
-      badge: 'Project Launch',
-      badgeVariant: 'info' as const,
-    },
-    {
-      date: 'Aug 14, 2026',
-      title: 'Passed 100 Solved Algorithmic Problems',
-      category: 'DSA Practice',
-      desc: 'Completed dynamic programming, graph traversal (BFS/DFS), and monotonic queue tracks with 93.4% accuracy.',
-      badge: '100 Club',
-      badgeVariant: 'warning' as const,
-    },
-    {
-      date: 'Jul 22, 2026',
-      title: 'Earned AWS Solutions Architect Associate Certification',
-      category: 'Certification',
-      desc: 'Demonstrated proficiency in multi-AZ VPC networks, ECS Fargate containerization, and RDS Aurora.',
-      badge: 'AWS Certified',
-      badgeVariant: 'brand' as const,
-    },
-    {
-      date: 'Jun 15, 2026',
-      title: 'Graduated B.S. in Computer Science (GPA: 3.8/4.0)',
-      category: 'Academic',
-      desc: 'University of Washington. Dean’s Honor List. Specialization in Distributed Systems & Databases.',
-      badge: 'Degree Conferred',
-      badgeVariant: 'success' as const,
-    },
-  ];
-
-  const currentActivityData =
-    activityTimeframe === 'daily'
-      ? dailyActivityData
-      : activityTimeframe === 'weekly'
-      ? weeklyActivityData
-      : monthlyActivityData;
 
   return (
     <div className="space-y-6">
@@ -257,7 +148,7 @@ export const ProgressPage: React.FC = () => {
         description="Chronological engineering milestones, daily practice consistency, ATS resume evolution, and technical competency trajectories."
         badge={
           <Badge variant="brand" size="sm">
-            Verified Profile: Alex Rivera
+            Verified Profile: {user?.name || 'Engineer'}
           </Badge>
         }
         actions={
@@ -287,15 +178,14 @@ export const ProgressPage: React.FC = () => {
               </button>
             </div>
 
-            <Link to="/learning/code">
-              <Button size="sm" variant="primary" icon={<Code2 className="w-3.5 h-3.5" />}>
-                Practice Coding
+            <Link to="/learning">
+              <Button size="sm" variant="primary" icon={<BookOpen className="w-3.5 h-3.5" />}>
+                Learning Hub
               </Button>
             </Link>
 
             <Link to="/profile">
-              <Button size="sm" variant="outline" icon={<ExternalLink className="w-3.5 h-3.5 text-[#0A66C2]" />}
-              >
+              <Button size="sm" variant="outline" icon={<ExternalLink className="w-3.5 h-3.5 text-[#0A66C2]" />}>
                 Public Profile
               </Button>
             </Link>
@@ -304,60 +194,70 @@ export const ProgressPage: React.FC = () => {
       />
 
       {/* ========================================================================= */}
-      {/* 1. TOP STATS: QUESTIONS, ACCURACY, STREAK, ATS SCORE, PROJECTS, CERTS      */}
+      {/* 1. TOP STATS: COURSES, LESSONS, STUDY HOURS, STREAK, ATS SCORE            */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
         <div className="p-3.5 rounded-xl bg-white border border-[#D9D9D9] space-y-1 shadow-xs">
-          <span className="text-[10px] uppercase font-mono text-[#788896]">Questions Solved</span>
+          <span className="text-[10px] uppercase font-mono text-[#788896]">Courses Enrolled</span>
           <div className="flex items-baseline gap-1.5">
-            <span className="text-xl font-bold text-[#1D2226] font-mono">142</span>
-            <span className="text-[10px] text-[#788896] font-mono">/ 150</span>
+            <span className="text-xl font-bold text-[#1D2226] font-mono">{overview.coursesEnrolled || 0}</span>
+            <span className="text-[10px] text-[#788896] font-mono">Tracks</span>
           </div>
-          <span className="text-[10px] text-emerald-700 font-semibold font-mono">Top 5%</span>
+          <span className="text-[10px] text-[#0A66C2] font-semibold font-mono">
+            {overview.coursesCompleted || 0} Completed
+          </span>
         </div>
 
         <div className="p-3.5 rounded-xl bg-white border border-[#D9D9D9] space-y-1 shadow-xs">
-          <span className="text-[10px] uppercase font-mono text-[#788896]">Coding Streak</span>
+          <span className="text-[10px] uppercase font-mono text-[#788896]">Lessons Completed</span>
           <div className="flex items-baseline gap-1.5">
-            <span className="text-xl font-bold text-[#8A6100] font-mono">14 Days</span>
+            <span className="text-xl font-bold text-emerald-700 font-mono">{overview.lessonsCompleted || 0}</span>
+            <span className="text-[10px] text-[#788896] font-mono">Verified</span>
+          </div>
+          <span className="text-[10px] text-emerald-700 font-semibold font-mono">
+            {overview.lessonsCompleted ? 'Active Learning' : 'Start learning'}
+          </span>
+        </div>
+
+        <div className="p-3.5 rounded-xl bg-white border border-[#D9D9D9] space-y-1 shadow-xs">
+          <span className="text-[10px] uppercase font-mono text-[#788896]">Study Volume</span>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-xl font-bold text-[#1D2226] font-mono">{overview.totalStudyHours || 0}</span>
+            <span className="text-[10px] text-[#788896] font-mono">Hours</span>
+          </div>
+          <span className="text-[10px] text-[#56687A] font-semibold font-mono">Deep Work</span>
+        </div>
+
+        <div className="p-3.5 rounded-xl bg-white border border-[#D9D9D9] space-y-1 shadow-xs">
+          <span className="text-[10px] uppercase font-mono text-[#788896]">Learning Streak</span>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-xl font-bold text-[#8A6100] font-mono">{overview.codingStreakDays || 0} Days</span>
             <Flame className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
           </div>
-          <span className="text-[10px] text-[#8A6100] font-semibold font-mono">Active</span>
+          <span className="text-[10px] text-[#8A6100] font-semibold font-mono">
+            {overview.codingStreakDays ? 'Streak Active' : 'No streak yet'}
+          </span>
         </div>
 
         <div className="p-3.5 rounded-xl bg-white border border-[#D9D9D9] space-y-1 shadow-xs">
-          <span className="text-[10px] uppercase font-mono text-[#788896]">First-Submit Acc</span>
+          <span className="text-[10px] uppercase font-mono text-[#788896]">ATS Readiness</span>
           <div className="flex items-baseline gap-1.5">
-            <span className="text-xl font-bold text-emerald-700 font-mono">93.4%</span>
+            <span className="text-xl font-bold text-[#0A66C2] font-mono">{overview.currentAtsScore || 0}%</span>
           </div>
-          <span className="text-[10px] text-emerald-700 font-semibold font-mono">Verified Tests</span>
+          <span className="text-[10px] text-[#0A66C2] font-semibold font-mono">
+            {overview.currentAtsScore ? 'Resume Analysis' : 'Upload Resume'}
+          </span>
         </div>
 
         <div className="p-3.5 rounded-xl bg-white border border-[#D9D9D9] space-y-1 shadow-xs">
-          <span className="text-[10px] uppercase font-mono text-[#788896]">ATS Score</span>
+          <span className="text-[10px] uppercase font-mono text-[#788896]">Problems Solved</span>
           <div className="flex items-baseline gap-1.5">
-            <span className="text-xl font-bold text-[#0A66C2] font-mono">88%</span>
-            <span className="text-[10px] text-emerald-700 font-mono">+20 pts</span>
+            <span className="text-xl font-bold text-[#1D2226] font-mono">{overview.questionsSolved || 0}</span>
+            <span className="text-[10px] text-[#788896] font-mono">Questions</span>
           </div>
-          <span className="text-[10px] text-[#0A66C2] font-semibold font-mono">FAANG Ready</span>
-        </div>
-
-        <div className="p-3.5 rounded-xl bg-white border border-[#D9D9D9] space-y-1 shadow-xs">
-          <span className="text-[10px] uppercase font-mono text-[#788896]">Projects Added</span>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-xl font-bold text-[#1D2226] font-mono">4</span>
-            <span className="text-[10px] text-[#788896] font-mono">Live</span>
-          </div>
-          <span className="text-[10px] text-[#0A66C2] font-semibold font-mono">Distributed</span>
-        </div>
-
-        <div className="p-3.5 rounded-xl bg-white border border-[#D9D9D9] space-y-1 shadow-xs">
-          <span className="text-[10px] uppercase font-mono text-[#788896]">Certifications</span>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-xl font-bold text-[#1D2226] font-mono">3</span>
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-          </div>
-          <span className="text-[10px] text-emerald-700 font-semibold font-mono">AWS & CKA</span>
+          <span className="text-[10px] text-emerald-700 font-semibold font-mono">
+            {overview.questionsSolved ? 'Verified DSA' : 'Practice Code'}
+          </span>
         </div>
       </div>
 
@@ -374,7 +274,7 @@ export const ProgressPage: React.FC = () => {
                 Engineering Activity & Study Volume
               </CardTitle>
               <p className="text-[11px] text-[#56687A] mt-0.5">
-                Practice questions solved & deep study hours
+                Practice volume and deep study hours persisted in real time
               </p>
             </div>
 
@@ -397,199 +297,184 @@ export const ProgressPage: React.FC = () => {
           </CardHeader>
           <CardContent className="p-4 flex-1">
             <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={currentActivityData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E8E8E8" vertical={false} />
-                  <XAxis
-                    dataKey={activityTimeframe === 'daily' ? 'day' : activityTimeframe === 'weekly' ? 'week' : 'month'}
-                    stroke="#788896"
-                    fontSize={11}
-                    tickLine={false}
-                  />
-                  <YAxis stroke="#788896" fontSize={11} tickLine={false} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#FFFFFF',
-                      borderColor: '#D9D9D9',
-                      borderRadius: '8px',
-                      fontSize: '11px',
-                      color: '#1D2226',
-                    }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                  <Bar
-                    dataKey="questions"
-                    name="Questions Solved"
-                    fill="#0A66C2"
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Bar
-                    dataKey="hours"
-                    name="Study Hours"
-                    fill="#137333"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+              {activityData.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-xs text-[#788896] space-y-2 p-6 text-center">
+                  <BookOpen className="w-8 h-8 text-[#0A66C2]" />
+                  <p className="font-semibold text-[#1D2226]">No learning activity recorded yet</p>
+                  <p className="text-[11px] max-w-sm">
+                    Complete lessons in the Learning Hub to start generating your verified study consistency graph.
+                  </p>
+                  <Link to="/learning">
+                    <Button size="xs" variant="primary" className="mt-2">
+                      Start Learning
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={activityData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E8E8E8" vertical={false} />
+                    <XAxis
+                      dataKey="period"
+                      stroke="#788896"
+                      fontSize={11}
+                      tickLine={false}
+                    />
+                    <YAxis stroke="#788896" fontSize={11} tickLine={false} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#FFFFFF',
+                        borderColor: '#D9D9D9',
+                        borderRadius: '8px',
+                        fontSize: '11px',
+                        color: '#1D2226',
+                      }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                    <Bar
+                      dataKey="questionsSolved"
+                      name="Lessons / Questions"
+                      fill="#0A66C2"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar
+                      dataKey="studyHours"
+                      name="Study Hours"
+                      fill="#137333"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Skill Growth Multi-Line Area Chart (5 Cols) */}
+        {/* Skill Growth (5 Cols) */}
         <Card className="lg:col-span-5 flex flex-col bg-white border border-[#D9D9D9] shadow-xs">
           <CardHeader className="py-3 px-4 border-b border-[#E8E8E8] flex items-center justify-between">
             <div>
               <CardTitle className="text-xs font-bold text-[#1D2226] flex items-center gap-1.5">
                 <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-                Technical Skill Trajectory (6 Months)
+                Technical Skill Trajectory
               </CardTitle>
               <p className="text-[11px] text-[#56687A] mt-0.5">
-                Competency depth over time (0 - 100%)
+                Competency growth across active curriculum tracks
               </p>
             </div>
             <Badge variant="brand" size="sm">
-              +42% Growth
+              Competency Depth
             </Badge>
           </CardHeader>
           <CardContent className="p-4 flex-1">
             <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={skillGrowthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorGo" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="#0A66C2" stopOpacity={0.4} />
-                      <stop offset="100%" stopColor="#0A66C2" stopOpacity={0.0} />
-                    </linearGradient>
-                    <linearGradient id="colorDist" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="#137333" stopOpacity={0.4} />
-                      <stop offset="100%" stopColor="#137333" stopOpacity={0.0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E8E8E8" vertical={false} />
-                  <XAxis dataKey="month" stroke="#788896" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#788896" fontSize={11} tickLine={false} domain={[20, 100]} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#FFFFFF',
-                      borderColor: '#D9D9D9',
-                      borderRadius: '8px',
-                      fontSize: '11px',
-                      color: '#1D2226',
-                    }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                  <Area
-                    type="monotone"
-                    dataKey="go"
-                    name="Go Concurrency"
-                    stroke="#0A66C2"
-                    fill="url(#colorGo)"
-                    strokeWidth={2}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="distributed"
-                    name="Distributed Systems"
-                    stroke="#137333"
-                    fill="url(#colorDist)"
-                    strokeWidth={2}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="dsa"
-                    name="Algorithms (DSA)"
-                    stroke="#8A6100"
-                    fill="transparent"
-                    strokeWidth={2}
-                    strokeDasharray="4 4"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              {skillTrajectories.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-xs text-[#788896] space-y-2 p-6 text-center">
+                  <Target className="w-8 h-8 text-brand-500" />
+                  <p className="font-semibold text-[#1D2226]">No skill trajectories recorded yet</p>
+                  <p className="text-[11px] max-w-xs">
+                    Enroll in courses and complete syllabus modules to record your verified technical growth.
+                  </p>
+                  <Link to="/skills">
+                    <Button size="xs" variant="outline" className="mt-2">
+                      Diagnose Skill Gaps
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="h-full overflow-y-auto space-y-3 pr-1">
+                  {skillTrajectories.map((s) => (
+                    <div key={s.name} className="p-2.5 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-semibold text-[#1D2226] truncate">{s.name}</span>
+                        <span className="font-mono text-[#0A66C2] font-bold shrink-0">
+                          {s.currentScore}% (+{s.growthPercentage}%)
+                        </span>
+                      </div>
+                      <div className="w-full bg-[#D9D9D9] h-2 rounded-full overflow-hidden">
+                        <div
+                          className="bg-[#0A66C2] h-full rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, Math.max(0, s.currentScore))}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-[10px] text-[#788896] font-mono">
+                        <span>Baseline: {s.initialScore}%</span>
+                        <span>Target: 100%</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. RESUME ATS SCORE GROWTH CHART & AUDIT                                   */}
+      {/* 3. RESUME ATS SCORE READINESS AUDIT                                        */}
       {/* ========================================================================= */}
       <Card className="p-4 bg-white border border-[#D9D9D9] space-y-3 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#E8E8E8]">
           <div>
             <h3 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-2">
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              Resume ATS Score Evolution (v1.0 to v2.4)
+              Resume ATS Analysis & Job Readiness
             </h3>
             <p className="text-[11px] text-[#56687A] mt-0.5">
-              Impact of STAR bullet point quantification and high-value keyword injection across versions.
+              Live score generated by Groq AI from candidate resume and market job requirements.
             </p>
           </div>
           <div className="flex items-center gap-3 text-xs font-mono">
-            <span className="text-[#788896]">
-              Initial: <strong className="text-[#1D2226]">68%</strong>
-            </span>
-            <span className="text-[#788896]">→</span>
-            <span className="text-emerald-700">
-              Current: <strong>88% (+20 pts)</strong>
+            <span className="text-[#788896]">Active ATS Score:</span>
+            <span className="text-emerald-700 font-bold text-sm">
+              {overview.currentAtsScore > 0 ? `${overview.currentAtsScore}%` : 'Not evaluated'}
             </span>
           </div>
         </div>
 
-        <div className="h-44 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={resumeGrowthData} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E8E8E8" vertical={false} />
-              <XAxis dataKey="version" stroke="#788896" fontSize={11} tickLine={false} />
-              <YAxis stroke="#788896" fontSize={11} tickLine={false} domain={[50, 100]} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#FFFFFF',
-                  borderColor: '#D9D9D9',
-                  borderRadius: '8px',
-                  fontSize: '11px',
-                  color: '#1D2226',
-                }}
-              />
-              <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '4px' }} />
-              <Line
-                type="monotone"
-                dataKey="atsScore"
-                name="Overall ATS Score"
-                stroke="#0A66C2"
-                strokeWidth={3}
-                dot={{ r: 4, fill: '#0A66C2' }}
-              />
-              <Line
-                type="monotone"
-                dataKey="keywordMatch"
-                name="Keyword Density"
-                stroke="#137333"
-                strokeWidth={2}
-                dot={{ r: 3, fill: '#137333' }}
-              />
-              <Line
-                type="monotone"
-                dataKey="impactScore"
-                name="STAR Metrics Score"
-                stroke="#8A6100"
-                strokeWidth={2}
-                strokeDasharray="3 3"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        {overview.currentAtsScore > 0 ? (
+          <div className="p-4 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-[#1D2226]">Verified ATS Compatibility</span>
+              <p className="text-[11px] text-[#56687A]">
+                Your active resume has been evaluated with production-grade Groq analysis against industry benchmarks.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link to="/resume">
+                <Button size="sm" variant="primary" icon={<Sparkles className="w-3.5 h-3.5" />}>
+                  Open Resume Studio
+                </Button>
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="p-6 text-center space-y-2 border border-dashed border-[#D9D9D9] rounded-xl bg-[#F3F6F8]">
+            <p className="text-xs font-semibold text-[#1D2226]">No Resume ATS Score Recorded</p>
+            <p className="text-[11px] text-[#56687A]">
+              Upload your PDF/DOCX resume in the Resume Studio to generate an ATS compatibility diagnostic.
+            </p>
+            <Link to="/resume">
+              <Button size="xs" variant="primary" className="mt-1">
+                Upload Resume
+              </Button>
+            </Link>
+          </div>
+        )}
       </Card>
 
       {/* ========================================================================= */}
-      {/* 4. ACHIEVEMENT CARDS (4 Requested Achievements)                           */}
+      {/* 4. ACHIEVEMENT MILESTONES (Real Verified Unlocks)                          */}
       {/* ========================================================================= */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-2">
             <Trophy className="w-3.5 h-3.5 text-amber-500" />
-            Unlocked Career Milestones & Badges ({achievements.length})
+            Verified Career Milestones & Badges
           </span>
-          <span className="text-[11px] text-[#788896] font-mono">Next: 250 Questions Solved (142/250)</span>
+          <span className="text-[11px] text-[#788896] font-mono">
+            {achievements.filter((a) => a.isUnlocked).length} / {achievements.length} Unlocked
+          </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
@@ -607,7 +492,7 @@ export const ProgressPage: React.FC = () => {
                     >
                       <Icon className="w-4 h-4" />
                     </div>
-                    <span className="text-[10px] font-mono text-[#788896]">{ach.date}</span>
+                    <span className="text-[10px] font-mono text-[#788896]">{ach.metric}</span>
                   </div>
 
                   <h4 className="text-xs font-bold text-[#1D2226] group-hover:text-[#0A66C2] transition">
@@ -617,172 +502,22 @@ export const ProgressPage: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-[#E8E8E8] text-[10px] font-mono">
-                  <span className="text-emerald-700 font-bold flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> Unlocked
-                  </span>
-                  <span className="text-[#788896]">Verified ✓</span>
+                  {ach.isUnlocked ? (
+                    <span className="text-emerald-700 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Unlocked
+                    </span>
+                  ) : (
+                    <span className="text-[#788896] flex items-center gap-1">
+                      <Lock className="w-3 h-3" /> In Progress
+                    </span>
+                  )}
+                  <span className="text-[#788896]">{ach.isUnlocked ? 'Verified ✓' : 'Pending'}</span>
                 </div>
               </div>
             );
           })}
         </div>
       </div>
-
-      {/* ========================================================================= */}
-      {/* 5. PROJECTS & CERTIFICATIONS PORTFOLIO                                     */}
-      {/* ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Projects (7 Cols) */}
-        <Card className="lg:col-span-7 space-y-3 p-4 bg-white border border-[#D9D9D9] shadow-xs">
-          <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8]">
-            <div>
-              <h3 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-2">
-                <Code2 className="w-3.5 h-3.5 text-[#0A66C2]" />
-                Featured Production Projects ({projects.length})
-              </h3>
-              <p className="text-[11px] text-[#56687A] mt-0.5">
-                Architectural proofs-of-concept attached to recruiter profile
-              </p>
-            </div>
-            <Badge variant="brand" size="sm">
-              4 Live Repos
-            </Badge>
-          </div>
-
-          <div className="space-y-2.5">
-            {projects.map((proj) => (
-              <div
-                key={proj.title}
-                className="p-3 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] flex flex-col justify-between space-y-2 hover:border-[#D9D9D9] transition"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h4 className="text-xs font-bold text-[#1D2226]">{proj.title}</h4>
-                    <p className="text-[11px] text-[#38434F] mt-0.5 leading-relaxed">
-                      {proj.impact}
-                    </p>
-                  </div>
-                  <a
-                    href={proj.link}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="p-1 text-[#788896] hover:text-[#0A66C2] transition"
-                    title="View GitHub Repository"
-                  >
-                    <ArrowUpRight className="w-4 h-4" />
-                  </a>
-                </div>
-
-                <div className="flex items-center justify-between text-[10px] pt-1">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {proj.tech.map((t) => (
-                      <span
-                        key={t}
-                        className="px-1.5 py-0.2 rounded bg-white text-[#56687A] border border-[#D9D9D9] font-mono"
-                      >
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                  <span className="text-[#788896] font-mono">{proj.date}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* Certifications (5 Cols) */}
-        <Card className="lg:col-span-5 space-y-3 p-4 bg-white border border-[#D9D9D9] shadow-xs">
-          <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8]">
-            <div>
-              <h3 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-2">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                Verified Certifications ({certifications.length})
-              </h3>
-              <p className="text-[11px] text-[#56687A] mt-0.5">Third-party accredited credentials</p>
-            </div>
-            <Badge variant="success" size="sm">
-              Verified
-            </Badge>
-          </div>
-
-          <div className="space-y-2.5">
-            {certifications.map((cert) => (
-              <div
-                key={cert.name}
-                className="p-3 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] space-y-1.5"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <h4 className="text-xs font-bold text-[#1D2226] leading-tight">{cert.name}</h4>
-                  <Badge variant="neutral" size="sm">
-                    {cert.issueDate}
-                  </Badge>
-                </div>
-                <p className="text-[11px] text-[#56687A]">{cert.issuer}</p>
-                <div className="flex items-center justify-between text-[10px] font-mono pt-1 text-[#788896]">
-                  <span>ID: {cert.credentialId}</span>
-                  <span className="text-emerald-700 flex items-center gap-0.5 font-bold">
-                    <CheckCircle2 className="w-3 h-3" /> Active
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 6. PROFESSIONAL CAREER-GROWTH TIMELINE (Chronological Journey)             */}
-      {/* ========================================================================= */}
-      <Card className="p-5 bg-white border border-[#D9D9D9] space-y-4 shadow-xs">
-        <div className="flex items-center justify-between pb-3 border-b border-[#E8E8E8]">
-          <div>
-            <h3 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-2">
-              <Calendar className="w-3.5 h-3.5 text-[#0A66C2]" />
-              Professional Career-Growth Timeline
-            </h3>
-            <p className="text-[11px] text-[#56687A] mt-0.5">
-              Verified chronological trajectory from computer science degree to FAANG interview pipelines.
-            </p>
-          </div>
-          <Badge variant="brand" size="sm">
-            Recruiter Verified
-          </Badge>
-        </div>
-
-        {/* Vertical Timeline Tree */}
-        <div className="relative pl-6 space-y-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#E8E8E8]">
-          {timelineMilestones.map((m, idx) => (
-            <div key={idx} className="relative group">
-              {/* Timeline Bullet Dot */}
-              <div
-                className={`absolute -left-6 top-1 w-4 h-4 rounded-full border-2 border-white transition ${
-                  idx === 0
-                    ? 'bg-[#0A66C2] ring-4 ring-[#0A66C2]/20'
-                    : 'bg-[#D9D9D9] group-hover:bg-[#0A66C2]'
-                }`}
-              />
-
-              <div className="p-3.5 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] group-hover:border-[#0A66C2]/40 transition space-y-1.5">
-                <div className="flex items-center justify-between flex-wrap gap-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-[#1D2226]">{m.title}</span>
-                    <Badge variant={m.badgeVariant} size="sm">
-                      {m.badge}
-                    </Badge>
-                  </div>
-                  <span className="text-[10px] font-mono text-[#788896]">{m.date}</span>
-                </div>
-
-                <p className="text-xs text-[#38434F] leading-relaxed">{m.desc}</p>
-                <span className="text-[10px] font-mono text-[#788896] block pt-0.5">
-                  Category: {m.category}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
     </div>
   );
 };

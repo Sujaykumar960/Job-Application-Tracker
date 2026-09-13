@@ -53,13 +53,6 @@ export const ForgotPasswordPage: React.FC = () => {
             <span>Reset Instructions Dispatched</span>
           </div>
           <p className="text-xs text-[#38434F] leading-relaxed">{successMessage}</p>
-          <div className="pt-2">
-            <Link to="/reset-password?token=mock_token_demo">
-              <Button size="xs" variant="primary">
-                Simulate Reset Token Link
-              </Button>
-            </Link>
-          </div>
         </div>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

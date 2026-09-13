@@ -15,8 +15,8 @@ const registerSchema = z
     name: z.string().min(2, 'Name must be at least 2 characters'),
     email: z.string().min(1, 'Email is required').email('Please enter a valid email address'),
     role: z.enum(['seeker', 'recruiter']),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
-    confirmPassword: z.string().min(6, 'Please confirm your password'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string().min(8, 'Please confirm your password'),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',
@@ -59,8 +59,15 @@ export const RegisterPage: React.FC = () => {
         role: data.role as RoleType,
       });
       navigate('/', { replace: true });
-    } catch (err: unknown) {
-      setAuthError(err instanceof Error ? err.message : 'Registration failed');
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        (Array.isArray(err?.response?.data?.detail)
+          ? err.response.data.detail[0]?.msg
+          : err?.response?.data?.detail) ||
+        err?.message ||
+        'Registration failed';
+      setAuthError(typeof msg === 'string' ? msg : JSON.stringify(msg));
     }
   };
 
@@ -76,7 +83,7 @@ export const RegisterPage: React.FC = () => {
 
       {/* Error Alert */}
       {authError && (
-        <div className="p-3 rounded-xl bg-[#FCE8E6] border border-[#f8cbc7] text-xs text-[#B3261E] flex items-start gap-2.5">
+        <div role="alert" data-testid="auth-error-alert" className="p-3 rounded-xl bg-[#FCE8E6] border border-[#f8cbc7] text-xs text-[#B3261E] flex items-start gap-2.5">
           <AlertCircle className="w-4 h-4 text-[#B3261E] flex-shrink-0 mt-0.5" />
           <span className="leading-relaxed">{authError}</span>
         </div>

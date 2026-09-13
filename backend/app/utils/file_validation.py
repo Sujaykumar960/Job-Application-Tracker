@@ -37,6 +37,18 @@ SUPPORTED_FILE_TYPES = {
         "extensions": [".doc"],
         "check": lambda b: b.startswith(b"\xd0\xcf\x11\xe0"),
     },
+    "video/mp4": {
+        "extensions": [".mp4"],
+        "check": lambda b: len(b) >= 8 and b[4:8] in (b"ftyp", b"moov", b"mdat", b"wide"),
+    },
+    "video/webm": {
+        "extensions": [".webm"],
+        "check": lambda b: b.startswith(b"\x1a\x45\xdf\xa3"),
+    },
+    "video/quicktime": {
+        "extensions": [".mov"],
+        "check": lambda b: len(b) >= 8 and b[4:8] in (b"moov", b"ftyp", b"wide", b"mdat", b"free"),
+    },
 }
 
 # Inverted mapping: extension -> standard MIME
@@ -49,6 +61,9 @@ EXTENSION_TO_MIME = {
     ".webp": "image/webp",
     ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ".doc": "application/msword",
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".mov": "video/quicktime",
 }
 
 
