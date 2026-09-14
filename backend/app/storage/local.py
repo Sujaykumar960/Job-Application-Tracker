@@ -28,6 +28,25 @@ class LocalFileStorage(StorageBackend):
             raise ValueError(f"Path traversal detected: {key}")
         return target_path
 
+    def _find_existing_path(self, key: str) -> Optional[Path]:
+        clean_key = key.lstrip("/\\")
+        # 1. Primary path in self.base_dir
+        p = (self.base_dir / clean_key).resolve()
+        if p.is_file():
+            return p
+        # 2. Check parent/uploads (e.g. when base_dir is backend/uploads)
+        alt1 = (self.base_dir.parent / "uploads" / clean_key).resolve()
+        if alt1.is_file():
+            return alt1
+        # 3. Check backend/uploads (e.g. when base_dir is root/uploads)
+        alt2 = (self.base_dir / "backend" / "uploads" / clean_key).resolve()
+        if alt2.is_file():
+            return alt2
+        alt3 = (self.base_dir.parent / "backend" / "uploads" / clean_key).resolve()
+        if alt3.is_file():
+            return alt3
+        return None
+
     async def save(self, key: str, data: bytes, content_type: str) -> str:
         safe_path = self._get_safe_path(key)
         
@@ -39,18 +58,18 @@ class LocalFileStorage(StorageBackend):
         return key
 
     async def get(self, key: str) -> Optional[bytes]:
-        safe_path = self._get_safe_path(key)
-        if not await self.exists(key):
+        target_path = await asyncio.to_thread(self._find_existing_path, key)
+        if not target_path:
             return None
-        return await asyncio.to_thread(safe_path.read_bytes)
+        return await asyncio.to_thread(target_path.read_bytes)
 
     async def get_stream(self, key: str, chunk_size: int = 65536) -> AsyncGenerator[bytes, None]:
-        safe_path = self._get_safe_path(key)
-        if not await self.exists(key):
+        target_path = await asyncio.to_thread(self._find_existing_path, key)
+        if not target_path:
             return
 
         def _open_file():
-            return open(safe_path, "rb")
+            return open(target_path, "rb")
 
         file_obj = await asyncio.to_thread(_open_file)
         try:
@@ -63,13 +82,13 @@ class LocalFileStorage(StorageBackend):
             await asyncio.to_thread(file_obj.close)
 
     async def delete(self, key: str) -> bool:
-        safe_path = self._get_safe_path(key)
-        if not await self.exists(key):
+        target_path = await asyncio.to_thread(self._find_existing_path, key)
+        if not target_path:
             return False
 
         def _remove():
             try:
-                safe_path.unlink()
+                target_path.unlink()
                 return True
             except OSError:
                 return False
@@ -77,5 +96,5 @@ class LocalFileStorage(StorageBackend):
         return await asyncio.to_thread(_remove)
 
     async def exists(self, key: str) -> bool:
-        safe_path = self._get_safe_path(key)
-        return await asyncio.to_thread(safe_path.is_file)
+        target_path = await asyncio.to_thread(self._find_existing_path, key)
+        return target_path is not None

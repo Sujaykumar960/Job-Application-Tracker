@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '../../utils/cn';
+import { resolveMediaUrl } from '../../utils/media';
 
 export interface AvatarProps {
   src?: string;
@@ -33,7 +34,7 @@ export const Avatar: React.FC<AvatarProps> = ({
     <div className={cn('relative inline-flex flex-shrink-0', className)}>
       {src ? (
         <img
-          src={src}
+          src={resolveMediaUrl(src)}
           alt={name}
           className={cn('rounded-full object-cover border border-surface-700', sizeStyles[size])}
         />

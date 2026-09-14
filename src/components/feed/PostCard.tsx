@@ -21,6 +21,7 @@ import {
   Check,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { resolveMediaUrl } from '../../utils/media';
 
 export interface PostCardProps {
   post: FeedPost;
@@ -85,7 +86,7 @@ export const PostCard: React.FC<PostCardProps> = ({
           >
             {post.author.avatarUrl ? (
               <img
-                src={post.author.avatarUrl}
+                src={resolveMediaUrl(post.author.avatarUrl)}
                 alt={post.author.name}
                 className="w-full h-full object-cover border border-[#d0e6fc]"
               />
@@ -142,7 +143,7 @@ export const PostCard: React.FC<PostCardProps> = ({
             >
               {item.type === 'video' ? (
                 <video
-                  src={item.url}
+                  src={resolveMediaUrl(item.url)}
                   controls
                   preload="metadata"
                   playsInline
@@ -152,7 +153,7 @@ export const PostCard: React.FC<PostCardProps> = ({
                 </video>
               ) : (
                 <img
-                  src={item.url}
+                  src={resolveMediaUrl(item.url)}
                   alt={item.originalFilename || 'Post media attachment'}
                   loading="lazy"
                   className="w-full max-h-96 object-contain rounded-xl hover:opacity-95 transition"
