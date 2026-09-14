@@ -5,17 +5,18 @@ from fastapi.testclient import TestClient
 from pymongo import MongoClient
 import pytest
 
+from app.config import settings
 from app.main import app
 
 
 def clean_db():
-    sync_client = MongoClient("mongodb://localhost:27017")
-    db = sync_client["careerx_db"]
-    db.conversations.delete_many({})
-    db.messages.delete_many({})
-    db.notifications.delete_many({})
+    sync_client = MongoClient(settings.MONGODB_URI)
+    db = sync_client[settings.MONGODB_DB_NAME]
+    db.conversations.delete_many({"participantIds": {"$regex": ".*wstest.*"}})
+    db.messages.delete_many({"content": {"$regex": ".*(Alice|Bob|wstest).*"}})
+    db.notifications.delete_many({"userId": {"$regex": ".*wstest.*"}})
     db.users.delete_many({"email": {"$regex": ".*@wstest\\.io$"}})
-    db.profiles.delete_many({"userId": {"$regex": ".*"}})
+    db.profiles.delete_many({"email": {"$regex": ".*@wstest\\.io$"}})
 
 
 @pytest.fixture(autouse=True)
@@ -107,8 +108,8 @@ def test_websocket_message_exchange_and_pipeline(ws_client: TestClient):
             assert data_b["payload"]["senderId"] == uid_a
 
     # Verify MongoDB persistence using sync client
-    sync_client = MongoClient("mongodb://localhost:27017")
-    db = sync_client["careerx_db"]
+    sync_client = MongoClient(settings.MONGODB_URI)
+    db = sync_client[settings.MONGODB_DB_NAME]
     saved_msg = db.messages.find_one({"conversationId": conv_id})
     assert saved_msg is not None
     assert saved_msg["content"] == "Real-time greeting from Alice!"

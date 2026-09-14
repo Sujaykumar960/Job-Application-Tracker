@@ -29,8 +29,8 @@ def generate_test_pdf(text: str = "Candidate CV Go Kafka Microservices") -> byte
 
 
 def sync_db_cleanup():
-    sync_client = MongoClient("mongodb://localhost:27017")
-    db = sync_client["careerx_db"]
+    sync_client = MongoClient(settings.MONGODB_URI)
+    db = sync_client[settings.MONGODB_DB_NAME]
     db.users.delete_many({"email": {"$regex": ".*@p9sec\\.io$"}})
     db.profiles.delete_many({"userId": {"$regex": ".*p9sec.*"}})
     db.resumes.delete_many({"userId": {"$regex": ".*p9sec.*"}})

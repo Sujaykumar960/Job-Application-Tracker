@@ -6,6 +6,7 @@ from reportlab.pdfgen import canvas
 from pymongo import MongoClient
 from starlette.testclient import TestClient
 
+from app.config import settings
 from app.database import DatabaseManager
 from app.main import app
 
@@ -19,8 +20,8 @@ def generate_test_pdf(text: str = "Expert Python and Go Distributed Systems Engi
     return buffer.getvalue()
 
 def sync_cleanup_p10():
-    client = MongoClient("mongodb://localhost:27017")
-    db = client["careerx_db"]
+    client = MongoClient(settings.MONGODB_URI)
+    db = client[settings.MONGODB_DB_NAME]
     db.users.delete_many({"email": {"$regex": ".*@p10integ\\.io$"}})
     db.profiles.delete_many({"userId": {"$regex": ".*p10.*"}})
     db.resumes.delete_many({"userId": {"$regex": ".*p10.*"}})

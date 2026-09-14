@@ -8,21 +8,42 @@ from pymongo import MongoClient
 import pytest
 import pytest_asyncio
 
+from app.config import settings
 from app.database import DatabaseManager
 from app.main import app
 from app.services.notification_service import NotificationService
 
 
 def sync_db_cleanup():
-    sync_client = MongoClient("mongodb://localhost:27017")
-    db = sync_client["careerx_db"]
-    db.conversations.delete_many({})
-    db.messages.delete_many({})
-    db.notifications.delete_many({"userId": {"$regex": ".*"}})
-    db.calendar_events.delete_many({"userId": {"$regex": ".*"}})
-    db.users.delete_many({"email": {"$regex": ".*@p8test\\.io$"}})
-    db.profiles.delete_many({"userId": {"$regex": ".*"}})
+    sync_client = MongoClient(settings.MONGODB_URI)
+    db = sync_client[settings.MONGODB_DB_NAME]
+    test_users = list(db.users.find({"email": {"$regex": r".*@p8test\.io$"}}, {"_id": 1, "id": 1}))
+    user_ids = []
+    for u in test_users:
+        if u.get("id"):
+            user_ids.append(str(u["id"]))
+        if u.get("_id"):
+            user_ids.append(str(u["_id"]))
+    if user_ids:
+        convs = list(db.conversations.find({"participants": {"$in": user_ids}}, {"_id": 1, "id": 1}))
+        conv_ids = []
+        for c in convs:
+            if c.get("id"):
+                conv_ids.append(str(c["id"]))
+            if c.get("_id"):
+                conv_ids.append(str(c["_id"]))
+        if conv_ids:
+            db.messages.delete_many({"conversationId": {"$in": conv_ids}})
+        db.messages.delete_many({"senderId": {"$in": user_ids}})
+        db.conversations.delete_many({"participants": {"$in": user_ids}})
+        db.notifications.delete_many({"userId": {"$in": user_ids}})
+        db.calendar_events.delete_many({"userId": {"$in": user_ids}})
+    db.messages.delete_many({"content": {"$regex": ".*p8test.*"}})
+    db.messages.delete_many({"clientMessageId": {"$regex": ".*cl-msg.*"}})
+    db.users.delete_many({"email": {"$regex": r".*@p8test\.io$"}})
+    db.profiles.delete_many({"email": {"$regex": r".*@p8test\.io$"}})
     db.revoked_tokens.delete_many({"token": {"$regex": ".*p8test.*"}})
+    sync_client.close()
 
 
 @pytest_asyncio.fixture(autouse=True)
@@ -392,8 +413,8 @@ def test_ws_invalid_token_rejected_1008(ws_client):
 
 def test_ws_revoked_token_rejected_1008(ws_client):
     _, token, _ = register_user_sync(ws_client, "revoked.ws@p8test.io", "Revoked WS")
-    sync_client = MongoClient("mongodb://localhost:27017")
-    db = sync_client["careerx_db"]
+    sync_client = MongoClient(settings.MONGODB_URI)
+    db = sync_client[settings.MONGODB_DB_NAME]
     db.revoked_tokens.insert_one({"token": token, "revokedAt": datetime.now(timezone.utc).isoformat()})
 
     with pytest.raises(WebSocketDisconnect) as exc:
@@ -478,8 +499,8 @@ def test_ws_ephemeral_typing_not_persisted_in_db(ws_client):
             assert received["type"] == "typing"
             assert received["payload"]["isTyping"] is True
 
-            sync_client = MongoClient("mongodb://localhost:27017")
-            db = sync_client["careerx_db"]
+            sync_client = MongoClient(settings.MONGODB_URI)
+            db = sync_client[settings.MONGODB_DB_NAME]
             assert db.messages.count_documents({"content": {"$regex": ".*typing.*"}}) == 0
 
 

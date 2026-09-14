@@ -171,7 +171,9 @@ class ChatRepository:
                 detail="Access denied. You are not a participant in this conversation.",
             )
 
-        docs = await self.msg_repo.find_many({"conversationId": conversation_id}, sort=[("createdAt", 1)])
+        canonical_id = conv.get("id") or str(conv.get("_id"))
+        ids = list(set(filter(None, [conversation_id, canonical_id, str(conv.get("_id", ""))])) )
+        docs = await self.msg_repo.find_many({"conversationId": {"$in": ids}}, sort=[("createdAt", 1)])
         for d in docs:
             d["isOutgoing"] = (d.get("senderId") == user_id)
         return docs
@@ -200,9 +202,10 @@ class ChatRepository:
                 detail="Access denied. You cannot send messages to a conversation you are not part of.",
             )
 
-        # Idempotency check: if client_message_id already exists, return existing message without duplicating
+        # Idempotency check: if client_message_id already exists in this conversation, return existing message without duplicating
         if client_message_id:
             existing = await self.msg_repo.find_one({
+                "conversationId": {"$in": [conversation_id, conv.get("id"), str(conv.get("_id", ""))]},
                 "$or": [{"id": client_message_id}, {"clientMessageId": client_message_id}],
             })
             if existing:

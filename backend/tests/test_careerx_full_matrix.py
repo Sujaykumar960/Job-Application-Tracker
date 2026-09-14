@@ -33,8 +33,9 @@ async def async_client():
 @pytest.fixture
 def sync_client():
     from pymongo import MongoClient
-    mc = MongoClient("mongodb://localhost:27017")
-    db = mc["careerx_db"]
+    from app.config import settings
+    mc = MongoClient(settings.MONGODB_URI)
+    db = mc[settings.MONGODB_DB_NAME]
     db.users.delete_many({"email": {"$regex": ".*@matrix\\.io$"}})
     db.profiles.delete_many({"email": {"$regex": ".*@matrix\\.io$"}})
     with TestClient(app) as tc:

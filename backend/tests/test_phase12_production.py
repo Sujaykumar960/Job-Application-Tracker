@@ -3,15 +3,16 @@ import pytest
 from pymongo import MongoClient
 from starlette.testclient import TestClient
 
+from app.config import settings
 from app.database import DatabaseManager
 from app.main import app
 
 
 def sync_cleanup_p12():
-    client = MongoClient("mongodb://localhost:27017")
-    db = client["careerx_db"]
+    client = MongoClient(settings.MONGODB_URI)
+    db = client[settings.MONGODB_DB_NAME]
     db.users.delete_many({"email": {"$regex": ".*@p12test\\.io$"}})
-    db.profiles.delete_many({"userId": {"$regex": ".*p12.*"}})
+    db.profiles.delete_many({"email": {"$regex": ".*@p12test\\.io$"}})
     db.posts.delete_many({"content": {"$regex": ".*P12_TEST.*"}})
     db.audit_logs.delete_many({"event": {"$regex": ".*admin.*"}})
 
