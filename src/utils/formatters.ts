@@ -11,6 +11,27 @@ export function formatDate(dateString: string): string {
   }
 }
 
+export function formatDateTime(dateString?: string | null): string {
+  if (!dateString) return '';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    const datePart = new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(date);
+    const timePart = new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    }).format(date);
+    return `${datePart}, ${timePart}`;
+  } catch {
+    return dateString || '';
+  }
+}
+
 export function formatCurrency(amount: number, currency: string = 'USD'): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',

@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { resolveMediaUrl } from '../../utils/media';
+import { formatDateTime } from '../../utils/formatters';
 
 export interface PostCardProps {
   post: FeedPost;
@@ -115,7 +116,7 @@ export const PostCard: React.FC<PostCardProps> = ({
               )}
             </div>
             <p className="text-[11px] text-[#56687A] truncate">{post.author.headline}</p>
-            <span className="text-[10px] text-[#788896] font-mono">{post.createdAt}</span>
+            <span className="text-[10px] text-[#788896]" title={post.createdAt}>{formatDateTime(post.createdAt)}</span>
           </div>
         </div>
 
@@ -277,7 +278,7 @@ export const PostCard: React.FC<PostCardProps> = ({
                 <div key={c.id} className="p-2.5 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] space-y-1">
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="font-bold text-[#1D2226]">{c.authorName}</span>
-                    <span className="text-[10px] text-[#788896] font-mono">{c.createdAt}</span>
+                    <span className="text-[10px] text-[#788896]" title={c.createdAt}>{formatDateTime(c.createdAt)}</span>
                   </div>
                   <p className="text-[11px] text-[#38434F]">{c.content}</p>
                 </div>
