@@ -98,10 +98,11 @@ export const ApplicationsPage: React.FC = () => {
     try {
       const app = applications.find((a) => a.id === id);
       if (app) {
-        const updated = await applicationApi.updateApplication(id, { ...app, status: newStatus });
-        setApplications((prev) => prev.map((a) => (a.id === id ? updated : a)));
+        const updated = await applicationApi.updateApplication(id, { status: newStatus });
+        const merged = { ...app, ...updated, status: newStatus };
+        setApplications((prev) => prev.map((a) => (a.id === id ? merged : a)));
         if (viewingApp && viewingApp.id === id) {
-          setViewingApp((prev) => (prev ? { ...prev, status: newStatus } : null));
+          setViewingApp((prev) => (prev ? { ...prev, ...merged } : null));
         }
       }
     } catch (err) {

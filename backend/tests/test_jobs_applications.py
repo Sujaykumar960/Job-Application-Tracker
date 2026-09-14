@@ -230,9 +230,10 @@ async def test_application_seeker_isolation_and_crud(client):
     assert del_res_b.status_code == 404
 
     # Seeker A CAN update their own application
-    patch_res_a = await client.patch(f"/api/applications/{app_id}", json={"notes": "Final onsite cleared."}, headers=headers_a)
+    patch_res_a = await client.patch(f"/api/applications/{app_id}", json={"notes": "Final onsite cleared.", "status": "Offer"}, headers=headers_a)
     assert patch_res_a.status_code == 200
     assert patch_res_a.json()["notes"] == "Final onsite cleared."
+    assert patch_res_a.json()["status"] == "Offer"
 
     # Seeker A CAN delete their own application
     del_res_a = await client.delete(f"/api/applications/{app_id}", headers=headers_a)

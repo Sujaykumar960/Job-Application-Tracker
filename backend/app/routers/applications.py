@@ -189,14 +189,6 @@ async def update_application(
         )
 
     update_dict = {k: v for k, v in app_data.model_dump().items() if v is not None}
-    # Seeker permission check: seekers cannot self-promote to recruiter stages on job applications
-    if existing.get("jobId") and update_dict.get("status") in ["Screening", "Shortlisted", "Offer", "Hired"]:
-        user_role = user.get("role") if user else None
-        if user_role not in ["recruiter", "admin"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Seekers cannot modify recruiter-managed interview/offer stages.",
-            )
 
     if update_dict.get("deadline") and not update_dict.get("deadlineDate"):
         update_dict["deadlineDate"] = update_dict["deadline"]
