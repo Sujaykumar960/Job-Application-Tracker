@@ -5,10 +5,11 @@ export interface DashboardOverview {
     name: string;
     email: string;
     headline?: string;
-    atsScore?: number;
+    atsScore?: number | null;
   };
   applications: {
     total: number;
+    active?: number;
     applied: number;
     interviewing: number;
     offered: number;

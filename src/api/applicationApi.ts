@@ -23,6 +23,9 @@ export const applicationApi = {
    */
   createApplication: async (data: Partial<Application>): Promise<Application> => {
     const response = await apiClient.post<Application>('/applications', data);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('careerx:refresh_dashboard'));
+    }
     return response.data;
   },
 
@@ -31,6 +34,9 @@ export const applicationApi = {
    */
   updateApplication: async (id: string, data: Partial<Application>): Promise<Application> => {
     const response = await apiClient.patch<Application>(`/applications/${id}`, data);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('careerx:refresh_dashboard'));
+    }
     return response.data;
   },
 
@@ -39,6 +45,9 @@ export const applicationApi = {
    */
   deleteApplication: async (id: string): Promise<{ success: boolean }> => {
     const response = await apiClient.delete<{ success: boolean }>(`/applications/${id}`);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('careerx:refresh_dashboard'));
+    }
     return response.data;
   },
 };

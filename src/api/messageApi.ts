@@ -27,6 +27,9 @@ export const messageApi = {
     attachment?: { name: string; size: string }
   ): Promise<ChatMessage> => {
     const response = await apiClient.post<ChatMessage>(`/messages/conversations/${conversationId}/send`, { content, attachment });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('careerx:refresh_dashboard'));
+    }
     return response.data;
   },
 
@@ -35,6 +38,9 @@ export const messageApi = {
    */
   createConversation: async (participantId: string): Promise<ChatConversation> => {
     const response = await apiClient.post<ChatConversation>('/messages/conversations', { participantId });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('careerx:refresh_dashboard'));
+    }
     return response.data;
   },
 
@@ -71,6 +77,9 @@ export const messageApi = {
    */
   markAsRead: async (conversationId: string): Promise<{ success: boolean }> => {
     const response = await apiClient.post<{ success: boolean }>(`/messages/conversations/${conversationId}/read`);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('careerx:refresh_dashboard'));
+    }
     return response.data;
   },
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { PageHeader } from '../components/common/PageHeader';
@@ -44,23 +44,32 @@ export const HomePage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchDashboardData = useCallback(async (isSilent = false) => {
+    try {
+      if (!isSilent) setIsLoading(true);
+      setError(null);
+      const data = await dashboardApi.getOverview();
+      setDashboardData(data);
+    } catch (err) {
+      setError('Failed to load dashboard data. Please try again.');
+      console.error('Dashboard fetch error:', err);
+    } finally {
+      if (!isSilent) setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const data = await dashboardApi.getOverview();
-        setDashboardData(data);
-      } catch (err) {
-        setError('Failed to load dashboard data. Please try again.');
-        console.error('Dashboard fetch error:', err);
-      } finally {
-        setIsLoading(false);
-      }
+    fetchDashboardData(false);
+
+    const handleRefresh = () => {
+      fetchDashboardData(true);
     };
 
-    fetchDashboardData();
-  }, []);
+    window.addEventListener('careerx:refresh_dashboard', handleRefresh);
+    return () => {
+      window.removeEventListener('careerx:refresh_dashboard', handleRefresh);
+    };
+  }, [fetchDashboardData]);
 
   // Loading state
   if (isLoading) {
@@ -211,9 +220,11 @@ export const HomePage: React.FC = () => {
           </div>
           <div className="mt-2">
             <div className="text-xl font-extrabold text-[#0A66C2] tracking-tight">
-              {dashboardData.profile.atsScore || 'N/A'}%
+              {dashboardData.profile.atsScore != null ? `${dashboardData.profile.atsScore}%` : '—'}
             </div>
-            <p className="text-[10px] text-[#0A66C2] font-medium mt-0.5 truncate">Resume quality</p>
+            <p className="text-[10px] text-[#0A66C2] font-medium mt-0.5 truncate">
+              {dashboardData.profile.atsScore != null ? 'Resume quality' : 'Not analyzed yet'}
+            </p>
           </div>
         </Card>
 

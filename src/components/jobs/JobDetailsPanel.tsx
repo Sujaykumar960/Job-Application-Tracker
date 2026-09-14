@@ -98,7 +98,7 @@ export const JobDetailsPanel: React.FC<JobDetailsPanelProps> = ({
           </div>
           <div className="p-2.5 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] space-y-0.5">
             <span className="text-[10px] text-[#788896] uppercase font-mono">Applicants</span>
-            <p className="font-semibold text-[#1D2226]">{job.applicantsCount || 85} applied</p>
+            <p className="font-semibold text-[#1D2226]">{job.applicantsCount ?? 0} applied</p>
           </div>
         </div>
 

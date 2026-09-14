@@ -6,6 +6,7 @@ export interface NotificationBadgeProps {
   dot?: boolean;
   variant?: 'danger' | 'brand' | 'warning' | 'emerald';
   className?: string;
+  showZero?: boolean;
 }
 
 export const NotificationBadge: React.FC<NotificationBadgeProps> = ({
@@ -13,8 +14,9 @@ export const NotificationBadge: React.FC<NotificationBadgeProps> = ({
   dot = false,
   variant = 'danger',
   className,
+  showZero = false,
 }) => {
-  if (!dot && (count === undefined || count <= 0)) {
+  if (!dot && (count === undefined || (!showZero && count <= 0) || count < 0)) {
     return null;
   }
 

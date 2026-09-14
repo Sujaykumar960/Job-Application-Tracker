@@ -19,9 +19,18 @@ class DatabaseManager:
         safe_uri = re.sub(r"://([^:]+):([^@]+)@", r"://\1:****@", settings.MONGODB_URI)
         logger.info("Connecting to MongoDB at: %s", safe_uri)
         try:
+            client_kwargs = {
+                "serverSelectionTimeoutMS": 5000,
+            }
+            try:
+                import certifi
+                client_kwargs["tlsCAFile"] = certifi.where()
+            except ImportError:
+                pass
+
             cls.client = AsyncIOMotorClient(
                 settings.MONGODB_URI,
-                serverSelectionTimeoutMS=5000,
+                **client_kwargs,
             )
             cls.db = cls.client[settings.MONGODB_DB_NAME]
             # Verify connectivity

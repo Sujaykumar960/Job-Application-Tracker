@@ -15,11 +15,15 @@ import { cn } from '../../utils/cn';
 export interface TopbarProps {
   onOpenMobileSidebar: () => void;
   isSidebarCollapsed: boolean;
+  messagesCount?: number;
+  notificationsCount?: number;
 }
 
 export const Topbar: React.FC<TopbarProps> = ({
   onOpenMobileSidebar,
   isSidebarCollapsed,
+  messagesCount,
+  notificationsCount,
 }) => {
   return (
     <header
@@ -60,7 +64,11 @@ export const Topbar: React.FC<TopbarProps> = ({
           >
             <MessageSquare className="w-4 h-4" />
             <span className="absolute top-1 right-1">
-              <NotificationBadge count={2} variant="brand" />
+              <NotificationBadge
+                count={messagesCount !== undefined ? messagesCount : 0}
+                showZero
+                variant="brand"
+              />
             </span>
           </Link>
 
@@ -72,7 +80,11 @@ export const Topbar: React.FC<TopbarProps> = ({
           >
             <Bell className="w-4 h-4" />
             <span className="absolute top-1 right-1">
-              <NotificationBadge count={4} variant="danger" />
+              <NotificationBadge
+                count={notificationsCount !== undefined ? notificationsCount : 0}
+                showZero
+                variant="danger"
+              />
             </span>
           </Link>
 

@@ -33,29 +33,14 @@ export interface NavItem {
   badgeVariant?: 'danger' | 'brand' | 'warning' | 'emerald';
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', path: '/', icon: LayoutDashboard },
-  { label: 'Applications', path: '/applications', icon: Briefcase, badgeCount: 3, badgeVariant: 'brand' },
-  { label: 'Jobs', path: '/jobs', icon: Building2 },
-  { label: 'Companies', path: '/companies', icon: Building },
-  { label: 'Resume AI', path: '/resume', icon: FileSearch },
-  { label: 'Learning Hub', path: '/learning', icon: Code2 },
-  { label: 'Progress', path: '/progress', icon: TrendingUp },
-  { label: 'Social Feed', path: '/feed', icon: Radio },
-  { label: 'Network', path: '/network', icon: Users },
-  { label: 'Messages', path: '/messages', icon: MessageSquare, badgeCount: 2, badgeVariant: 'brand' },
-  { label: 'Calendar', path: '/calendar', icon: Calendar },
-  { label: 'Notifications', path: '/notifications', icon: Bell, badgeCount: 4, badgeVariant: 'danger' },
-  { label: 'Profile', path: '/profile', icon: User },
-  { label: 'Recruiter Portal', path: '/recruiter', icon: UserCheck },
-  { label: 'Settings', path: '/settings', icon: Settings },
-];
-
 export interface SidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   isMobileOpen: boolean;
   onCloseMobile: () => void;
+  applicationsCount?: number;
+  messagesCount?: number;
+  notificationsCount?: number;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -63,9 +48,48 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleCollapse,
   isMobileOpen,
   onCloseMobile,
+  applicationsCount,
+  messagesCount,
+  notificationsCount,
 }) => {
   const location = useLocation();
   const { role } = useAuth();
+
+  const navItems: NavItem[] = [
+    { label: 'Dashboard', path: '/', icon: LayoutDashboard },
+    {
+      label: 'Applications',
+      path: '/applications',
+      icon: Briefcase,
+      badgeCount: applicationsCount !== undefined ? applicationsCount : 0,
+      badgeVariant: 'brand',
+    },
+    { label: 'Jobs', path: '/jobs', icon: Building2 },
+    { label: 'Companies', path: '/companies', icon: Building },
+    { label: 'Resume AI', path: '/resume', icon: FileSearch },
+    { label: 'Learning Hub', path: '/learning', icon: Code2 },
+    { label: 'Progress', path: '/progress', icon: TrendingUp },
+    { label: 'Social Feed', path: '/feed', icon: Radio },
+    { label: 'Network', path: '/network', icon: Users },
+    {
+      label: 'Messages',
+      path: '/messages',
+      icon: MessageSquare,
+      badgeCount: messagesCount !== undefined ? messagesCount : 0,
+      badgeVariant: 'brand',
+    },
+    { label: 'Calendar', path: '/calendar', icon: Calendar },
+    {
+      label: 'Notifications',
+      path: '/notifications',
+      icon: Bell,
+      badgeCount: notificationsCount !== undefined ? notificationsCount : 0,
+      badgeVariant: 'danger',
+    },
+    { label: 'Profile', path: '/profile', icon: User },
+    { label: 'Recruiter Portal', path: '/recruiter', icon: UserCheck },
+    { label: 'Settings', path: '/settings', icon: Settings },
+  ];
 
   return (
     <>
@@ -125,7 +149,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Sidebar Navigation Items List */}
         <nav className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             const isActive =
               item.path === '/'
@@ -162,11 +186,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <NotificationBadge
                     count={item.badgeCount}
                     variant={isActive ? 'emerald' : item.badgeVariant}
+                    showZero
                   />
                 )}
 
                 {/* Dot indicator when collapsed */}
-                {item.badgeCount !== undefined && isCollapsed && !isMobileOpen && (
+                {item.badgeCount !== undefined && item.badgeCount > 0 && isCollapsed && !isMobileOpen && (
                   <span className="absolute top-1.5 right-1.5">
                     <NotificationBadge dot variant={item.badgeVariant} />
                   </span>

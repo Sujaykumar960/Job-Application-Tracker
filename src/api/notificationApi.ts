@@ -18,6 +18,9 @@ export const notificationApi = {
    */
   markAsRead: async (id: string): Promise<{ success: boolean }> => {
     const response = await apiClient.post<{ success: boolean }>(`/notifications/${id}/read`);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('careerx:refresh_dashboard'));
+    }
     return response.data;
   },
 
@@ -26,6 +29,9 @@ export const notificationApi = {
    */
   markAllAsRead: async (): Promise<{ success: boolean }> => {
     const response = await apiClient.post<{ success: boolean }>('/notifications/read-all');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('careerx:refresh_dashboard'));
+    }
     return response.data;
   },
 
@@ -34,6 +40,9 @@ export const notificationApi = {
    */
   deleteNotification: async (id: string): Promise<{ success: boolean }> => {
     const response = await apiClient.delete<{ success: boolean }>(`/notifications/${id}`);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('careerx:refresh_dashboard'));
+    }
     return response.data;
   },
 
@@ -42,6 +51,9 @@ export const notificationApi = {
    */
   clearRead: async (): Promise<{ success: boolean }> => {
     const response = await apiClient.post<{ success: boolean }>('/notifications/clear-read');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('careerx:refresh_dashboard'));
+    }
     return response.data;
   },
 };

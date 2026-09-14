@@ -112,6 +112,9 @@ class ChatWebSocketClient {
         try {
           const parsed: WebSocketEnvelope = JSON.parse(event.data);
           this.listeners.forEach((listener) => listener(parsed));
+          if (parsed.type === 'message' && typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('careerx:refresh_dashboard'));
+          }
         } catch (err) {
           console.warn('Failed to parse WebSocket message', err);
         }

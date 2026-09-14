@@ -23,6 +23,7 @@ from app.utils.security import (
 
 class AuthService:
     def __init__(self, db: AsyncIOMotorDatabase):
+        self.db = db
         self.user_repo = UserRepository(db)
 
     async def register(self, data: RegisterData) -> AuthResponse:
@@ -89,7 +90,7 @@ class AuthService:
             headline=headline,
             bio="",
             location="Remote",
-            atsScore=80 if data.role == "seeker" else None,
+            atsScore=None,
             skills=initial_skills,
         )
 
@@ -132,6 +133,7 @@ class AuthService:
         # Retrieve profile details
         profile = await self.user_repo.get_profile(user_id)
         name = profile.get("name") if profile else email.split("@")[0].capitalize()
+        real_ats_score = await self._resolve_ats_score(user_id, profile)
 
         user_profile = UserProfile(
             id=user_id,
@@ -143,7 +145,7 @@ class AuthService:
             headline=profile.get("headline") if profile else None,
             bio=profile.get("bio") if profile else None,
             location=profile.get("location", "Remote") if profile else "Remote",
-            atsScore=profile.get("atsScore") if profile else None,
+            atsScore=real_ats_score,
             skills=profile.get("skills", []) if profile else [],
         )
 
@@ -193,6 +195,27 @@ class AuthService:
             token=new_access,
         )
 
+    async def _resolve_ats_score(self, user_id: str, profile: Optional[Dict[str, Any]]) -> Optional[int]:
+        """Resolve actual ATS score from latest completed resume analysis."""
+        latest_analysis = await self.db.resume_analyses.find_one(
+            {"userId": user_id},
+            sort=[("createdAt", -1)],
+        )
+        if latest_analysis:
+            if "analysis" in latest_analysis and isinstance(latest_analysis["analysis"], dict) and "atsScore" in latest_analysis["analysis"]:
+                return int(latest_analysis["analysis"]["atsScore"])
+            elif "atsScore" in latest_analysis and latest_analysis["atsScore"] is not None:
+                return int(latest_analysis["atsScore"])
+
+        res_doc = await self.db.resumes.find_one(
+            {"userId": user_id, "atsScore": {"$exists": True, "$ne": None}},
+            sort=[("updatedAt", -1), ("createdAt", -1)],
+        )
+        if res_doc and res_doc.get("atsScore") is not None:
+            return int(res_doc["atsScore"])
+
+        return None
+
     async def get_user_profile(self, user_id: str) -> UserProfile:
         user_doc = await self.user_repo.get_by_id(user_id)
         if not user_doc:
@@ -204,6 +227,7 @@ class AuthService:
         profile = await self.user_repo.get_profile(user_id)
         email = user_doc["email"]
         name = profile.get("name") if profile else email.split("@")[0].capitalize()
+        real_ats_score = await self._resolve_ats_score(user_id, profile)
 
         return UserProfile(
             id=user_id,
@@ -215,6 +239,6 @@ class AuthService:
             headline=profile.get("headline") if profile else None,
             bio=profile.get("bio") if profile else None,
             location=profile.get("location", "Remote") if profile else "Remote",
-            atsScore=profile.get("atsScore") if profile else None,
+            atsScore=real_ats_score,
             skills=profile.get("skills", []) if profile else [],
         )

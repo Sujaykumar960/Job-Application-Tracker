@@ -23,6 +23,7 @@ class UpcomingDeadlineItem(BaseModel):
 
 class ApplicationMetrics(BaseModel):
     total: int = 0
+    active: int = 0
     applied: int = 0
     interviewing: int = 0
     offered: int = 0
@@ -42,7 +43,7 @@ class UserProfileOverview(BaseModel):
     name: str
     email: str = ""
     headline: str = ""
-    atsScore: int = 85
+    atsScore: Optional[int] = None
     skills: List[str] = Field(default_factory=list)
 
 

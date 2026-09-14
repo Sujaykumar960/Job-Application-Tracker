@@ -34,7 +34,6 @@ class DashboardService:
 
         name = (profile_doc and profile_doc.get("name")) or (user_doc and user_doc.get("name")) or "CareerX User"
         headline = (profile_doc and profile_doc.get("headline")) or "Software Engineer"
-        ats_score = (profile_doc and profile_doc.get("atsScore")) or 85
         skills = (profile_doc and profile_doc.get("skills")) or []
         email = (user_doc and user_doc.get("email")) or ""
         if not email:
@@ -44,6 +43,27 @@ class DashboardService:
             u = await self.db.users.find_one(u_q)
             if u:
                 email = u.get("email", "")
+
+        # Fetch ATS score strictly from the user's latest completed resume analysis
+        latest_analysis = await self.db.resume_analyses.find_one(
+            {"userId": user_id},
+            sort=[("createdAt", -1)],
+        )
+        ats_score: Optional[int] = None
+        if latest_analysis:
+            if "analysis" in latest_analysis and isinstance(latest_analysis["analysis"], dict) and "atsScore" in latest_analysis["analysis"]:
+                ats_score = int(latest_analysis["analysis"]["atsScore"])
+            elif "atsScore" in latest_analysis and latest_analysis["atsScore"] is not None:
+                ats_score = int(latest_analysis["atsScore"])
+
+        if ats_score is None:
+            # Check user's uploaded resumes for any scored resume
+            res_doc = await self.db.resumes.find_one(
+                {"userId": user_id, "atsScore": {"$exists": True, "$ne": None}},
+                sort=[("updatedAt", -1), ("createdAt", -1)],
+            )
+            if res_doc and res_doc.get("atsScore") is not None:
+                ats_score = int(res_doc["atsScore"])
 
         profile_overview = UserProfileOverview(
             id=user_id,
@@ -70,9 +90,11 @@ class DashboardService:
         rejected_count = status_counts.get("rejected", 0)
         wishlist_count = status_counts.get("wishlist", 0)
         total_apps = sum(status_counts.values())
+        active_apps = applied_count + interview_count + offer_count + wishlist_count
 
         app_metrics = ApplicationMetrics(
             total=total_apps,
+            active=active_apps,
             applied=applied_count,
             interviewing=interview_count,
             offered=offer_count,
@@ -137,8 +159,17 @@ class DashboardService:
         })
 
         # 6. Unread Chat Messages Count
-        conversations = await self.db.conversations.find({"participants": user_id}).to_list(50)
-        unread_messages = sum(c.get("unreadCounts", {}).get(user_id, 0) for c in conversations)
+        conversations = await self.db.conversations.find({"participants": user_id}).to_list(100)
+        conv_ids = [str(c.get("id") or c.get("_id")) for c in conversations if (c.get("id") or c.get("_id"))]
+        unread_messages_from_db = 0
+        if conv_ids:
+            unread_messages_from_db = await self.db.messages.count_documents({
+                "conversationId": {"$in": conv_ids},
+                "senderId": {"$ne": user_id},
+                "status": {"$ne": "read"},
+            })
+        unread_from_counts = sum(c.get("unreadCounts", {}).get(user_id, 0) for c in conversations)
+        unread_messages = max(unread_messages_from_db, unread_from_counts)
 
         # 7. Incoming Connection Requests Count
         conn_req_1 = await self.db.connection_requests.count_documents({

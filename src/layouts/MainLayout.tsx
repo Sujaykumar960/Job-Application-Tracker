@@ -1,10 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from '../components/navigation/Sidebar';
 import { Topbar } from '../components/navigation/Topbar';
+import { dashboardApi } from '../api/dashboardApi';
+import { useAuth } from '../context/AuthContext';
 import { cn } from '../utils/cn';
 
 export const MainLayout: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+
   // Sidebar collapsed state with localStorage persistence
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     const saved = localStorage.getItem('careerx_sidebar_collapsed');
@@ -13,6 +17,41 @@ export const MainLayout: React.FC = () => {
 
   // Mobile drawer open state
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
+
+  // Live database-backed badge counts
+  const [applicationsCount, setApplicationsCount] = useState<number>(0);
+  const [messagesCount, setMessagesCount] = useState<number>(0);
+  const [notificationsCount, setNotificationsCount] = useState<number>(0);
+
+  const fetchBadgeStats = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      const data = await dashboardApi.getOverview();
+      const activeApps =
+        data.applications.active !== undefined
+          ? data.applications.active
+          : Math.max(0, data.applications.total - data.applications.rejected);
+
+      setApplicationsCount(activeApps);
+      setMessagesCount(data.unreadMessagesCount ?? 0);
+      setNotificationsCount(data.unreadNotificationsCount ?? 0);
+    } catch (err) {
+      console.error('Failed to fetch badge stats:', err);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    fetchBadgeStats();
+
+    const handleRefresh = () => {
+      fetchBadgeStats();
+    };
+
+    window.addEventListener('careerx:refresh_dashboard', handleRefresh);
+    return () => {
+      window.removeEventListener('careerx:refresh_dashboard', handleRefresh);
+    };
+  }, [fetchBadgeStats]);
 
   useEffect(() => {
     localStorage.setItem('careerx_sidebar_collapsed', JSON.stringify(isCollapsed));
@@ -30,12 +69,17 @@ export const MainLayout: React.FC = () => {
         onToggleCollapse={toggleCollapse}
         isMobileOpen={isMobileOpen}
         onCloseMobile={() => setIsMobileOpen(false)}
+        applicationsCount={applicationsCount}
+        messagesCount={messagesCount}
+        notificationsCount={notificationsCount}
       />
 
       {/* Sticky Top Navigation Bar */}
       <Topbar
         onOpenMobileSidebar={() => setIsMobileOpen(true)}
         isSidebarCollapsed={isCollapsed}
+        messagesCount={messagesCount}
+        notificationsCount={notificationsCount}
       />
 
       {/* Main Content Area - Laptop-First Responsive Offset */}

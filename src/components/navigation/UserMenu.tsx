@@ -114,7 +114,7 @@ export const UserMenu: React.FC = () => {
             <p className="text-[11px] text-[#56687A] truncate">{user?.email || ''}</p>
             <div className="mt-2 flex items-center justify-between">
               <Badge variant="brand" size="sm">
-                ATS Score: {user?.atsScore || 88}%
+                ATS Score: {user?.atsScore != null ? `${user.atsScore}%` : '—'}
               </Badge>
               <span className="text-[10px] text-[#56687A] font-mono">
                 {role === 'seeker' ? 'Job Seeker' : 'Recruiter'}

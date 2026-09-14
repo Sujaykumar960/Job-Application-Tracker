@@ -69,6 +69,9 @@ export const resumeApi = {
    */
   deleteResume: async (id: string): Promise<{ success: boolean; id: string; message: string }> => {
     const response = await apiClient.delete<{ success: boolean; id: string; message: string }>(`/resumes/${id}`);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('careerx:refresh_dashboard'));
+    }
     return response.data;
   },
 
@@ -81,6 +84,9 @@ export const resumeApi = {
     const response = await apiClient.post<ResumeItem>('/resumes/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('careerx:refresh_dashboard'));
+    }
     return response.data;
   },
 
@@ -92,6 +98,10 @@ export const resumeApi = {
       resumeId,
       jobDescription,
     });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('careerx:refresh_dashboard'));
+      window.dispatchEvent(new CustomEvent('careerx:resume_analyzed', { detail: response.data }));
+    }
     return response.data;
   },
 

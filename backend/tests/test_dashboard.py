@@ -16,15 +16,19 @@ async def client():
     # Clean up test data
     db = DatabaseManager.db
     if db is not None:
-        await db.applications.delete_many({"userId": {"$regex": ".*"}})
-        await db.notifications.delete_many({"userId": {"$regex": ".*"}})
-        await db.conversations.delete_many({})
-        await db.messages.delete_many({})
-        await db.connection_requests.delete_many({})
-        await db.saved_jobs.delete_many({"userId": {"$regex": ".*"}})
-        await db.progress.delete_many({"userId": {"$regex": ".*"}})
+        test_users = await db.users.find({"email": {"$regex": ".*@dashtest\\.io$"}}).to_list(100)
+        test_uids = [str(u["_id"]) for u in test_users] + [u.get("id") for u in test_users if u.get("id")]
+        if test_uids:
+            await db.applications.delete_many({"userId": {"$in": test_uids}})
+            await db.notifications.delete_many({"userId": {"$in": test_uids}})
+            await db.conversations.delete_many({"participants": {"$in": test_uids}})
+            await db.messages.delete_many({"$or": [{"senderId": {"$in": test_uids}}, {"recipientId": {"$in": test_uids}}]})
+            await db.connection_requests.delete_many({"$or": [{"senderId": {"$in": test_uids}}, {"recipientId": {"$in": test_uids}}]})
+            await db.saved_jobs.delete_many({"userId": {"$in": test_uids}})
+            await db.progress.delete_many({"userId": {"$in": test_uids}})
+            await db.profiles.delete_many({"userId": {"$in": test_uids}})
+            await db.resume_analyses.delete_many({"userId": {"$in": test_uids}})
         await db.users.delete_many({"email": {"$regex": ".*@dashtest\\.io$"}})
-        await db.profiles.delete_many({"userId": {"$regex": ".*"}})
 
 
 async def register_user(client, email: str, name: str, role: str = "seeker") -> tuple:
@@ -58,7 +62,9 @@ async def test_empty_dashboard_overview(client):
     data = res.json()
 
     assert data["profile"]["name"] == "Fresh Seeker"
+    assert data["profile"].get("atsScore") is None
     assert data["applications"]["total"] == 0
+    assert data["applications"]["active"] == 0
     assert data["applications"]["applied"] == 0
     assert data["applications"]["interviewing"] == 0
     assert data["applications"]["offered"] == 0
@@ -147,6 +153,14 @@ async def test_populated_dashboard_overview(client):
         "streakDays": 12,
     })
 
+    # 7. Insert resume analysis with atsScore
+    await db.resume_analyses.insert_one({
+        "userId": uid,
+        "atsScore": 91,
+        "status": "completed",
+        "createdAt": "2026-09-03T13:00:00Z",
+    })
+
     # Fetch overview
     res = await client.get("/api/dashboard/overview", headers=headers)
     assert res.status_code == 200
@@ -155,10 +169,14 @@ async def test_populated_dashboard_overview(client):
     # Verify calculated metrics
     apps = data["applications"]
     assert apps["total"] == 4
+    assert apps["active"] == 3
     assert apps["applied"] == 1
     assert apps["interviewing"] == 1
     assert apps["offered"] == 1
     assert apps["rejected"] == 1
+
+    # Verify ATS score resolved from resume analysis
+    assert data["profile"]["atsScore"] == 91
 
     # Verify upcoming items
     assert len(data["upcomingInterviews"]) == 1
