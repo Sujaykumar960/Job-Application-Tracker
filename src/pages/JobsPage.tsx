@@ -60,7 +60,17 @@ export const JobsPage: React.FC = () => {
     const fetchApplications = async () => {
       try {
         const apps = await applicationApi.getApplications();
-        const jobIds = new Set(apps.map((a) => a.company + '-' + a.role));
+        const jobIds = new Set<string>();
+        apps.forEach((a) => {
+          if (a.jobId) {
+            jobIds.add(a.jobId);
+          }
+          const comp = (a.company || a.companyName || '').trim().toLowerCase();
+          const role = (a.role || a.roleTitle || '').trim().toLowerCase();
+          if (comp && role) {
+            jobIds.add(`${comp}:::${role}`);
+          }
+        });
         setAppliedJobIds(jobIds);
       } catch (err) {
         console.error('Failed to fetch applications:', err);
@@ -69,6 +79,14 @@ export const JobsPage: React.FC = () => {
 
     fetchApplications();
   }, []);
+
+  // Helper to check if a job has already been applied to
+  const isJobApplied = (job: JobItem): boolean => {
+    if (appliedJobIds.has(job.id)) return true;
+    const comp = (job.company || job.companyName || '').trim().toLowerCase();
+    const role = (job.title || '').trim().toLowerCase();
+    return appliedJobIds.has(`${comp}:::${role}`);
+  };
 
   // Filter State
   const [filters, setFilters] = useState<JobFilterState>({
@@ -156,6 +174,11 @@ export const JobsPage: React.FC = () => {
 
   // Handle Application Preparation Record
   const handleApply = async (job: JobItem) => {
+    if (isJobApplied(job)) {
+      setToastMessage(`You have already applied for ${job.title} at ${job.company}. Track it in your Application Tracker!`);
+      return;
+    }
+
     try {
       const deadlineDate = new Date();
       deadlineDate.setDate(deadlineDate.getDate() + 14);
@@ -196,7 +219,16 @@ export const JobsPage: React.FC = () => {
       };
 
       await applicationApi.createApplication(newApp);
-      setAppliedJobIds((prev) => new Set([...prev, job.id]));
+      setAppliedJobIds((prev) => {
+        const next = new Set(prev);
+        next.add(job.id);
+        const comp = (job.company || job.companyName || '').trim().toLowerCase();
+        const role = (job.title || '').trim().toLowerCase();
+        if (comp && role) {
+          next.add(`${comp}:::${role}`);
+        }
+        return next;
+      });
       setToastMessage(`Application submitted for ${job.title} at ${job.company}! Added to your Application Tracker.`);
 
       // Auto-dismiss toast after 4 seconds
@@ -330,7 +362,7 @@ export const JobsPage: React.FC = () => {
             <JobCard
               key={job.id}
               job={job}
-              isApplied={appliedJobIds.has(job.id)}
+              isApplied={isJobApplied(job)}
               onView={(j) => setSelectedJob(j)}
               onApply={handleApply}
               onAnalyzeMatch={(j) => setMatchAnalysisJob(j)}
@@ -343,7 +375,7 @@ export const JobsPage: React.FC = () => {
       <JobDetailsPanel
         job={selectedJob}
         isOpen={Boolean(selectedJob)}
-        isApplied={selectedJob ? appliedJobIds.has(selectedJob.id) : false}
+        isApplied={selectedJob ? isJobApplied(selectedJob) : false}
         onClose={() => setSelectedJob(null)}
         onApply={handleApply}
         onAnalyzeMatch={(j) => {
@@ -356,6 +388,7 @@ export const JobsPage: React.FC = () => {
       <JobMatchModal
         job={matchAnalysisJob}
         isOpen={Boolean(matchAnalysisJob)}
+        isApplied={matchAnalysisJob ? isJobApplied(matchAnalysisJob) : false}
         onClose={() => setMatchAnalysisJob(null)}
         onApply={handleApply}
       />

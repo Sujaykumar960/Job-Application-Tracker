@@ -17,6 +17,7 @@ import { Link } from 'react-router-dom';
 export interface JobMatchModalProps {
   job: JobItem | null;
   isOpen: boolean;
+  isApplied?: boolean;
   onClose: () => void;
   onApply: (job: JobItem) => void;
 }
@@ -24,6 +25,7 @@ export interface JobMatchModalProps {
 export const JobMatchModal: React.FC<JobMatchModalProps> = ({
   job,
   isOpen,
+  isApplied = false,
   onClose,
   onApply,
 }) => {
@@ -145,14 +147,16 @@ export const JobMatchModal: React.FC<JobMatchModalProps> = ({
           </Button>
           <Button
             size="sm"
-            variant="primary"
+            variant={isApplied ? 'outline' : 'primary'}
             onClick={() => {
-              onApply(job);
+              if (!isApplied) {
+                onApply(job);
+              }
               onClose();
             }}
-            icon={<Send className="w-3.5 h-3.5" />}
+            icon={isApplied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Send className="w-3.5 h-3.5" />}
           >
-            Apply & Track Opportunity
+            {isApplied ? 'Application Prepared ✓' : 'Apply & Track Opportunity'}
           </Button>
         </div>
       </div>
