@@ -20,16 +20,22 @@ router = APIRouter(prefix="/companies", tags=["Companies"])
 async def _enrich_company_jobs_count(db: AsyncIOMotorDatabase, doc: Dict[str, Any]) -> Dict[str, Any]:
     comp_id = doc.get("id") or str(doc.get("_id", ""))
     comp_name = doc.get("name", "")
-    open_jobs = await db.jobs.count_documents({
+    comp_slug = doc.get("slug", "")
+    query: Dict[str, Any] = {
         "$or": [
             {"companyId": comp_id},
+            {"companyId": comp_slug},
             {"company": {"$regex": f"^{re.escape(comp_name)}$", "$options": "i"}},
             {"companyName": {"$regex": f"^{re.escape(comp_name)}$", "$options": "i"}},
         ],
         "isActive": {"$ne": False},
         "status": {"$nin": ["closed", "draft"]},
-    })
-    doc["openJobsCount"] = open_jobs
+    }
+    jobs_cursor = db.jobs.find(query)
+    jobs_list = await jobs_cursor.to_list(100)
+    serialized_jobs = [serialize_mongo_doc(j) for j in jobs_list]
+    doc["jobs"] = serialized_jobs
+    doc["openJobsCount"] = len(serialized_jobs)
     return doc
 
 
@@ -153,9 +159,21 @@ async def get_company_jobs(
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Fetch open engineering jobs for a company."""
-    repo = BaseRepository(db, "jobs")
-    docs = await repo.find_many({"companyId": company_id})
-    return docs
+    comp_repo = BaseRepository(db, "companies")
+    comp = await comp_repo.collection.find_one({"$or": [{"id": company_id}, {"slug": company_id}]})
+    comp_name = comp.get("name", "") if comp else company_id
+
+    query: Dict[str, Any] = {
+        "$or": [
+            {"companyId": company_id},
+            {"company": {"$regex": f"^{re.escape(comp_name)}$", "$options": "i"}},
+            {"companyName": {"$regex": f"^{re.escape(comp_name)}$", "$options": "i"}},
+        ],
+        "isActive": {"$ne": False},
+        "status": {"$nin": ["closed", "draft"]},
+    }
+    docs = await db.jobs.find(query).to_list(100)
+    return [serialize_mongo_doc(d) for d in docs]
 
 
 @router.post("/{company_id}/follow", response_model=CompanyFollowResponse)

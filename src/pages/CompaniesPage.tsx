@@ -140,18 +140,18 @@ export const CompaniesPage: React.FC = () => {
         c.name.toLowerCase().includes(q) ||
         c.industry.toLowerCase().includes(q) ||
         c.headquarters.toLowerCase().includes(q) ||
-        c.techStack.some((t) => t.toLowerCase().includes(q)) ||
-        c.jobs.some((j) => j.title.toLowerCase().includes(q));
+        (c.techStack && c.techStack.some((t) => t.toLowerCase().includes(q))) ||
+        (c.jobs && c.jobs.some((j) => j.title.toLowerCase().includes(q)));
 
       const matchesIndustry =
-        selectedIndustry === 'All' || c.industry.toLowerCase().includes(selectedIndustry.toLowerCase());
+        selectedIndustry === 'All' || (c.industry && c.industry.toLowerCase().includes(selectedIndustry.toLowerCase()));
 
       return matchesSearch && matchesIndustry;
     });
   }, [companies, searchQuery, selectedIndustry]);
 
   const totalJobs = useMemo(
-    () => companies.reduce((acc, c) => acc + c.jobs.length, 0),
+    () => companies.reduce((acc, c) => acc + (c.jobs?.length || c.openJobsCount || 0), 0),
     [companies]
   );
 

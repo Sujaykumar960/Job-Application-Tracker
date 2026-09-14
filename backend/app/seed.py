@@ -6,6 +6,7 @@ from typing import Any, Dict, List
 
 from app.config import settings
 from app.database import DatabaseManager
+from app.data.companies import SEEDED_COMPANIES
 from app.utils.security import hash_password
 from app.utils.helpers import utc_now_iso
 
@@ -148,6 +149,7 @@ SEEDED_USERS = [
 SEEDED_JOBS = [
     {
         "id": "job-1",
+        "companyId": "comp-google",
         "title": "Software Engineer Intern",
         "company": "Google",
         "companyName": "Google",
@@ -166,6 +168,7 @@ SEEDED_JOBS = [
     },
     {
         "id": "job-2",
+        "companyId": "comp-stripe",
         "title": "Backend Software Engineer - Infrastructure",
         "company": "Stripe",
         "companyName": "Stripe",
@@ -184,6 +187,7 @@ SEEDED_JOBS = [
     },
     {
         "id": "job-3",
+        "companyId": "comp-linear",
         "title": "Product Engineer - Realtime Sync",
         "company": "Linear",
         "companyName": "Linear",
@@ -202,6 +206,7 @@ SEEDED_JOBS = [
     },
     {
         "id": "job-4",
+        "companyId": "comp-datadog",
         "title": "Backend Platform Engineer",
         "company": "Datadog",
         "companyName": "Datadog",
@@ -220,6 +225,7 @@ SEEDED_JOBS = [
     },
     {
         "id": "job-5",
+        "companyId": "comp-vercel",
         "title": "Frontend Infrastructure Engineer",
         "company": "Vercel",
         "companyName": "Vercel",
@@ -238,6 +244,7 @@ SEEDED_JOBS = [
     },
     {
         "id": "job-6",
+        "companyId": "comp-netflix",
         "title": "Cloud Runtime Engineer",
         "company": "Netflix",
         "companyName": "Netflix",
@@ -256,6 +263,7 @@ SEEDED_JOBS = [
     },
     {
         "id": "job-7",
+        "companyId": "comp-figma",
         "title": "Systems & Performance Engineer",
         "company": "Figma",
         "companyName": "Figma",
@@ -274,6 +282,7 @@ SEEDED_JOBS = [
     },
     {
         "id": "job-8",
+        "companyId": "comp-airbnb",
         "title": "Search & Relevance Software Engineer",
         "company": "Airbnb",
         "companyName": "Airbnb",
@@ -1226,6 +1235,16 @@ async def seed_database(reset: bool = False) -> Dict[str, int]:
         await db.jobs.update_one({"id": job["id"]}, {"$set": j_doc}, upsert=True)
         job_count += 1
     counts["jobs"] = job_count
+
+    # 2.5 Seed Companies
+    comp_count = 0
+    for comp in SEEDED_COMPANIES:
+        c_doc = dict(comp)
+        c_doc["createdAt"] = utc_now_iso()
+        c_doc["updatedAt"] = utc_now_iso()
+        await db.companies.update_one({"id": comp["id"]}, {"$set": c_doc}, upsert=True)
+        comp_count += 1
+    counts["companies"] = comp_count
 
     # 3. Seed Applications
     app_count = 0

@@ -1,5 +1,5 @@
 from typing import Any, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class CompanyEmployeeSummary(BaseModel):
@@ -25,17 +25,20 @@ class CompanyProfile(BaseModel):
     id: str
     slug: str
     name: str
-    tagline: str
+    tagline: str = ""
     logoInitials: str = "CX"
     logoGradient: str = "from-cyan-500 to-blue-600"
-    industry: str
-    size: str
-    headquarters: str
-    foundedYear: str
-    fundingStage: str
-    websiteUrl: str
-    about: str
-    mission: str
+    industry: str = "Technology"
+    size: str = "50-200"
+    headquarters: str = "Remote"
+    foundedYear: str = "2020"
+    fundingStage: str = "Series A"
+    websiteUrl: str = "https://example.com"
+    founded: Optional[str] = None
+    funding: Optional[str] = None
+    website: Optional[str] = None
+    about: str = ""
+    mission: str = ""
     techStack: List[str] = Field(default_factory=list)
     benefits: List[str] = Field(default_factory=list)
     openJobsCount: int = 0
@@ -46,6 +49,16 @@ class CompanyProfile(BaseModel):
     employees: List[CompanyEmployeeSummary] = Field(default_factory=list)
     posts: List[CompanyPostSummary] = Field(default_factory=list)
     jobs: List[Any] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def populate_aliases(self) -> "CompanyProfile":
+        if not self.founded:
+            self.founded = self.foundedYear
+        if not self.funding:
+            self.funding = self.fundingStage
+        if not self.website:
+            self.website = self.websiteUrl
+        return self
 
 
 class CompanyCreate(BaseModel):
