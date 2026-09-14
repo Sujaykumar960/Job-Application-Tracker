@@ -9,8 +9,8 @@ export const AuthLayout: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-surface-950 flex items-center justify-center">
-        <div className="w-8 h-8 rounded-xl bg-brand-600 animate-pulse" />
+      <div className="min-h-screen bg-[#F3F2EF] flex items-center justify-center">
+        <div className="w-8 h-8 rounded-xl bg-[#0A66C2] animate-pulse" />
       </div>
     );
   }
@@ -22,22 +22,22 @@ export const AuthLayout: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-surface-950 text-slate-100 flex flex-col justify-between overflow-x-hidden selection:bg-brand-500/30 selection:text-brand-200">
+    <div className="min-h-screen bg-[#F3F2EF] text-[#1D2226] flex flex-col justify-between overflow-x-hidden selection:bg-[#E8F3FF] selection:text-[#0A66C2]">
       {/* Top Header */}
-      <header className="h-14 px-6 sm:px-10 flex items-center justify-between border-b border-surface-900 bg-surface-950/80 backdrop-blur-md">
+      <header className="h-14 px-6 sm:px-10 flex items-center justify-between border-b border-[#D9D9D9] bg-white/80 backdrop-blur-md">
         <Link to="/login" className="flex items-center gap-2.5 group">
-          <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20 group-hover:scale-105 transition">
+          <div className="w-7 h-7 rounded-xl bg-[#0A66C2] flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition">
             <Sparkles className="w-3.5 h-3.5" />
           </div>
-          <span className="font-extrabold text-base tracking-tight text-white font-sans">
-            Career<span className="text-brand-400">X</span>
+          <span className="font-extrabold text-base tracking-tight text-[#1D2226] font-sans">
+            Career<span className="text-[#0A66C2]">X</span>
           </span>
-          <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-400 border border-brand-500/20">
+          <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-[#E8F3FF] text-[#0A66C2] border border-[#d0e6fc]">
             PRO
           </span>
         </Link>
 
-        <span className="text-xs text-slate-400 hidden sm:inline-block">
+        <span className="text-xs text-[#56687A] font-medium hidden sm:inline-block">
           AI-Powered Career & Engineering Platform
         </span>
       </header>
@@ -48,13 +48,13 @@ export const AuthLayout: React.FC = () => {
           {/* Left Column: Platform Branding & Value Highlights (Laptop 1366px+) */}
           <div className="hidden lg:flex lg:col-span-5 flex-col justify-center space-y-6 pr-4">
             <div className="space-y-2">
-              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-brand-400 bg-brand-500/10 border border-brand-500/20 px-2.5 py-1 rounded-full inline-block">
+              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#0A66C2] bg-[#E8F3FF] border border-[#d0e6fc] px-2.5 py-1 rounded-full inline-block">
                 For High-Impact Engineers
               </span>
-              <h2 className="text-2xl font-extrabold text-white tracking-tight leading-snug">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1D2226] tracking-tight leading-snug">
                 Your entire engineering career workflow in one platform.
               </h2>
-              <p className="text-xs text-slate-400 leading-relaxed">
+              <p className="text-xs sm:text-sm text-[#56687A] leading-relaxed">
                 Join thousands of software engineers using CareerX to optimize ATS resumes, solve DSA in Monaco IDE, and track interviews at top tech companies.
               </p>
             </div>
@@ -79,13 +79,13 @@ export const AuthLayout: React.FC = () => {
               ].map((item, i) => {
                 const Icon = item.icon;
                 return (
-                  <div key={i} className="flex items-start gap-3 p-2.5 rounded-xl bg-surface-900/50 border border-surface-800/80">
-                    <div className="w-7 h-7 rounded-lg bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-400 flex-shrink-0 mt-0.5">
+                  <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-white border border-[#D9D9D9] shadow-sm hover:border-[#0A66C2]/40 transition">
+                    <div className="w-7 h-7 rounded-lg bg-[#E8F3FF] border border-[#d0e6fc] flex items-center justify-center text-[#0A66C2] flex-shrink-0 mt-0.5">
                       <Icon className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-slate-200">{item.title}</h4>
-                      <p className="text-[11px] text-slate-400 leading-tight mt-0.5">{item.desc}</p>
+                      <h4 className="text-xs font-bold text-[#1D2226]">{item.title}</h4>
+                      <p className="text-[11px] text-[#56687A] leading-relaxed mt-0.5">{item.desc}</p>
                     </div>
                   </div>
                 );
@@ -103,7 +103,7 @@ export const AuthLayout: React.FC = () => {
       </main>
 
       {/* Subtle Footer */}
-      <footer className="h-12 border-t border-surface-900 px-6 flex items-center justify-center text-[11px] text-slate-500">
+      <footer className="h-12 border-t border-[#D9D9D9] px-6 flex items-center justify-center text-[11px] text-[#788896]">
         <span>© {new Date().getFullYear()} CareerX Technologies. Secure JWT Authentication.</span>
       </footer>
     </div>

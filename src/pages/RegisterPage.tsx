@@ -90,7 +90,7 @@ export const RegisterPage: React.FC = () => {
       )}
 
       {/* Form */}
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5">
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-3.5">
         {/* Role Picker */}
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-[#1D2226]">I am joining as a:</label>

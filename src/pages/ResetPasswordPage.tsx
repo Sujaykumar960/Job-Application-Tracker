@@ -70,7 +70,7 @@ export const ResetPasswordPage: React.FC = () => {
           </p>
         </div>
       ) : (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
           {errorMsg && (
             <div className="p-3 rounded-xl bg-[#FCE8E6] border border-[#f8cbc7] text-xs text-[#B3261E] flex items-start gap-2.5">
               <AlertCircle className="w-4 h-4 text-[#B3261E] flex-shrink-0 mt-0.5" />

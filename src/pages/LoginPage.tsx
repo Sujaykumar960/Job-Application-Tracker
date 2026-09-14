@@ -57,11 +57,12 @@ export const LoginPage: React.FC = () => {
   // 1-Click Quick Fill for test evaluation
   const handleQuickFill = async (role: 'seeker' | 'recruiter') => {
     setAuthError(null);
-    const targetEmail = role === 'seeker' ? 'alex.rivera@devmail.io' : 'recruiter@stripe.com';
+    const targetEmail = role === 'seeker' ? 'alex.rivera@devmail.io' : 'sarah.lin@stripe.com';
+    const targetPassword = 'DevPassword123!';
     setValue('email', targetEmail);
-    setValue('password', 'password123');
+    setValue('password', targetPassword);
     try {
-      await login({ email: targetEmail, password: 'password123' });
+      await login({ email: targetEmail, password: targetPassword });
       navigate(from, { replace: true });
     } catch (err: unknown) {
       setAuthError(err instanceof Error ? err.message : 'Login failed');
@@ -87,7 +88,7 @@ export const LoginPage: React.FC = () => {
       )}
 
       {/* Login Form */}
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
         {/* Email */}
         <Input
           label="Email Address"
@@ -117,8 +118,8 @@ export const LoginPage: React.FC = () => {
             <input
               type={showPassword ? 'text' : 'password'}
               placeholder="••••••••"
-              className={`w-full bg-white text-[#1D2226] placeholder-[#788896] text-sm rounded-lg border pl-9 pr-10 py-2 transition focus:outline-none focus:ring-1 focus:ring-[#0A66C2] ${
-                errors.password ? 'border-rose-500' : 'border-[#D9D9D9] hover:border-[#0A66C2]/40'
+              className={`w-full bg-white text-[#1D2226] placeholder-[#788896] text-xs sm:text-sm rounded-lg border pl-9 pr-10 py-2 transition duration-150 focus:outline-none focus:ring-2 focus:ring-[#E8F3FF] focus:border-[#0A66C2] ${
+                errors.password ? 'border-[#E6395A]' : 'border-[#D9D9D9] hover:border-[#788896]'
               }`}
               {...register('password')}
             />
