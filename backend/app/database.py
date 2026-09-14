@@ -9,6 +9,16 @@ from app.config import settings
 logger = logging.getLogger("careerx.database")
 
 
+def _get_client_kwargs() -> dict:
+    kwargs = {"serverSelectionTimeoutMS": 5000}
+    try:
+        import certifi
+        kwargs["tlsCAFile"] = certifi.where()
+    except ImportError:
+        pass
+    return kwargs
+
+
 class DatabaseManager:
     client: Optional[AsyncIOMotorClient] = None
     db: Optional[AsyncIOMotorDatabase] = None
@@ -19,18 +29,9 @@ class DatabaseManager:
         safe_uri = re.sub(r"://([^:]+):([^@]+)@", r"://\1:****@", settings.MONGODB_URI)
         logger.info("Connecting to MongoDB at: %s", safe_uri)
         try:
-            client_kwargs = {
-                "serverSelectionTimeoutMS": 5000,
-            }
-            try:
-                import certifi
-                client_kwargs["tlsCAFile"] = certifi.where()
-            except ImportError:
-                pass
-
             cls.client = AsyncIOMotorClient(
                 settings.MONGODB_URI,
-                **client_kwargs,
+                **_get_client_kwargs(),
             )
             cls.db = cls.client[settings.MONGODB_DB_NAME]
             # Verify connectivity
@@ -210,7 +211,7 @@ def get_database() -> AsyncIOMotorDatabase:
         if client_loop and (client_loop.is_closed() or client_loop != current_loop):
             DatabaseManager.client = AsyncIOMotorClient(
                 settings.MONGODB_URI,
-                serverSelectionTimeoutMS=5000,
+                **_get_client_kwargs(),
             )
             DatabaseManager.db = DatabaseManager.client[settings.MONGODB_DB_NAME]
     except RuntimeError:
