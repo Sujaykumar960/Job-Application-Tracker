@@ -11,8 +11,12 @@ export const MainLayout: React.FC = () => {
 
   // Sidebar collapsed state with localStorage persistence
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
-    const saved = localStorage.getItem('careerx_sidebar_collapsed');
-    return saved ? JSON.parse(saved) : false;
+    try {
+      const saved = localStorage.getItem('careerx_sidebar_collapsed');
+      return saved ? JSON.parse(saved) : false;
+    } catch {
+      return false;
+    }
   });
 
   // Mobile drawer open state

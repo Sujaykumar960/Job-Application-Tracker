@@ -15,10 +15,14 @@ async def client():
     # Clean up test data
     db = DatabaseManager.db
     if db is not None:
-        await db.connections.delete_many({})
-        await db.follows.delete_many({})
+        test_users = await db.users.find({"email": {"$regex": ".*@nettest\\.io$"}}, {"_id": 1, "id": 1}).to_list(500)
+        test_uids = [str(u.get("id") or u["_id"]) for u in test_users]
+        if test_uids:
+            await db.profiles.delete_many({"userId": {"$in": test_uids}})
+            await db.connections.delete_many({"$or": [{"requesterId": {"$in": test_uids}}, {"receiverId": {"$in": test_uids}}]})
+            await db.connection_requests.delete_many({"$or": [{"senderId": {"$in": test_uids}}, {"recipientId": {"$in": test_uids}}]})
+            await db.follows.delete_many({"$or": [{"followerId": {"$in": test_uids}}, {"targetUserId": {"$in": test_uids}}]})
         await db.users.delete_many({"email": {"$regex": ".*@nettest\\.io$"}})
-        await db.profiles.delete_many({"userId": {"$regex": ".*"}})
 
 
 async def register_user(client, email: str, name: str, company: str = "Stripe", skills: list = None) -> tuple:

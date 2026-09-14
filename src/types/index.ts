@@ -135,7 +135,7 @@ export interface NetworkUser {
   avatarGradient?: string;
   location?: string;
   skills: string[];
-  connectionState: 'connected' | 'pending' | 'not_connected';
+  connectionState: 'connected' | 'pending' | 'not_connected' | 'Connected' | 'Pending' | 'Connect';
   connectionSince?: string;
   mutualConnections?: number;
   isIncomingRequest?: boolean;

@@ -1,6 +1,8 @@
 import re
 import uuid
+from collections import defaultdict
 from typing import Any, Dict, List, Optional, Set, Tuple
+from bson import ObjectId
 from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -564,6 +566,235 @@ class ConnectionRepository(BaseRepository):
             return True
         return False
 
+    async def build_network_users_batch(
+        self,
+        targets: List[Dict[str, Any]],
+        viewing_user_id: Optional[str] = None,
+    ) -> List[NetworkUser]:
+        """Batch hydrate complete NetworkUser objects with dynamic relationship states in O(1) DB queries."""
+        if not targets:
+            return []
+
+        # 1. Collect target user IDs
+        target_ids: List[str] = []
+        for p in targets:
+            tid = p.get("userId") or str(p.get("id") or p.get("_id") or "")
+            if tid and tid not in target_ids:
+                target_ids.append(tid)
+
+        if not target_ids:
+            return []
+
+        # 2. Resolve missing names in batch from users collection
+        missing_name_ids = [
+            tid for p in targets
+            if not p.get("name") and (tid := (p.get("userId") or str(p.get("id") or p.get("_id") or "")))
+        ]
+        name_map: Dict[str, str] = {}
+        if missing_name_ids:
+            obj_ids = []
+            str_ids = []
+            for mid in missing_name_ids:
+                str_ids.append(mid)
+                try:
+                    obj_ids.append(ObjectId(mid))
+                except Exception:
+                    pass
+            u_docs = await self.users.find({"$or": [{"_id": {"$in": obj_ids}}, {"id": {"$in": str_ids}}]}).to_list(length=len(missing_name_ids))
+            for u in u_docs:
+                uid = str(u.get("id") or u["_id"])
+                if u.get("name"):
+                    name_map[uid] = u["name"]
+
+        # 3. If authenticated viewer, batch fetch connection docs, requests, follows, and mutuals
+        conn_by_target: Dict[str, Dict[str, Any]] = {}
+        req_by_target: Dict[str, Dict[str, Any]] = {}
+        followed_target_ids: Set[str] = set()
+        mutual_by_target: Dict[str, Set[str]] = defaultdict(set)
+        mutual_names_map: Dict[str, str] = {}
+
+        if viewing_user_id:
+            viewer_conn_ids = await self.get_user_connected_ids(viewing_user_id)
+
+            # Connections between viewer and targets
+            c_docs = await self.collection.find({
+                "$or": [
+                    {"requesterId": viewing_user_id, "receiverId": {"$in": target_ids}},
+                    {"receiverId": viewing_user_id, "requesterId": {"$in": target_ids}},
+                ]
+            }).to_list(length=len(target_ids) * 2)
+            for cd in c_docs:
+                other = cd.get("receiverId") if cd.get("requesterId") == viewing_user_id else cd.get("requesterId")
+                if other:
+                    conn_by_target[other] = cd
+
+            # Connection requests between viewer and targets
+            r_docs = await self.db["connection_requests"].find({
+                "$or": [
+                    {"senderId": viewing_user_id, "recipientId": {"$in": target_ids}},
+                    {"recipientId": viewing_user_id, "senderId": {"$in": target_ids}},
+                ]
+            }).to_list(length=len(target_ids) * 2)
+            for rd in r_docs:
+                other = rd.get("recipientId") if rd.get("senderId") == viewing_user_id else rd.get("senderId")
+                if other:
+                    req_by_target[other] = rd
+
+            # Follows between viewer and targets
+            f_docs = await self.follows.find({
+                "followerId": viewing_user_id,
+                "targetUserId": {"$in": target_ids},
+            }).to_list(length=len(target_ids))
+            followed_target_ids = {fd["targetUserId"] for fd in f_docs if fd.get("targetUserId")}
+
+            # Mutual connections (only possible if viewer has confirmed connections)
+            if viewer_conn_ids:
+                m_cursor = self.collection.find({
+                    "status": {"$in": ["Connected", "connected"]},
+                    "$or": [
+                        {"requesterId": {"$in": list(viewer_conn_ids)}, "receiverId": {"$in": target_ids}},
+                        {"receiverId": {"$in": list(viewer_conn_ids)}, "requesterId": {"$in": target_ids}},
+                    ]
+                })
+                m_docs = await m_cursor.to_list(length=500)
+                for md in m_docs:
+                    req_id = md.get("requesterId")
+                    rec_id = md.get("receiverId")
+                    if req_id in target_ids and rec_id in viewer_conn_ids and req_id != viewing_user_id:
+                        mutual_by_target[req_id].add(rec_id)
+                    if rec_id in target_ids and req_id in viewer_conn_ids and rec_id != viewing_user_id:
+                        mutual_by_target[rec_id].add(req_id)
+
+                sample_mutual_ids: Set[str] = set()
+                for m_set in mutual_by_target.values():
+                    for mid in list(m_set)[:3]:
+                        sample_mutual_ids.add(mid)
+
+                if sample_mutual_ids:
+                    mp_docs = await self.profiles.find({"userId": {"$in": list(sample_mutual_ids)}}).to_list(length=len(sample_mutual_ids))
+                    for mp in mp_docs:
+                        if mp.get("name"):
+                            mutual_names_map[mp["userId"]] = mp["name"]
+                    missing_mutual_names = sample_mutual_ids - set(mutual_names_map.keys())
+                    if missing_mutual_names:
+                        m_obj_ids = []
+                        m_str_ids = []
+                        for mid in missing_mutual_names:
+                            m_str_ids.append(mid)
+                            try:
+                                m_obj_ids.append(ObjectId(mid))
+                            except Exception:
+                                pass
+                        mu_docs = await self.users.find({"$or": [{"_id": {"$in": m_obj_ids}}, {"id": {"$in": m_str_ids}}]}).to_list(length=len(missing_mutual_names))
+                        for mu in mu_docs:
+                            uid = str(mu.get("id") or mu["_id"])
+                            if mu.get("name"):
+                                mutual_names_map[uid] = mu["name"]
+
+        # 4. Construct NetworkUser instances
+        results: List[NetworkUser] = []
+        for prof in targets:
+            tid = prof.get("userId") or str(prof.get("id") or prof.get("_id") or "")
+            if not tid:
+                continue
+
+            raw_name = prof.get("name") or name_map.get(tid)
+            name_str = raw_name if isinstance(raw_name, str) and raw_name.strip() else "Engineering Peer"
+            headline = prof.get("headline") or "Software Engineer"
+            company = prof.get("company") or "Technology"
+            location = prof.get("location") or "Remote"
+            skills = prof.get("skills") or []
+            parts = [p for p in name_str.split() if p]
+            avatar_initials = prof.get("avatarInitials") or ("".join([p[0].upper() for p in parts[:2]]) if parts else "CX")
+            avatar_gradient = prof.get("avatarGradient") or "from-brand-600 to-indigo-800"
+
+            if not viewing_user_id or viewing_user_id == tid:
+                conn_state = "Connect"
+                is_incoming = False
+                req_date = None
+                conn_date = None
+                note_val = None
+                req_id_val = None
+                is_fol = False
+                m_count = 0
+                m_names = []
+            else:
+                is_fol = tid in followed_target_ids
+                m_set = mutual_by_target.get(tid, set())
+                m_count = len(m_set)
+                m_names = [mutual_names_map.get(mid, "Engineer") for mid in list(m_set)[:3]]
+
+                cd = conn_by_target.get(tid)
+                rd = req_by_target.get(tid)
+
+                if cd:
+                    st = cd.get("status", "Connect")
+                    req_id_val = str(cd.get("id") or cd.get("_id", ""))
+                    note_val = cd.get("note")
+                    if st in ("Connected", "connected", "Accepted", "accepted"):
+                        conn_state = "Connected"
+                        is_incoming = False
+                        req_date = cd.get("requestDate")
+                        conn_date = cd.get("connectedDate") or cd.get("updatedAt")
+                    elif st in ("Pending", "pending"):
+                        conn_state = "Pending"
+                        is_incoming = (cd.get("receiverId") == viewing_user_id)
+                        req_date = cd.get("requestDate")
+                        conn_date = None
+                    else:
+                        conn_state = "Connect"
+                        is_incoming = False
+                        req_date = None
+                        conn_date = None
+                elif rd:
+                    st = rd.get("status", "Connect")
+                    req_id_val = str(rd.get("id") or rd.get("_id", ""))
+                    note_val = rd.get("note")
+                    if st in ("Pending", "pending"):
+                        conn_state = "Pending"
+                        is_incoming = (rd.get("recipientId") == viewing_user_id)
+                        req_date = rd.get("requestDate") or rd.get("createdAt")
+                        conn_date = None
+                    elif st in ("Connected", "connected", "Accepted", "accepted"):
+                        conn_state = "Connected"
+                        is_incoming = False
+                        req_date = rd.get("requestDate")
+                        conn_date = rd.get("updatedAt")
+                    else:
+                        conn_state = "Connect"
+                        is_incoming = False
+                        req_date = None
+                        conn_date = None
+                else:
+                    conn_state = "Connect"
+                    is_incoming = False
+                    req_date = None
+                    conn_date = None
+                    note_val = None
+                    req_id_val = None
+
+            results.append(NetworkUser(
+                id=tid,
+                name=name_str,
+                headline=headline,
+                avatarInitials=avatar_initials,
+                avatarGradient=avatar_gradient,
+                company=company,
+                location=location,
+                skills=skills,
+                mutualCount=m_count,
+                mutualNames=m_names,
+                connectionState=conn_state,
+                isFollowing=is_fol,
+                isIncomingRequest=is_incoming,
+                requestDate=req_date,
+                connectedDate=conn_date,
+                note=note_val,
+                requestId=req_id_val,
+            ))
+
+        return results
+
     async def build_network_user(
         self,
         target_id: str,
@@ -571,100 +802,83 @@ class ConnectionRepository(BaseRepository):
         preloaded_profile: Optional[Dict[str, Any]] = None,
     ) -> NetworkUser:
         """Hydrate complete NetworkUser object with dynamic relationship states."""
-        prof = preloaded_profile
-        if not prof:
-            prof = await self.profiles.find_one({"userId": target_id}) or {}
-
-        # Fetch user document to get the authoritative name if not in profile
-        name = prof.get("name")
-        if not name:
-            u = await self.users.find_one(self._build_id_query(target_id))
-            if u and u.get("name"):
-                name = u["name"]
-
-        name_str = name if isinstance(name, str) and name.strip() else "Engineering Peer"
-        name = name_str
-        headline = prof.get("headline") or "Software Engineer"
-        company = prof.get("company") or "Technology"
-        location = prof.get("location") or "Remote"
-        skills = prof.get("skills") or []
-        parts = [p for p in name.split() if p]
-        avatar_initials = prof.get("avatarInitials") or ("".join([p[0].upper() for p in parts[:2]]) if parts else "CX")
-        avatar_gradient = prof.get("avatarGradient") or "from-brand-600 to-indigo-800"
-
-        mutual_count, mutual_names = await self.get_mutual_connections(viewing_user_id or "", target_id)
-        conn_details = await self.get_connection_details_between(viewing_user_id, target_id)
-        following = await self.is_following(viewing_user_id, target_id)
-
-        return NetworkUser(
-            id=target_id,
-            name=name,
-            headline=headline,
-            avatarInitials=avatar_initials,
-            avatarGradient=avatar_gradient,
-            company=company,
-            location=location,
-            skills=skills,
-            mutualCount=mutual_count,
-            mutualNames=mutual_names,
-            connectionState=conn_details["connectionState"],
-            isFollowing=following,
-            isIncomingRequest=conn_details["isIncomingRequest"],
-            requestDate=conn_details["requestDate"],
-            connectedDate=conn_details["connectedDate"],
-            note=conn_details["note"],
-            requestId=conn_details["requestId"],
-        )
+        target = preloaded_profile or {"userId": target_id}
+        if "userId" not in target and "id" not in target and "_id" not in target:
+            target["userId"] = target_id
+        res = await self.build_network_users_batch([target], viewing_user_id=viewing_user_id)
+        if res:
+            return res[0]
+        return NetworkUser(id=target_id, name="Engineering Peer", headline="Software Engineer")
 
     async def get_connections(self, user_id: str) -> List[NetworkUser]:
         """Fetch all confirmed connections for user."""
         connected_ids = await self.get_user_connected_ids(user_id)
-        results = []
-        for peer_id in connected_ids:
-            results.append(await self.build_network_user(peer_id, viewing_user_id=user_id))
-        return results
+        if not connected_ids:
+            return []
+        profs = await self.profiles.find({"userId": {"$in": list(connected_ids)}}).to_list(length=len(connected_ids))
+        existing_uids = {p.get("userId") for p in profs}
+        missing_ids = [uid for uid in connected_ids if uid not in existing_uids]
+        if missing_ids:
+            obj_ids = []
+            for mid in missing_ids:
+                try:
+                    obj_ids.append(ObjectId(mid))
+                except Exception:
+                    pass
+            u_docs = await self.users.find({"$or": [{"_id": {"$in": obj_ids}}, {"id": {"$in": missing_ids}}]}).to_list(length=len(missing_ids))
+            for u in u_docs:
+                profs.append({"userId": str(u.get("id") or u["_id"]), "name": u.get("name")})
+        return await self.build_network_users_batch(profs, viewing_user_id=user_id)
 
     async def get_incoming_requests(self, user_id: str) -> List[NetworkUser]:
         """Fetch incoming pending connection requests for user."""
         cursor = self.collection.find({"receiverId": user_id, "status": {"$in": ["Pending", "pending"]}})
         docs = await cursor.to_list(length=100)
-        seen_senders = set()
-        results = []
-        for d in docs:
-            sender_id = d.get("requesterId")
-            if sender_id and sender_id not in seen_senders:
-                seen_senders.add(sender_id)
-                u = await self.build_network_user(sender_id, viewing_user_id=user_id)
-                u.requestId = str(d.get("id") or d.get("_id", ""))
-                u.note = d.get("note")
-                u.requestDate = d.get("requestDate") or d.get("createdAt")
-                u.createdAt = d.get("createdAt") or d.get("requestDate")
-                u.updatedAt = d.get("updatedAt")
-                u.isIncomingRequest = True
-                u.senderId = sender_id
-                u.recipientId = user_id
-                u.status = "pending"
-                results.append(u)
-
         req_cursor = self.db["connection_requests"].find({"recipientId": user_id, "status": {"$in": ["Pending", "pending"]}})
         req_docs = await req_cursor.to_list(length=100)
-        for rd in req_docs:
-            sender_id = rd.get("senderId")
-            if sender_id and sender_id not in seen_senders:
-                seen_senders.add(sender_id)
-                u = await self.build_network_user(sender_id, viewing_user_id=user_id)
-                u.requestId = str(rd.get("id") or rd.get("_id", ""))
-                u.note = rd.get("note")
-                u.requestDate = rd.get("requestDate") or rd.get("createdAt")
-                u.createdAt = rd.get("createdAt") or rd.get("requestDate")
-                u.updatedAt = rd.get("updatedAt")
-                u.isIncomingRequest = True
-                u.senderId = sender_id
-                u.recipientId = user_id
-                u.status = "pending"
-                results.append(u)
 
-        return results
+        sender_map: Dict[str, Dict[str, Any]] = {}
+        for d in docs:
+            sid = d.get("requesterId")
+            if sid and sid not in sender_map:
+                sender_map[sid] = d
+        for rd in req_docs:
+            sid = rd.get("senderId")
+            if sid and sid not in sender_map:
+                sender_map[sid] = rd
+
+        if not sender_map:
+            return []
+
+        sender_ids = list(sender_map.keys())
+        profs = await self.profiles.find({"userId": {"$in": sender_ids}}).to_list(length=len(sender_ids))
+        existing_uids = {p.get("userId") for p in profs}
+        missing_ids = [sid for sid in sender_ids if sid not in existing_uids]
+        if missing_ids:
+            obj_ids = []
+            for mid in missing_ids:
+                try:
+                    obj_ids.append(ObjectId(mid))
+                except Exception:
+                    pass
+            u_docs = await self.users.find({"$or": [{"_id": {"$in": obj_ids}}, {"id": {"$in": missing_ids}}]}).to_list(length=len(missing_ids))
+            for u in u_docs:
+                profs.append({"userId": str(u.get("id") or u["_id"]), "name": u.get("name")})
+
+        users_batch = await self.build_network_users_batch(profs, viewing_user_id=user_id)
+        for u in users_batch:
+            req_info = sender_map.get(u.id, {})
+            u.requestId = str(req_info.get("id") or req_info.get("_id", ""))
+            u.note = req_info.get("note")
+            u.requestDate = req_info.get("requestDate") or req_info.get("createdAt")
+            u.createdAt = req_info.get("createdAt") or req_info.get("requestDate")
+            u.updatedAt = req_info.get("updatedAt")
+            u.isIncomingRequest = True
+            u.senderId = u.id
+            u.recipientId = user_id
+            u.status = "pending"
+            u.connectionState = "Pending"
+        return users_batch
 
     async def get_network_summary(self, user_id: str) -> Dict[str, Any]:
         """Fetch summary of user's connections and request counts."""
@@ -683,7 +897,6 @@ class ConnectionRepository(BaseRepository):
 
     async def get_suggestions(self, user_id: str, limit: int = 20) -> List[NetworkUser]:
         """Fetch recommended peers ranked by shared skills, company, and mutual connections."""
-        # Get all users already in relationship (Connected or Pending)
         rel_cursor = self.collection.find({
             "$or": [{"requesterId": user_id}, {"receiverId": user_id}],
             "status": {"$in": ["Connected", "Pending"]},
@@ -702,16 +915,13 @@ class ConnectionRepository(BaseRepository):
             excluded_ids.add(ar.get("senderId"))
             excluded_ids.add(ar.get("recipientId"))
 
-        # Fetch viewing user's profile for matching
         viewer_profile = await self.profiles.find_one({"userId": user_id}) or {}
         viewer_skills = {s.lower() for s in viewer_profile.get("skills", [])}
         viewer_company = (viewer_profile.get("company") or "").lower()
 
-        # Fetch candidate profiles not in excluded_ids
         cand_cursor = self.profiles.find({"userId": {"$nin": list(excluded_ids)}})
         cand_profiles = await cand_cursor.to_list(length=100)
 
-        # Also check users collection if profiles are sparse
         if len(cand_profiles) < limit:
             cand_user_cursor = self.users.find({"_id": {"$nin": list(excluded_ids)}, "isActive": {"$ne": False}})
             extra_users = await cand_user_cursor.to_list(length=50)
@@ -721,33 +931,45 @@ class ConnectionRepository(BaseRepository):
                 if uid not in existing_uids and uid not in excluded_ids:
                     cand_profiles.append({"userId": uid, "name": u.get("name"), "skills": []})
 
+        cand_ids = [p.get("userId") or str(p.get("_id")) for p in cand_profiles if p.get("userId") or p.get("_id")]
+
+        # Bulk compute mutual counts for scoring in a single query
+        viewer_conn_ids = await self.get_user_connected_ids(user_id)
+        mutual_counts: Dict[str, int] = defaultdict(int)
+        if viewer_conn_ids and cand_ids:
+            m_cursor = self.collection.find({
+                "status": {"$in": ["Connected", "connected"]},
+                "$or": [
+                    {"requesterId": {"$in": list(viewer_conn_ids)}, "receiverId": {"$in": cand_ids}},
+                    {"receiverId": {"$in": list(viewer_conn_ids)}, "requesterId": {"$in": cand_ids}},
+                ]
+            })
+            m_docs = await m_cursor.to_list(length=500)
+            for md in m_docs:
+                r1, r2 = md.get("requesterId"), md.get("receiverId")
+                if r1 in cand_ids and r2 in viewer_conn_ids:
+                    mutual_counts[r1] += 1
+                if r2 in cand_ids and r1 in viewer_conn_ids:
+                    mutual_counts[r2] += 1
+
         scored_candidates = []
         for prof in cand_profiles:
             cid = prof.get("userId") or str(prof.get("_id"))
             if not cid:
                 continue
 
-            # Shared skills score
             c_skills = {s.lower() for s in prof.get("skills", [])}
             shared_skills_count = len(viewer_skills.intersection(c_skills))
-
-            # Shared company score
             c_company = (prof.get("company") or "").lower()
             company_match = 1 if viewer_company and c_company and viewer_company == c_company else 0
-
-            # Mutual connections
-            mutual_count, _ = await self.get_mutual_connections(user_id, cid)
+            mutual_count = mutual_counts.get(cid, 0)
 
             total_score = (shared_skills_count * 3) + (company_match * 5) + (mutual_count * 2)
             scored_candidates.append((total_score, cid, prof))
 
-        # Sort descending by recommendation score
         scored_candidates.sort(key=lambda x: x[0], reverse=True)
-
-        results = []
-        for _, cid, prof in scored_candidates[:limit]:
-            results.append(await self.build_network_user(cid, viewing_user_id=user_id, preloaded_profile=prof))
-        return results
+        top_profiles = [prof for _, cid, prof in scored_candidates[:limit]]
+        return await self.build_network_users_batch(top_profiles, viewing_user_id=user_id)
 
     async def get_network_users(
         self,
@@ -796,11 +1018,12 @@ class ConnectionRepository(BaseRepository):
         cursor = self.profiles.find(query_filter).skip(skip).limit(limit)
         profiles = await cursor.to_list(length=limit)
 
-        # If no profiles matched, query users collection as fallback
-        if not profiles and not skills and not company and not location:
-            u_filter: Dict[str, Any] = {"isActive": {"$ne": False}}
+        # If profiles are fewer than limit and no specific profile filters are present, supplement with active users
+        if len(profiles) < limit and not skills and not company and not location:
+            existing_uids = {p.get("userId") for p in profiles}
             if viewing_user_id:
-                u_filter["_id"] = {"$ne": viewing_user_id}
+                existing_uids.add(viewing_user_id)
+            u_filter: Dict[str, Any] = {"isActive": {"$ne": False}}
             if role and role.lower() != "all":
                 u_filter["role"] = role
             if search:
@@ -811,11 +1034,19 @@ class ConnectionRepository(BaseRepository):
                 ]
             users_cursor = self.users.find(u_filter).skip(skip).limit(limit)
             users_docs = await users_cursor.to_list(length=limit)
-            profiles = [{"userId": str(u.get("id") or u["_id"]), "name": u.get("name")} for u in users_docs]
+            for u in users_docs:
+                uid = str(u.get("id") or u["_id"])
+                if uid not in existing_uids:
+                    existing_uids.add(uid)
+                    profiles.append({
+                        "userId": uid,
+                        "name": u.get("name"),
+                        "company": u.get("company"),
+                        "location": "Remote",
+                        "headline": "Software Engineer" if u.get("role") == "seeker" else "Talent Partner",
+                        "skills": [],
+                    })
+                if len(profiles) >= limit:
+                    break
 
-        results = []
-        for prof in profiles:
-            target_id = prof.get("userId") or str(prof.get("_id"))
-            if target_id:
-                results.append(await self.build_network_user(target_id, viewing_user_id=viewing_user_id, preloaded_profile=prof))
-        return results
+        return await self.build_network_users_batch(profiles[:limit], viewing_user_id=viewing_user_id)

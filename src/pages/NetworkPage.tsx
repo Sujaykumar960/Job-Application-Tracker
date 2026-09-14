@@ -74,17 +74,22 @@ export const NetworkPage: React.FC = () => {
     fetchNetworkData();
   }, [activeTab]);
 
+  // Helper state matchers
+  const isConnected = (u: NetworkUser) => u.connectionState === 'connected' || u.connectionState === 'Connected';
+  const isPending = (u: NetworkUser) => u.connectionState === 'pending' || u.connectionState === 'Pending';
+
   // Toggle Connect state between 'Connect' and 'Pending'
   const handleConnectToggle = async (userId: string) => {
     try {
       const target = users.find((u) => u.id === userId);
-      if (target?.connectionState === 'pending') {
+      const isTargetPending = target && isPending(target);
+      if (isTargetPending) {
         const reqId = target.requestId || userId;
         await connectionApi.cancelConnectionRequest(reqId);
         setUsers((prev) =>
           prev.map((u) =>
             u.id === userId
-              ? { ...u, connectionState: 'not_connected' as const, requestId: undefined }
+              ? { ...u, connectionState: 'Connect' as const, requestId: undefined }
               : u
           )
         );
@@ -93,7 +98,7 @@ export const NetworkPage: React.FC = () => {
         setUsers((prev) =>
           prev.map((u) =>
             u.id === userId
-              ? { ...u, connectionState: 'pending' as const, requestId: res.id || u.requestId }
+              ? { ...u, connectionState: 'Pending' as const, requestId: res.id || u.requestId }
               : u
           )
         );
@@ -113,7 +118,7 @@ export const NetworkPage: React.FC = () => {
       setUsers((prev) =>
         prev.map((u) =>
           u.id === userId
-            ? { ...u, connectionState: 'connected' as const, isIncomingRequest: false }
+            ? { ...u, connectionState: 'Connected' as const, isIncomingRequest: false }
             : u
         )
       );
@@ -159,17 +164,17 @@ export const NetworkPage: React.FC = () => {
 
   // Calculate Tab Counts
   const incomingRequests = useMemo(
-    () => users.filter((u) => u.isIncomingRequest && u.connectionState === 'pending'),
+    () => users.filter((u) => u.isIncomingRequest && isPending(u)),
     [users]
   );
 
   const outgoingPending = useMemo(
-    () => users.filter((u) => !u.isIncomingRequest && u.connectionState === 'pending'),
+    () => users.filter((u) => !u.isIncomingRequest && isPending(u)),
     [users]
   );
 
   const connections = useMemo(
-    () => users.filter((u) => u.connectionState === 'connected'),
+    () => users.filter((u) => isConnected(u)),
     [users]
   );
 
@@ -179,9 +184,39 @@ export const NetworkPage: React.FC = () => {
   );
 
   const suggestions = useMemo(
-    () => users.filter((u) => u.connectionState !== 'connected' && !u.isIncomingRequest),
+    () => users.filter((u) => !isConnected(u) && !u.isIncomingRequest),
     [users]
   );
+
+  // Filtered Users for Current Tab (must be called unconditionally before early returns)
+  const displayedUsers = useMemo(() => {
+    let source: NetworkUser[] = [];
+    if (activeTab === 'discover') source = users.filter((u) => !isConnected(u) && !u.isIncomingRequest);
+    else if (activeTab === 'suggestions') source = suggestions;
+    else if (activeTab === 'requests') source = incomingRequests;
+    else if (activeTab === 'connections') source = connections;
+    else if (activeTab === 'following') source = followingUsers;
+
+    return source.filter((u) => {
+      const q = searchQuery.toLowerCase().trim();
+      const name = (u.name || '').toLowerCase();
+      const headline = (u.headline || '').toLowerCase();
+      const company = (u.company || '').toLowerCase();
+      const skills = u.skills || [];
+
+      const matchesSearch =
+        !q ||
+        name.includes(q) ||
+        headline.includes(q) ||
+        company.includes(q) ||
+        skills.some((s) => (s || '').toLowerCase().includes(q));
+
+      const matchesCompany =
+        selectedCompany === 'All' || company === selectedCompany.toLowerCase();
+
+      return matchesSearch && matchesCompany;
+    });
+  }, [activeTab, users, suggestions, incomingRequests, connections, followingUsers, searchQuery, selectedCompany]);
 
   // Loading state
   if (isLoading) {
@@ -213,31 +248,6 @@ export const NetworkPage: React.FC = () => {
       </div>
     );
   }
-
-  // Filtered Users for Current Tab
-  const displayedUsers = useMemo(() => {
-    let source: NetworkUser[] = [];
-    if (activeTab === 'discover') source = users.filter((u) => u.connectionState !== 'connected' && !u.isIncomingRequest);
-    else if (activeTab === 'suggestions') source = suggestions;
-    else if (activeTab === 'requests') source = incomingRequests;
-    else if (activeTab === 'connections') source = connections;
-    else if (activeTab === 'following') source = followingUsers;
-
-    return source.filter((u) => {
-      const q = searchQuery.toLowerCase().trim();
-      const matchesSearch =
-        !q ||
-        u.name.toLowerCase().includes(q) ||
-        u.headline.toLowerCase().includes(q) ||
-        (u.company && u.company.toLowerCase().includes(q)) ||
-        u.skills.some((s) => s.toLowerCase().includes(q));
-
-      const matchesCompany =
-        selectedCompany === 'All' || (u.company && u.company.toLowerCase() === selectedCompany.toLowerCase());
-
-      return matchesSearch && matchesCompany;
-    });
-  }, [activeTab, users, suggestions, incomingRequests, connections, followingUsers, searchQuery, selectedCompany]);
 
   const companiesList = ['All', 'Stripe', 'Linear', 'Vercel', 'Datadog', 'Netflix', 'Microsoft'];
 
@@ -403,7 +413,7 @@ export const NetworkPage: React.FC = () => {
               'text-[10px] font-mono px-1.5 py-0.2 rounded-full',
               activeTab === 'connections' ? 'bg-[#004182] text-white' : 'bg-[#F3F6F8] text-[#56687A]'
             )}>
-              {connections.length + 280}
+              {connections.length}
             </span>
           </button>
 
