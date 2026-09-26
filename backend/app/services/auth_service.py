@@ -44,6 +44,7 @@ class AuthService:
         hashed_pw = hash_password(data.password)
         user_doc = await self.user_repo.create({
             "email": email,
+            "name": data.name.strip(),
             "passwordHash": hashed_pw,
             "role": data.role,
             "isVerified": False,

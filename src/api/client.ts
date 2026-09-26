@@ -1,6 +1,24 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+function getResolvedApiBaseUrl(): string {
+  const envUrl = ((import.meta as any).env?.VITE_API_BASE_URL || '').trim();
+  if (envUrl) {
+    if (!envUrl.endsWith('/api') && !envUrl.endsWith('/api/')) {
+      return `${envUrl.replace(/\/+$/, '')}/api`;
+    }
+    return envUrl.replace(/\/+$/, '');
+  }
+
+  if ((import.meta as any).env?.PROD) {
+    console.error(
+      '[CareerX] Missing VITE_API_BASE_URL environment variable in production! In Vercel Project Settings > Environment Variables, set VITE_API_BASE_URL to your backend URL (e.g. https://your-backend.onrender.com/api) and redeploy.'
+    );
+  }
+
+  return 'http://localhost:8000/api';
+}
+
+export const API_BASE_URL = getResolvedApiBaseUrl();
 
 export interface ApiErrorResponse {
   statusCode: number;

@@ -48,11 +48,15 @@ class ChatRepository:
         prof = await self.profile_repo.find_one({"userId": peer_id})
         user_doc = await self.user_repo.find_one(self.user_repo._build_id_query(peer_id))
 
+        from app.repositories.connection_repository import resolve_user_display_name
+
         name = "Peer Engineer"
-        if prof and prof.get("name"):
-            name = prof["name"]
-        elif user_doc and user_doc.get("name"):
-            name = user_doc["name"]
+        if prof and prof.get("name") and prof.get("name").strip().lower() not in ("peer engineer", "none"):
+            name = prof["name"].strip()
+        elif user_doc:
+            name = resolve_user_display_name(user_doc)
+        elif prof:
+            name = resolve_user_display_name(prof)
 
         headline = prof.get("headline", "Software Engineer") if prof else "Software Engineer"
         company = prof.get("company", "Tech") if prof else "Tech"

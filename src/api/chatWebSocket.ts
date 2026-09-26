@@ -56,6 +56,13 @@ function getDefaultWsUrl(): string {
       }
       return `${wsEnv.replace(/\/+$/, '')}/api/ws/chat`;
     }
+
+    const apiEnv = (import.meta as any).env?.VITE_API_BASE_URL;
+    if (apiEnv && !apiEnv.includes('localhost')) {
+      const wsOrigin = apiEnv.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:').replace(/\/api\/?$/, '');
+      return `${wsOrigin}/api/ws/chat`;
+    }
+
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.hostname === 'localhost' ? 'localhost:8000' : window.location.host;
     return `${protocol}//${host}/api/ws/chat`;

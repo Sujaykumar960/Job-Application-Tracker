@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ChatConversation } from '../../api/chatWebSocket';
-import { Search, X, Circle, CheckCheck } from 'lucide-react';
+import { Search, X, Circle, CheckCheck, SquarePen } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 export interface ConversationListProps {
@@ -9,6 +9,7 @@ export interface ConversationListProps {
   onSelectConversation: (id: string) => void;
   searchQuery: string;
   onSearchChange: (q: string) => void;
+  onNewConversation?: () => void;
 }
 
 export const ConversationList: React.FC<ConversationListProps> = ({
@@ -17,6 +18,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   onSelectConversation,
   searchQuery,
   onSearchChange,
+  onNewConversation,
 }) => {
   const [filterMode, setFilterMode] = useState<'all' | 'unread'>('all');
 
@@ -39,7 +41,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
       {/* Search Header */}
       <div className="p-3 border-b border-[#E8E8E8] space-y-2.5">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <h2 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider">
               Conversations
             </h2>
@@ -47,6 +49,16 @@ export const ConversationList: React.FC<ConversationListProps> = ({
               <span className="px-1.5 py-0.2 rounded-full bg-[#0A66C2] text-white font-mono text-[10px] font-bold">
                 {totalUnread} new
               </span>
+            )}
+            {onNewConversation && (
+              <button
+                type="button"
+                onClick={onNewConversation}
+                className="p-1 rounded-lg text-[#0A66C2] hover:bg-[#E8F3FF] transition"
+                title="Start new message with a connection"
+              >
+                <SquarePen className="w-3.5 h-3.5" />
+              </button>
             )}
           </div>
 

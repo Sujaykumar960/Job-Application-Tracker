@@ -6,7 +6,7 @@ import { CandidateCard } from '../components/network/CandidateCard';
 import { ConnectionRequestCard } from '../components/network/ConnectionRequestCard';
 import { NetworkUser } from '../types';
 import { connectionApi } from '../api/connectionApi';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Users,
   UserPlus,
@@ -25,16 +25,35 @@ import { cn } from '../utils/cn';
 
 type NetworkTab = 'discover' | 'suggestions' | 'requests' | 'connections' | 'following';
 
+const VALID_TABS: NetworkTab[] = ['discover', 'suggestions', 'requests', 'connections', 'following'];
+
 export const NetworkPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const tabParam = searchParams.get('tab') as NetworkTab;
+  const initialTab = VALID_TABS.includes(tabParam) ? tabParam : 'discover';
 
   const [users, setUsers] = useState<NetworkUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<NetworkTab>('discover');
+  const [activeTab, setActiveTabState] = useState<NetworkTab>(initialTab);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCompany, setSelectedCompany] = useState('All');
+
+  // Sync activeTab when URL parameter changes
+  useEffect(() => {
+    const currentTab = searchParams.get('tab') as NetworkTab;
+    if (currentTab && VALID_TABS.includes(currentTab) && currentTab !== activeTab) {
+      setActiveTabState(currentTab);
+    }
+  }, [searchParams]);
+
+  const setActiveTab = (tab: NetworkTab) => {
+    setActiveTabState(tab);
+    setSearchParams({ tab });
+  };
 
   // Fetch network data based on active tab
   useEffect(() => {

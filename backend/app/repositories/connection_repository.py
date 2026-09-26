@@ -12,6 +12,22 @@ from app.services.notification_service import NotificationService
 from app.utils.helpers import serialize_mongo_doc, utc_now_iso
 
 
+def resolve_user_display_name(doc: Optional[Dict[str, Any]]) -> str:
+    """Resolve human-readable display name from user/profile doc or email."""
+    if not doc:
+        return "Engineering Peer"
+    raw_name = doc.get("name")
+    if isinstance(raw_name, str) and raw_name.strip() and raw_name.strip().lower() not in ("engineering peer", "careerx engineer", "none"):
+        return raw_name.strip()
+    email = doc.get("email")
+    if isinstance(email, str) and "@" in email:
+        handle = email.split("@")[0]
+        cleaned = re.sub(r"[._-]+", " ", handle).strip()
+        if cleaned:
+            return cleaned.title()
+    return "Engineering Peer"
+
+
 class ConnectionRepository(BaseRepository):
     def __init__(self, db: AsyncIOMotorDatabase):
         super().__init__(db, "connections")
@@ -296,7 +312,11 @@ class ConnectionRepository(BaseRepository):
         # Notify recipient
         sender_prof = await self.profiles.find_one({"userId": requester_id}) or {}
         sender_user = await self.users.find_one(self._build_id_query(requester_id)) or {}
-        sender_name = sender_prof.get("name") or sender_user.get("name") or "CareerX Engineer"
+        sender_name = (
+            resolve_user_display_name(sender_prof)
+            if sender_prof.get("name")
+            else resolve_user_display_name(sender_user)
+        )
         sender_company = sender_prof.get("company") or sender_user.get("company")
         await NotificationService.notify_connection_request(
             self.db,
@@ -699,6 +719,8 @@ class ConnectionRepository(BaseRepository):
                 continue
 
             raw_name = prof.get("name") or name_map.get(tid)
+            if not raw_name or (isinstance(raw_name, str) and raw_name.strip().lower() in ("engineering peer", "careerx engineer", "none")):
+                raw_name = resolve_user_display_name(prof) or name_map.get(tid)
             name_str = raw_name if isinstance(raw_name, str) and raw_name.strip() else "Engineering Peer"
             headline = prof.get("headline") or "Software Engineer"
             company = prof.get("company") or "Technology"
@@ -827,7 +849,17 @@ class ConnectionRepository(BaseRepository):
                     pass
             u_docs = await self.users.find({"$or": [{"_id": {"$in": obj_ids}}, {"id": {"$in": missing_ids}}]}).to_list(length=len(missing_ids))
             for u in u_docs:
-                profs.append({"userId": str(u.get("id") or u["_id"]), "name": u.get("name")})
+                resolved_id = str(u.get("id") or u["_id"])
+                disp_name = resolve_user_display_name(u)
+                profs.append({
+                    "userId": resolved_id,
+                    "name": disp_name,
+                    "email": u.get("email"),
+                    "headline": u.get("headline") or ("Software Engineer" if u.get("role") == "seeker" else "Technical Talent Partner"),
+                    "company": u.get("company") or "CareerX Network",
+                    "location": u.get("location") or "Remote",
+                    "skills": u.get("skills") or ["React", "TypeScript", "Python"],
+                })
         return await self.build_network_users_batch(profs, viewing_user_id=user_id)
 
     async def get_incoming_requests(self, user_id: str) -> List[NetworkUser]:
@@ -863,7 +895,17 @@ class ConnectionRepository(BaseRepository):
                     pass
             u_docs = await self.users.find({"$or": [{"_id": {"$in": obj_ids}}, {"id": {"$in": missing_ids}}]}).to_list(length=len(missing_ids))
             for u in u_docs:
-                profs.append({"userId": str(u.get("id") or u["_id"]), "name": u.get("name")})
+                resolved_id = str(u.get("id") or u["_id"])
+                disp_name = resolve_user_display_name(u)
+                profs.append({
+                    "userId": resolved_id,
+                    "name": disp_name,
+                    "email": u.get("email"),
+                    "headline": u.get("headline") or ("Software Engineer" if u.get("role") == "seeker" else "Technical Talent Partner"),
+                    "company": u.get("company") or "CareerX Network",
+                    "location": u.get("location") or "Remote",
+                    "skills": u.get("skills") or ["React", "TypeScript", "Python"],
+                })
 
         users_batch = await self.build_network_users_batch(profs, viewing_user_id=user_id)
         for u in users_batch:

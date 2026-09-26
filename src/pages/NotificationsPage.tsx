@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../components/common/PageHeader';
 import { Card } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
@@ -8,26 +9,114 @@ import {
   NotificationCategory,
 } from '../types';
 import { notificationApi } from '../api/notificationApi';
-import { Link, useNavigate } from 'react-router-dom';
 import {
   Bell,
   Calendar,
   Clock,
-  AlertCircle as AlertIcon,
   MessageSquare,
   UserPlus,
   Sparkles,
   Flame,
   Check,
   Trash2,
-  ExternalLink,
   ArrowRight,
-  ShieldCheck,
   CheckCheck,
   Loader2,
   AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
+
+// Category Filters
+const FILTER_TABS = [
+  { id: 'all', label: 'All Notifications' },
+  { id: 'interview_reminder', label: 'Interviews' },
+  { id: 'application_deadline', label: 'Deadlines' },
+  { id: 'follow_up', label: 'Follow-ups' },
+  { id: 'message', label: 'Messages' },
+  { id: 'connection_request', label: 'Network' },
+  { id: 'job_recommendation', label: 'Job Matches' },
+  { id: 'learning_achievement', label: 'Achievements' },
+  { id: 'calendar_event', label: 'Calendar' },
+];
+
+// Category Icon & Color Mapping
+const getCategoryConfig = (category: NotificationCategory) => {
+  switch (category) {
+    case 'interview_reminder':
+      return {
+        icon: Calendar,
+        label: 'Interview',
+        color: 'text-[#0A66C2] bg-[#E8F3FF] border-[#d0e6fc]',
+      };
+    case 'application_deadline':
+      return {
+        icon: Clock,
+        label: 'Deadline',
+        color: 'text-[#B3261E] bg-[#FCE8E6] border-[#f8cbc7]',
+      };
+    case 'follow_up':
+      return {
+        icon: AlertCircle,
+        label: 'Follow-up',
+        color: 'text-[#8A6100] bg-[#FFF4CC] border-[#ffe899]',
+      };
+    case 'message':
+      return {
+        icon: MessageSquare,
+        label: 'Message',
+        color: 'text-[#0A66C2] bg-[#E8F3FF] border-[#d0e6fc]',
+      };
+    case 'connection_request':
+      return {
+        icon: UserPlus,
+        label: 'Network',
+        color: 'text-[#137333] bg-[#E6F4EA] border-[#c6ecd2]',
+      };
+    case 'job_recommendation':
+      return {
+        icon: Sparkles,
+        label: 'Job Match',
+        color: 'text-[#6A1B9A] bg-[#F3E5F5] border-[#E1BEE7]',
+      };
+    case 'learning_achievement':
+      return {
+        icon: Flame,
+        label: 'Learning',
+        color: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
+      };
+    case 'connection_accepted':
+      return {
+        icon: UserPlus,
+        label: 'Connected',
+        color: 'text-[#137333] bg-[#E6F4EA] border-[#c6ecd2]',
+      };
+    case 'post_like':
+      return {
+        icon: Flame,
+        label: 'Post Reaction',
+        color: 'text-[#0A66C2] bg-[#E8F3FF] border-[#d0e6fc]',
+      };
+    case 'post_comment':
+      return {
+        icon: MessageSquare,
+        label: 'Comment',
+        color: 'text-[#0A66C2] bg-[#E8F3FF] border-[#d0e6fc]',
+      };
+    case 'calendar_event':
+      return {
+        icon: Calendar,
+        label: 'Calendar Event',
+        color: 'text-[#0A66C2] bg-[#E8F3FF] border-[#d0e6fc]',
+      };
+    default:
+      return {
+        icon: Bell,
+        label: 'Notification',
+        color: 'text-[#0A66C2] bg-[#E8F3FF] border-[#d0e6fc]',
+      };
+  }
+};
 
 export const NotificationsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -35,27 +124,26 @@ export const NotificationsPage: React.FC = () => {
   const [notifications, setNotifications] = useState<CareerNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
 
   // Fetch notifications from backend
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const data = await notificationApi.getNotifications();
-        setNotifications(data);
-      } catch (err) {
-        setError('Failed to load notifications. Please try again.');
-        console.error('Notifications fetch error:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchNotifications();
+  const fetchNotifications = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await notificationApi.getNotifications();
+      setNotifications(data || []);
+    } catch (err) {
+      setError('Failed to load notifications. Please try again.');
+      console.error('Notifications fetch error:', err);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   // Mark all as read
   const handleMarkAllAsRead = async () => {
@@ -68,11 +156,12 @@ export const NotificationsPage: React.FC = () => {
   };
 
   // Mark single notification as read
-  const handleToggleRead = async (id: string) => {
+  const handleToggleRead = async (id: string, currentReadStatus?: boolean) => {
+    if (currentReadStatus) return;
     try {
       await notificationApi.markAsRead(id);
       setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, isRead: !n.isRead } : n))
+        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
       );
     } catch (err) {
       console.error('Failed to mark as read:', err);
@@ -104,144 +193,15 @@ export const NotificationsPage: React.FC = () => {
     [notifications]
   );
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#0A66C2]" />
-        <span className="ml-3 text-[#56687A]">Loading notifications...</span>
-      </div>
-    );
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <AlertCircle className="w-12 h-12 text-[#E6395A]" />
-        <div className="text-center">
-          <h3 className="text-lg font-semibold text-[#1D2226]">Unable to load notifications</h3>
-          <p className="text-[#56687A] mt-1">{error}</p>
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={() => window.location.reload()}
-            className="mt-4"
-          >
-            Retry
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Empty state
-  if (notifications.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <Bell className="w-12 h-12 text-[#788896]" />
-        <div className="text-center">
-          <h3 className="text-lg font-semibold text-[#1D2226]">No notifications</h3>
-          <p className="text-[#56687A] mt-1">You're all caught up!</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Category Icon & Color Mapping
-  const getCategoryConfig = (category: NotificationCategory) => {
-    switch (category) {
-      case 'interview_reminder':
-        return {
-          icon: Calendar,
-          label: 'Interview',
-          color: 'text-[#0A66C2] bg-[#E8F3FF] border-[#d0e6fc]',
-        };
-      case 'application_deadline':
-        return {
-          icon: Clock,
-          label: 'Deadline',
-          color: 'text-[#B3261E] bg-[#FCE8E6] border-[#f8cbc7]',
-        };
-      case 'follow_up':
-        return {
-          icon: AlertCircle,
-          label: 'Follow-up',
-          color: 'text-[#8A6100] bg-[#FFF4CC] border-[#ffe899]',
-        };
-      case 'message':
-        return {
-          icon: MessageSquare,
-          label: 'Message',
-          color: 'text-[#0A66C2] bg-[#E8F3FF] border-[#d0e6fc]',
-        };
-      case 'connection_request':
-        return {
-          icon: UserPlus,
-          label: 'Network',
-          color: 'text-[#137333] bg-[#E6F4EA] border-[#c6ecd2]',
-        };
-      case 'job_recommendation':
-        return {
-          icon: Sparkles,
-          label: 'Job Match',
-          color: 'text-[#6A1B9A] bg-[#F3E5F5] border-[#E1BEE7]',
-        };
-      case 'learning_achievement':
-        return {
-          icon: Flame,
-          label: 'Learning',
-          color: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
-        };
-      case 'connection_accepted':
-        return {
-          icon: UserPlus,
-          label: 'Connected',
-          color: 'text-[#137333] bg-[#E6F4EA] border-[#c6ecd2]',
-        };
-      case 'post_like':
-        return {
-          icon: Flame,
-          label: 'Post Reaction',
-          color: 'text-[#0A66C2] bg-[#E8F3FF] border-[#d0e6fc]',
-        };
-      case 'post_comment':
-        return {
-          icon: MessageSquare,
-          label: 'Comment',
-          color: 'text-[#0A66C2] bg-[#E8F3FF] border-[#d0e6fc]',
-        };
-      case 'calendar_event':
-        return {
-          icon: Calendar,
-          label: 'Calendar Event',
-          color: 'text-[#0A66C2] bg-[#E8F3FF] border-[#d0e6fc]',
-        };
-      default:
-        return {
-          icon: Bell,
-          label: 'Notification',
-          color: 'text-[#0A66C2] bg-[#E8F3FF] border-[#d0e6fc]',
-        };
-    }
-  };
-
-  // Category Filters
-  const filterTabs = [
-    { id: 'all', label: 'All Notifications' },
-    { id: 'interview_reminder', label: 'Interviews' },
-    { id: 'application_deadline', label: 'Deadlines' },
-    { id: 'follow_up', label: 'Follow-ups' },
-    { id: 'message', label: 'Messages' },
-    { id: 'connection_request', label: 'Connection Requests' },
-    { id: 'job_recommendation', label: 'Job Matches' },
-    { id: 'learning_achievement', label: 'Achievements' },
-  ];
-
   const filteredNotifications = useMemo(() => {
     if (selectedFilter === 'all') return notifications;
     return notifications.filter((n) => n.category === selectedFilter);
   }, [notifications, selectedFilter]);
+
+  const hasReadNotifications = useMemo(
+    () => notifications.some((n) => n.isRead),
+    [notifications]
+  );
 
   return (
     <div className="space-y-5">
@@ -259,17 +219,18 @@ export const NotificationsPage: React.FC = () => {
             <Button
               size="sm"
               variant="outline"
-              disabled={unreadCount === 0}
+              disabled={unreadCount === 0 || isLoading}
               onClick={handleMarkAllAsRead}
-              icon={<CheckCheck className="w-3.5 h-3.5 text-emerald-400" />}
+              icon={<CheckCheck className="w-3.5 h-3.5 text-emerald-600" />}
             >
               Mark All Read
             </Button>
             <Button
               size="sm"
               variant="ghost"
+              disabled={!hasReadNotifications || isLoading}
               onClick={handleClearRead}
-              className="text-slate-400 hover:text-rose-400"
+              className="text-[#56687A] hover:text-[#B3261E]"
               icon={<Trash2 className="w-3.5 h-3.5" />}
             >
               Clear Read
@@ -282,11 +243,11 @@ export const NotificationsPage: React.FC = () => {
       {/* 1. FILTER TABS TOOLBAR                                                    */}
       {/* ========================================================================= */}
       <div className="p-2.5 rounded-2xl bg-white border border-[#D9D9D9] flex items-center gap-1.5 overflow-x-auto shadow-sm">
-        {filterTabs.map((tab) => {
+        {FILTER_TABS.map((tab) => {
           const isActive = selectedFilter === tab.id;
           const count =
             tab.id === 'all'
-               ? notifications.length
+              ? notifications.length
               : notifications.filter((n) => n.category === tab.id).length;
 
           return (
@@ -318,7 +279,28 @@ export const NotificationsPage: React.FC = () => {
       {/* 2. NOTIFICATIONS STREAM                                                   */}
       {/* ========================================================================= */}
       <div className="space-y-3 max-w-4xl">
-        {notifications.length === 0 ? (
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center min-h-[300px] gap-3 bg-white rounded-2xl border border-[#E8E8E8] shadow-xs">
+            <Loader2 className="w-8 h-8 animate-spin text-[#0A66C2]" />
+            <span className="text-sm font-medium text-[#56687A]">Loading notifications...</span>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 bg-white rounded-2xl border border-[#E8E8E8] p-8 text-center shadow-xs">
+            <AlertCircle className="w-10 h-10 text-[#E6395A]" />
+            <div>
+              <h3 className="text-base font-semibold text-[#1D2226]">Unable to load notifications</h3>
+              <p className="text-xs text-[#56687A] mt-1">{error}</p>
+            </div>
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => fetchNotifications()}
+              icon={<RefreshCw className="w-3.5 h-3.5" />}
+            >
+              Retry
+            </Button>
+          </div>
+        ) : notifications.length === 0 ? (
           <div className="p-12 text-center border border-dashed border-[#D9D9D9] rounded-2xl bg-[#F3F6F8] space-y-2">
             <Bell className="w-8 h-8 text-[#788896] mx-auto" />
             <p className="text-sm font-semibold text-[#1D2226]">No notifications.</p>
@@ -407,9 +389,15 @@ export const NotificationsPage: React.FC = () => {
 
                   {/* Mark as Read Toggle */}
                   <button
-                    onClick={() => handleToggleRead(notif.id)}
-                    className="p-1.5 rounded-lg bg-white text-[#56687A] hover:text-[#1D2226] border border-[#D9D9D9] hover:bg-[#F3F6F8] transition shadow-xs"
-                    title={notif.isRead ? 'Mark as Unread' : 'Mark as Read'}
+                    onClick={() => handleToggleRead(notif.id, notif.isRead)}
+                    className={cn(
+                      'p-1.5 rounded-lg border transition shadow-xs',
+                      notif.isRead
+                        ? 'bg-[#F3F6F8] text-emerald-600 border-[#D9D9D9] cursor-default'
+                        : 'bg-white text-[#56687A] hover:text-[#1D2226] border-[#D9D9D9] hover:bg-[#F3F6F8]'
+                    )}
+                    title={notif.isRead ? 'Marked as read' : 'Mark as read'}
+                    disabled={notif.isRead}
                   >
                     <Check className={cn('w-3.5 h-3.5', notif.isRead ? 'text-emerald-600' : '')} />
                   </button>

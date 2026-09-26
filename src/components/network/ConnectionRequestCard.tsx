@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '../common/Card';
 import { Button } from '../common/Button';
 import { NetworkUser } from '../../types';
 import { Check, X, Users, MapPin, ShieldCheck, Clock } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { formatRelativeTime } from '../../utils/formatters';
 
 export interface ConnectionRequestCardProps {
   user: NetworkUser;
@@ -17,6 +18,34 @@ export const ConnectionRequestCard: React.FC<ConnectionRequestCardProps> = ({
   onAccept,
   onIgnore,
 }) => {
+  // Derive safe avatar initials
+  const avatarInitials = useMemo(() => {
+    if (user.avatarInitials && user.avatarInitials.trim()) {
+      return user.avatarInitials.trim();
+    }
+    const name = user.name || 'EP';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  }, [user.avatarInitials, user.name]);
+
+  // Safe fallback for avatarGradient
+  const avatarGradientClass = useMemo(() => {
+    const g = (user.avatarGradient || '').toLowerCase();
+    if (g.includes('slate') || g.includes('gray')) {
+      return 'bg-gradient-to-br from-slate-600 to-gray-700 text-white';
+    }
+    if (g.includes('emerald') || g.includes('teal')) {
+      return 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white';
+    }
+    if (g.includes('purple') || g.includes('pink') || g.includes('indigo')) {
+      return 'bg-gradient-to-br from-indigo-600 to-purple-700 text-white';
+    }
+    return 'bg-gradient-to-br from-[#0A66C2] to-[#004182] text-white';
+  }, [user.avatarGradient]);
+
   return (
     <Card className="p-4 bg-white border border-[#D9D9D9] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm hover:border-[#0A66C2]/40 transition">
       {/* Left: Avatar + Details + Personal Note */}
@@ -24,11 +53,11 @@ export const ConnectionRequestCard: React.FC<ConnectionRequestCardProps> = ({
         <Link
           to={`/profile/${user.id}`}
           className={cn(
-            'w-12 h-12 rounded-2xl bg-gradient-to-br flex items-center justify-center text-white font-extrabold text-sm flex-shrink-0 shadow border border-surface-700/60 transition hover:opacity-90',
-            user.avatarGradient
+            'w-12 h-12 rounded-2xl flex items-center justify-center font-extrabold text-sm flex-shrink-0 shadow border border-surface-700/60 transition hover:opacity-90',
+            avatarGradientClass
           )}
         >
-          {user.avatarInitials}
+          {avatarInitials}
         </Link>
 
         <div className="space-y-1.5 min-w-0 flex-1">
@@ -42,7 +71,7 @@ export const ConnectionRequestCard: React.FC<ConnectionRequestCardProps> = ({
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
             <span className="text-[10px] text-[#788896] font-mono flex items-center gap-1">
               <Clock className="w-2.5 h-2.5" />
-              {user.requestDate || 'Recent'}
+              {formatRelativeTime(user.requestDate)}
             </span>
           </div>
 

@@ -56,7 +56,7 @@ class NotificationService:
             "priority": "normal",
             "company": requester_company,
             "actionLabel": "Review Request",
-            "actionUrl": "/network",
+            "actionUrl": "/network?tab=requests",
             "actionPayload": {"requestId": request_id},
         }
         return await repo.create_deduped_notification(doc, dedup_key=dedup_key)
