@@ -188,6 +188,13 @@ async def update_application(
             detail=f"Application with ID '{app_id}' not found.",
         )
 
+    if existing.get("jobId") and app_data.status and user and user.get("role") not in ("recruiter", "admin"):
+        if app_data.status in ["Screening", "Shortlisted", "Interview", "Offer", "Hired"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only the posting recruiter can advance candidates through pipeline stages.",
+            )
+
     update_dict = {k: v for k, v in app_data.model_dump().items() if v is not None}
 
     if update_dict.get("deadline") and not update_dict.get("deadlineDate"):

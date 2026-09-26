@@ -38,7 +38,7 @@ services:
       - PORT=8000
       - MONGODB_URI=mongodb://mongodb:27017
       - MONGODB_DB_NAME=${MONGODB_DB_NAME:-careerx_prod_db}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-careerx_production_secret_key_change_in_production_8f3d1b4a}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set in the deployment environment}
       - JWT_ALGORITHM=HS256
       - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=1440
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost,http://localhost:80,http://127.0.0.1}

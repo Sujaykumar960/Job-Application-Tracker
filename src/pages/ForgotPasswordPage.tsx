@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Link } from 'react-router-dom';
-import { authApi } from '../api/auth';
+import { authApi } from '../api/authApi';
 import { Input } from '../components/common/Input';
 import { Button } from '../components/common/Button';
 import { Mail, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';

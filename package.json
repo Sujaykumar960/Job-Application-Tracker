@@ -10,7 +10,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test:e2e": "playwright test",
-    "test:e2e:setup": "python backend/scripts/e2e_setup.py"
+    "test:e2e:setup": "python backend/scripts/e2e_setup.py",
+    "dev:win": "scripts\\start-dev.bat"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

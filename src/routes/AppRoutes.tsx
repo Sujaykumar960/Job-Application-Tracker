@@ -4,36 +4,34 @@ import { MainLayout } from '../layouts/MainLayout';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { ProtectedRoute } from './ProtectedRoute';
 
-// Auth Pages
-import { LoginPage } from '../pages/LoginPage';
-import { RegisterPage } from '../pages/RegisterPage';
-import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
-import { ResetPasswordPage } from '../pages/ResetPasswordPage';
-
-// Authenticated Core Pages
-import { HomePage } from '../pages/HomePage';
-import { ApplicationsPage } from '../pages/ApplicationsPage';
-import { JobsPage } from '../pages/JobsPage';
-import { ResumeAnalyzerPage } from '../pages/ResumeAnalyzerPage';
-import { LearningHubPage } from '../pages/LearningHubPage';
-import { ProgressPage } from '../pages/ProgressPage';
-import { FeedPage } from '../pages/FeedPage';
-import { NetworkPage } from '../pages/NetworkPage';
-import { MessagesPage } from '../pages/MessagesPage';
-import { NotificationsPage } from '../pages/NotificationsPage';
-import { ProfilePage } from '../pages/ProfilePage';
-import { CompaniesPage } from '../pages/CompaniesPage';
-import { SettingsPage } from '../pages/SettingsPage';
-import { SkillMatcherPage } from '../pages/SkillMatcherPage';
-import { JobMatchPage } from '../pages/JobMatchPage';
-import { SkillGapPage } from '../pages/SkillGapPage';
-import { ProgrammingLanguagesPage } from '../pages/ProgrammingLanguagesPage';
-import { LanguageDetailPage } from '../pages/LanguageDetailPage';
-import { CodingPracticePage } from '../pages/CodingPracticePage';
-import { RecruiterPage } from '../pages/RecruiterPage';
-import { CalendarPage } from '../pages/CalendarPage';
-import { AdminPage } from '../pages/AdminPage';
-import { NotFoundPage } from '../pages/NotFoundPage';
+import {
+  AdminPage,
+  ApplicationsPage,
+  CalendarPage,
+  CodingPracticePage,
+  CompaniesPage,
+  FeedPage,
+  ForgotPasswordPage,
+  HomePage,
+  JobMatchPage,
+  JobsPage,
+  LanguageDetailPage,
+  LearningHubPage,
+  LoginPage,
+  MessagesPage,
+  NetworkPage,
+  NotFoundPage,
+  NotificationsPage,
+  ProfilePage,
+  ProgrammingLanguagesPage,
+  ProgressPage,
+  RecruiterPage,
+  RegisterPage,
+  ResetPasswordPage,
+  ResumeAnalyzerPage,
+  SettingsPage,
+  SkillGapPage,
+} from '../pages';
 
 export const AppRoutes: React.FC = () => {
   return (

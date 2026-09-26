@@ -86,3 +86,8 @@ class ResetPasswordRequest(BaseModel):
         if not self.password or len(self.password) < 8:
             raise ValueError("Password must be at least 8 characters")
         return self
+
+
+class RoleSwitchRequest(BaseModel):
+    role: Literal["seeker", "recruiter"]
+

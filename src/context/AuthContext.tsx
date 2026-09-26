@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { UserProfile, RoleType, LoginCredentials, RegisterData } from '../types';
-import { authApi } from '../api/auth';
+import { authApi } from '../api/authApi';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -129,18 +129,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const switchRole = (newRole: RoleType) => {
-    if (user) {
-      const updatedUser = { ...user, role: newRole };
-      setUser(updatedUser);
-      localStorage.setItem('careerx_auth_user', JSON.stringify(updatedUser));
+  const switchRole = async (newRole: RoleType) => {
+    if (!user) return;
+    try {
+      setIsLoading(true);
+      const res = await authApi.switchRole(newRole);
+      setToken(res.token);
+      setUser(res.user);
+    } catch (err: any) {
+      console.error('Failed to switch role context:', err);
+      setError(err?.response?.data?.detail || 'Failed to switch role.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const toggleRole = () => {
     const currentRole = user?.role || 'seeker';
     const nextRole: RoleType = currentRole === 'seeker' ? 'recruiter' : 'seeker';
-    switchRole(nextRole);
+    void switchRole(nextRole);
   };
 
   const role: RoleType = user?.role || 'seeker';

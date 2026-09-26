@@ -14,13 +14,15 @@ from app.schemas.auth import (
     RefreshTokenResponse,
     RegisterData,
     ResetPasswordRequest,
+    RoleSwitchRequest,
     UserProfile,
 )
 from app.middleware.rate_limiter import auth_rate_limiter
+from app.repositories.user_repository import UserRepository
 from app.schemas.common import StandardSuccessResponse
 from app.services.auth_service import AuthService
 from app.utils.helpers import utc_now_iso
-from app.utils.security import hash_password
+from app.utils.security import create_access_token, create_refresh_token, hash_password
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -187,3 +189,33 @@ async def reset_password(
         success=True,
         message="Your password has been successfully updated. You may now log in.",
     )
+
+
+@router.post("/switch-role", response_model=AuthResponse)
+async def switch_role(
+    payload: RoleSwitchRequest,
+    current_user: Dict[str, Any] = Depends(get_current_active_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Switch user role context with server-side authorization and fresh JWT token."""
+    user_repo = UserRepository(db)
+    user_id = current_user["id"]
+
+    # Persist updated role in database
+    await db.users.update_one(user_repo._build_id_query(user_id), {"$set": {"role": payload.role}})
+
+    # Generate fresh tokens containing the new role claim
+    access_token = create_access_token({"sub": user_id, "user_id": user_id, "role": payload.role})
+    refresh_token = create_refresh_token({"sub": user_id, "user_id": user_id, "role": payload.role})
+
+    auth_service = AuthService(db)
+    profile = await auth_service.get_user_profile(user_id)
+
+    return AuthResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        token=access_token,
+        user=profile,
+    )
+

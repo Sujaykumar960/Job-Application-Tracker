@@ -1,45 +1,98 @@
-import { apiClient } from './client';
-import { LoginCredentials, RegisterData, AuthResponse, UserProfile } from '../types';
+import { AuthResponse, LoginCredentials, RegisterData, RoleType, UserProfile } from '../types';
+import apiClient from './client';
+
+const TOKEN_KEY = 'careerx_auth_token';
+const USER_KEY = 'careerx_auth_user';
 
 export const authApi = {
-  /**
-   * Log in user with credentials, receiving JWT token and user profile
-   */
-  login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
-    return response.data;
+  async login(credentials: LoginCredentials): Promise<AuthResponse> {
+    const res = await apiClient.post<any>('/auth/login', credentials);
+    const token = res.data.token || res.data.access_token;
+    const user = res.data.user;
+
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+
+    return {
+      token,
+      user,
+    };
   },
 
-  /**
-   * Register a new seeker or recruiter account
-   */
-  register: async (data: RegisterData): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>('/auth/register', data);
-    return response.data;
+  async register(data: RegisterData): Promise<AuthResponse> {
+    const res = await apiClient.post<any>('/auth/register', data);
+    const token = res.data.token || res.data.access_token;
+    const user = res.data.user;
+
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+
+    return {
+      token,
+      user,
+    };
   },
 
-  /**
-   * Fetch authenticated user details from JWT token
-   */
-  getMe: async (): Promise<UserProfile> => {
-    const response = await apiClient.get<UserProfile>('/auth/me');
-    return response.data;
+  async logout(): Promise<void> {
+    try {
+      await apiClient.post('/auth/logout');
+    } finally {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(USER_KEY);
+    }
   },
 
-  /**
-   * Log out active session
-   */
-  logout: async (): Promise<{ success: boolean }> => {
-    const response = await apiClient.post<{ success: boolean }>('/auth/logout');
-    return response.data;
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const res = await apiClient.post<{ message: string }>('/auth/forgot-password', { email });
+    return res.data;
   },
 
-  /**
-   * Refresh JWT authentication token
-   */
-  refreshToken: async (): Promise<{ token: string }> => {
-    const response = await apiClient.post<{ token: string }>('/auth/refresh');
-    return response.data;
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    const res = await apiClient.post<{ message: string }>('/auth/reset-password', {
+      token,
+      password: newPassword,
+      newPassword,
+    });
+    return res.data;
+  },
+
+  async getMe(): Promise<UserProfile> {
+    const res = await apiClient.get<UserProfile>('/auth/me');
+    return res.data;
+  },
+
+  async refreshToken(): Promise<{ token: string }> {
+    const res = await apiClient.post<{ token: string }>('/auth/refresh');
+    return res.data;
+  },
+
+  async switchRole(role: RoleType): Promise<AuthResponse> {
+    const res = await apiClient.post<any>('/auth/switch-role', { role });
+    const token = res.data.token || res.data.access_token;
+    const user = res.data.user;
+
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+
+    return {
+      token,
+      user,
+    };
+  },
+
+  getCurrentUser(): UserProfile | null {
+    const userJson = localStorage.getItem(USER_KEY);
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token || !userJson) return null;
+    try {
+      return JSON.parse(userJson);
+    } catch {
+      return null;
+    }
+  },
+
+  getToken(): string | null {
+    return localStorage.getItem(TOKEN_KEY);
   },
 };
 

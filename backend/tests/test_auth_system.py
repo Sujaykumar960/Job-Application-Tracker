@@ -240,3 +240,31 @@ async def test_token_refresh(client):
     data = refresh_res.json()
     assert "access_token" in data
     assert data["token_type"] == "bearer"
+
+
+@pytest.mark.asyncio
+async def test_switch_role_server_authorized(client):
+    """Verify server-side role switching persists in MongoDB and re-issues valid JWT."""
+    reg_payload = {
+        "name": "Role Switch User",
+        "email": "roleswitch@authtest.io",
+        "password": "StrongPassword123!",
+        "role": "seeker",
+    }
+    reg_res = await client.post("/api/auth/register", json=reg_payload)
+    token = reg_res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Switch to recruiter on server
+    switch_res = await client.post("/api/auth/switch-role", json={"role": "recruiter"}, headers=headers)
+    assert switch_res.status_code == 200
+    switch_data = switch_res.json()
+    assert switch_data["user"]["role"] == "recruiter"
+    new_token = switch_data["access_token"]
+    assert new_token != token
+
+    # New token can access recruiter-only endpoint
+    rec_headers = {"Authorization": f"Bearer {new_token}"}
+    res = await client.post("/api/recruiter/candidates/cand_1/shortlist", headers=rec_headers)
+    assert res.status_code == 200
+    assert res.json()["isShortlisted"] is True
