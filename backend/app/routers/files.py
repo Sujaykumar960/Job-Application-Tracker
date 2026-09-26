@@ -27,11 +27,18 @@ async def upload_file(
     if purpose not in valid_purposes:
         purpose = "other"
 
-    content = await file.read()
+    limit_by_purpose = {
+        "resume": settings.RESUME_MAX_UPLOAD_SIZE_BYTES,
+        "profile_avatar": settings.FEED_MAX_IMAGE_SIZE_BYTES,
+        "feed_media": settings.FEED_MAX_VIDEO_SIZE_BYTES,
+    }
+    max_size = limit_by_purpose.get(purpose, settings.MAX_UPLOAD_SIZE_BYTES)
+
     sanitized_filename, validated_content_type = validate_file_content(
         filename=file.filename or "uploaded_file.bin",
         content=content,
         claimed_content_type=file.content_type,
+        max_size_bytes=max_size,
     )
 
     # Generate secure non-guessable storage key

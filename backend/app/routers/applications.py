@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.dependencies import get_current_active_user, get_db, get_optional_user
+from app.dependencies import get_current_active_user, get_db
 from app.repositories.application_repository import ApplicationRepository
 from app.repositories.job_repository import JobRepository
 from app.schemas.application import (
@@ -20,11 +20,11 @@ router = APIRouter(prefix="/applications", tags=["Applications"])
 
 @router.get("/stats", response_model=ApplicationStatsResponse)
 async def get_application_stats(
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(get_current_active_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Fetch live dashboard aggregation statistics for the authenticated seeker."""
-    user_id = user["id"] if user else "guest_user"
+    user_id = user["id"]
     repo = ApplicationRepository(db)
     stats_dict = await repo.get_stats_for_user(user_id)
     return ApplicationStatsResponse(**stats_dict)
@@ -32,19 +32,19 @@ async def get_application_stats(
 
 @router.get("", response_model=List[ApplicationResponse])
 async def get_applications(
-    status: Optional[str] = Query(None, description="Filter by status: Applied, Interview, Offer, Rejected"),
+    status: Optional[str] = None,
     priority: Optional[str] = Query(None, description="Filter by priority: High, Medium, Low"),
     company: Optional[str] = Query(None, description="Filter by company name"),
     upcoming: Optional[bool] = Query(None, description="Filter for upcoming interviews or deadlines"),
     search: Optional[str] = Query(None, description="Search company, role, or notes"),
     limit: int = Query(100, ge=1, le=200),
     skip: int = Query(0, ge=0),
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(get_current_active_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Fetch tracked job applications for the authenticated seeker."""
     repo = ApplicationRepository(db)
-    user_id = user["id"] if user else "guest_user"
+    user_id = user["id"]
     filter_query = ApplicationFilterQuery(
         status=status,
         priority=priority,
@@ -61,12 +61,12 @@ async def get_applications(
 @router.get("/{app_id}", response_model=ApplicationResponse)
 async def get_application_by_id(
     app_id: str,
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(get_current_active_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Fetch single application strictly owned by the authenticated seeker."""
     repo = ApplicationRepository(db)
-    user_id = user["id"] if user else "guest_user"
+    user_id = user["id"]
     doc = await repo.get_application_for_user(app_id, user_id)
     if not doc:
         raise HTTPException(
@@ -79,13 +79,13 @@ async def get_application_by_id(
 @router.post("", response_model=ApplicationResponse, status_code=status.HTTP_201_CREATED)
 async def create_application(
     app_data: ApplicationCreate,
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(get_current_active_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Submit a new job application record bound to the authenticated seeker."""
     repo = ApplicationRepository(db)
     doc_data = app_data.model_dump()
-    user_id = user["id"] if user else "guest_user"
+    user_id = user["id"]
     doc_data["userId"] = user_id
 
     # If applying to a specific job listing
@@ -174,12 +174,12 @@ async def create_application(
 async def update_application(
     app_id: str,
     app_data: ApplicationUpdate,
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(get_current_active_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Update an existing application stage, priority, or notes, ensuring ownership."""
     repo = ApplicationRepository(db)
-    user_id = user["id"] if user else "guest_user"
+    user_id = user["id"]
 
     existing = await repo.get_application_for_user(app_id, user_id)
     if not existing:
@@ -188,7 +188,7 @@ async def update_application(
             detail=f"Application with ID '{app_id}' not found.",
         )
 
-    if existing.get("jobId") and app_data.status and user and user.get("role") not in ("recruiter", "admin"):
+    if existing.get("jobId") and app_data.status and user.get("role") not in ("recruiter", "admin"):
         if app_data.status in ["Screening", "Shortlisted", "Interview", "Offer", "Hired"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -209,12 +209,12 @@ async def update_application(
 @router.delete("/{app_id}", response_model=StandardSuccessResponse)
 async def delete_application(
     app_id: str,
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(get_current_active_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Delete an application record, ensuring ownership."""
     repo = ApplicationRepository(db)
-    user_id = user["id"] if user else "guest_user"
+    user_id = user["id"]
     success = await repo.delete_application_for_user(app_id, user_id)
     if not success:
         raise HTTPException(

@@ -100,6 +100,7 @@ export const CircularAtsGauge: React.FC<CircularAtsGaugeProps> = ({
           {tier.text}
         </span>
         {label && <p className="text-[11px] text-[#56687A] mt-1">{label}</p>}
+        <p className="text-[9px] text-[#788896] mt-0.5 font-sans">CareerX AI Heuristic Analysis</p>
       </div>
     </div>
   );
