@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Modal } from '../common/Modal';
 import { Input } from '../common/Input';
+import { LocationInput } from '../common/LocationInput';
 import { Button } from '../common/Button';
 import { JobItem } from '../../types';
 import { recruiterApi } from '../../api/recruiterApi';
@@ -133,12 +134,11 @@ export const PostJobModal: React.FC<PostJobModalProps> = ({
 
         {/* Row 2: Location & Salary */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <Input
+          <LocationInput
             label="Location *"
             placeholder="e.g. San Francisco, CA or Remote"
-            icon={<MapPin className="w-3.5 h-3.5" />}
             value={location}
-            onChange={(e) => setLocation(e.target.value)}
+            onChange={(val) => setLocation(val)}
             required
           />
           <Input

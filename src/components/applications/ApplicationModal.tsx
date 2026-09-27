@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Modal } from '../common/Modal';
 import { Input } from '../common/Input';
+import { LocationInput } from '../common/LocationInput';
 import { Button } from '../common/Button';
 import { Application, ApplicationStatus, PriorityLevel } from '../../types';
 import {
@@ -60,6 +61,7 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
     handleSubmit,
     reset,
     setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<ApplicationFormData>({
     resolver: zodResolver(applicationSchema),
@@ -200,12 +202,13 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
 
         {/* Row 2: Location & Job URL */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <Input
+          <LocationInput
             label="Location *"
             placeholder="e.g. San Francisco, CA (Hybrid) or Remote"
-            icon={<MapPin className="w-3.5 h-3.5" />}
+            value={watch('location')}
+            onChange={(val) => setValue('location', val, { shouldValidate: true })}
             error={errors.location?.message}
-            {...register('location')}
+            required
           />
           <Input
             label="Job Posting URL"
