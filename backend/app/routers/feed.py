@@ -276,15 +276,26 @@ async def add_post_comment(
     user_repo = UserRepository(db)
 
     author_id = user["id"]
-    author_name = "Alex Rivera"
-    author_headline = "Distributed Systems Engineer"
+    author_name = "CareerX Member"
+    author_headline = "Software Engineer"
+    author_avatar_url = None
+    author_role = None
 
     profile = await user_repo.get_profile(author_id)
+    user_doc = await user_repo.get_by_id(author_id)
     if profile:
-        author_name = profile.get("name") or author_name
+        author_name = profile.get("name") or (user_doc.get("name") if user_doc else None) or user.get("name") or author_name
         author_headline = profile.get("headline") or author_headline
+        author_avatar_url = profile.get("avatarUrl") or profile.get("avatar") or (user_doc.get("avatarUrl") if user_doc else None) or user.get("avatarUrl")
+        author_role = profile.get("role") or (user_doc.get("role") if user_doc else None) or user.get("role")
+    elif user_doc:
+        author_name = user_doc.get("name") or user.get("name") or author_name
+        author_avatar_url = user_doc.get("avatarUrl") or user.get("avatarUrl")
+        author_role = user_doc.get("role") or user.get("role")
     elif user.get("name"):
         author_name = user["name"]
+        author_avatar_url = user.get("avatarUrl")
+        author_role = user.get("role")
 
     created = await repo.add_comment(
         post_id=post_id,
@@ -292,6 +303,8 @@ async def add_post_comment(
         author_name=author_name,
         author_headline=author_headline,
         content=comment_data.content,
+        author_avatar_url=author_avatar_url,
+        author_role=author_role,
     )
 
     # Notify post author if not self
@@ -334,6 +347,19 @@ async def delete_comment(
     user_id = user["id"] if user else "usr_guest"
     await repo.delete_comment(comment_id, user_id)
     return StandardSuccessResponse(success=True, message="Comment deleted successfully.")
+
+
+@router.post("/comments/{comment_id}/like", response_model=LikeResponse)
+async def toggle_feed_comment_like(
+    comment_id: str,
+    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Toggle like on a comment."""
+    repo = PostRepository(db)
+    user_id = user["id"] if user else "usr_guest"
+    res = await repo.toggle_comment_like(comment_id, user_id)
+    return LikeResponse(**res)
 
 
 @router.post("/posts/{post_id}/share", response_model=ShareResponse)

@@ -327,6 +327,25 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
+  const handleDeleteComment = async (postId: string, commentId: string) => {
+    try {
+      await postApi.deleteComment(commentId, postId);
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                comments: p.comments.filter((c) => c.id !== commentId),
+                commentsCount: Math.max(0, p.commentsCount - 1),
+              }
+            : p
+        )
+      );
+    } catch (err) {
+      console.error('Failed to delete comment:', err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-3">
@@ -688,6 +707,7 @@ export const ProfilePage: React.FC = () => {
                     onSave={handleSave}
                     onShare={handleShare}
                     onAddComment={handleAddComment}
+                    onDeleteComment={handleDeleteComment}
                   />
                 ))}
               </div>

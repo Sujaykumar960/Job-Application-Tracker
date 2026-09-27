@@ -24,6 +24,7 @@ import { cn } from '../../utils/cn';
 import { resolveMediaUrl } from '../../utils/media';
 import { formatDateTime } from '../../utils/formatters';
 import { PostMediaSlider } from './PostMediaSlider';
+import { PostCommentsSection } from './PostCommentsSection';
 
 export interface PostCardProps {
   post: FeedPost;
@@ -31,6 +32,7 @@ export interface PostCardProps {
   onSave: (postId: string) => void;
   onShare: (postId: string) => void;
   onAddComment: (postId: string, commentText: string) => void;
+  onDeleteComment?: (postId: string, commentId: string) => void;
 }
 
 export const PostCard: React.FC<PostCardProps> = ({
@@ -39,9 +41,9 @@ export const PostCard: React.FC<PostCardProps> = ({
   onSave,
   onShare,
   onAddComment,
+  onDeleteComment,
 }) => {
   const [showComments, setShowComments] = useState(false);
-  const [newComment, setNewComment] = useState('');
   const [copiedShare, setCopiedShare] = useState(false);
 
   const postTypeBadges: Record<
@@ -65,13 +67,6 @@ export const PostCard: React.FC<PostCardProps> = ({
     navigator.clipboard.writeText(window.location.href);
     setCopiedShare(true);
     setTimeout(() => setCopiedShare(false), 2000);
-  };
-
-  const handleCommentSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-    onAddComment(post.id, newComment.trim());
-    setNewComment('');
   };
 
   const authorProfileId = post.author?.id || post.authorId;
@@ -229,38 +224,11 @@ export const PostCard: React.FC<PostCardProps> = ({
 
       {/* Expandable Comments Section */}
       {showComments && (
-        <div className="pt-3 border-t border-[#E8E8E8] space-y-3 animate-in fade-in duration-150">
-          {/* Add Comment Input */}
-          <form onSubmit={handleCommentSubmit} className="flex items-center gap-2">
-            <input
-              type="text"
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Add your thoughts or technical feedback..."
-              className="flex-1 bg-white text-[#1D2226] placeholder-[#788896] text-xs rounded-lg border border-[#D9D9D9] px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
-            />
-            <Button type="submit" size="xs" variant="primary" disabled={!newComment.trim()}>
-              <Send className="w-3 h-3" />
-            </Button>
-          </form>
-
-          {/* Comments List */}
-          {post.comments.length === 0 ? (
-            <p className="text-[11px] text-[#788896] italic">No comments yet. Be the first to share feedback.</p>
-          ) : (
-            <div className="space-y-2">
-              {post.comments.map((c) => (
-                <div key={c.id} className="p-2.5 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] space-y-1">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-bold text-[#1D2226]">{c.authorName}</span>
-                    <span className="text-[10px] text-[#788896]" title={c.createdAt}>{formatDateTime(c.createdAt)}</span>
-                  </div>
-                  <p className="text-[11px] text-[#38434F]">{c.content}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <PostCommentsSection
+          post={post}
+          onAddComment={onAddComment}
+          onDeleteComment={onDeleteComment}
+        />
       )}
     </Card>
   );

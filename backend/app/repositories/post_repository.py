@@ -82,11 +82,20 @@ class PostRepository(BaseRepository):
         for doc in docs:
             likes = doc.get("likes", [])
             bookmarks = doc.get("bookmarks", [])
-            comments = doc.get("comments", [])
+            raw_comments = doc.get("comments", [])
+
+            formatted_comments = []
+            for c in raw_comments:
+                c_data = dict(c)
+                c_likes = c_data.get("likes", [])
+                c_data["likesCount"] = len(c_likes)
+                c_data["isLiked"] = (viewing_user_id in c_likes) if viewing_user_id else False
+                formatted_comments.append(c_data)
 
             computed = dict(doc)
             computed["likesCount"] = len(likes)
-            computed["commentsCount"] = len(comments)
+            computed["commentsCount"] = len(raw_comments)
+            computed["comments"] = formatted_comments
             computed["isLiked"] = (viewing_user_id in likes) if viewing_user_id else False
             computed["isSaved"] = (viewing_user_id in bookmarks) if viewing_user_id else False
             computed["sharesCount"] = doc.get("sharesCount", 0)
@@ -105,11 +114,20 @@ class PostRepository(BaseRepository):
 
         likes = doc.get("likes", [])
         bookmarks = doc.get("bookmarks", [])
-        comments = doc.get("comments", [])
+        raw_comments = doc.get("comments", [])
+
+        formatted_comments = []
+        for c in raw_comments:
+            c_data = dict(c)
+            c_likes = c_data.get("likes", [])
+            c_data["likesCount"] = len(c_likes)
+            c_data["isLiked"] = (viewing_user_id in c_likes) if viewing_user_id else False
+            formatted_comments.append(c_data)
 
         computed = dict(doc)
         computed["likesCount"] = len(likes)
-        computed["commentsCount"] = len(comments)
+        computed["commentsCount"] = len(raw_comments)
+        computed["comments"] = formatted_comments
         computed["isLiked"] = (viewing_user_id in likes) if viewing_user_id else False
         computed["isSaved"] = (viewing_user_id in bookmarks) if viewing_user_id else False
         computed["sharesCount"] = doc.get("sharesCount", 0)
@@ -316,11 +334,19 @@ class PostRepository(BaseRepository):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found.")
         return {"sharesCount": res.get("sharesCount", 1)}
 
-    async def get_comments(self, post_id: str) -> List[Dict[str, Any]]:
+    async def get_comments(self, post_id: str, viewing_user_id: Optional[str] = None) -> List[Dict[str, Any]]:
         post = await self.get_by_id(post_id)
         if not post:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found.")
-        return post.get("comments", [])
+        raw_comments = post.get("comments", [])
+        formatted = []
+        for c in raw_comments:
+            c_data = dict(c)
+            c_likes = c_data.get("likes", [])
+            c_data["likesCount"] = len(c_likes)
+            c_data["isLiked"] = (viewing_user_id in c_likes) if viewing_user_id else False
+            formatted.append(c_data)
+        return formatted
 
     async def add_comment(
         self,
@@ -330,6 +356,9 @@ class PostRepository(BaseRepository):
         author_headline: Optional[str] = None,
         content: Optional[str] = None,
         comment_dict: Optional[Dict[str, Any]] = None,
+        author_avatar_url: Optional[str] = None,
+        author_initials: Optional[str] = None,
+        author_role: Optional[str] = None,
     ) -> Dict[str, Any]:
         if isinstance(author_id, dict):
             d = author_id
@@ -337,6 +366,9 @@ class PostRepository(BaseRepository):
             author_id_val = d.get("authorId")
             author_name = d.get("authorName", "Alex Rivera")
             author_headline = d.get("authorHeadline", "Software Engineer")
+            author_avatar_url = d.get("authorAvatarUrl") or d.get("avatarUrl") or d.get("avatar")
+            author_initials = d.get("authorInitials")
+            author_role = d.get("authorRole") or d.get("role")
             content = d.get("content", "")
             created_at = d.get("createdAt") or utc_now_iso()
         elif comment_dict:
@@ -345,6 +377,9 @@ class PostRepository(BaseRepository):
             author_id_val = d.get("authorId") or author_id
             author_name = d.get("authorName", author_name or "Alex Rivera")
             author_headline = d.get("authorHeadline", author_headline or "Software Engineer")
+            author_avatar_url = d.get("authorAvatarUrl") or author_avatar_url
+            author_initials = d.get("authorInitials") or author_initials
+            author_role = d.get("authorRole") or author_role
             content = d.get("content", content or "")
             created_at = d.get("createdAt") or utc_now_iso()
         else:
@@ -355,13 +390,28 @@ class PostRepository(BaseRepository):
             content = content or ""
             created_at = utc_now_iso()
 
+        if not author_initials and author_name:
+            parts = author_name.strip().split()
+            if len(parts) >= 2:
+                author_initials = f"{parts[0][0]}{parts[-1][0]}".upper()
+            elif len(parts) == 1 and len(parts[0]) >= 2:
+                author_initials = parts[0][:2].upper()
+            elif len(parts) == 1 and len(parts[0]) == 1:
+                author_initials = parts[0].upper()
+            else:
+                author_initials = "CX"
+
         new_comment = {
             "id": c_id,
             "postId": post_id,
             "authorId": author_id_val,
             "authorName": author_name,
             "authorHeadline": author_headline,
+            "authorAvatarUrl": author_avatar_url,
+            "authorInitials": author_initials or "CX",
+            "authorRole": author_role,
             "content": content,
+            "likes": [],
             "createdAt": created_at,
         }
 
@@ -369,7 +419,33 @@ class PostRepository(BaseRepository):
         res = await self.collection.update_one(query, {"$push": {"comments": new_comment}})
         if res.matched_count == 0:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found.")
+        new_comment["likesCount"] = 0
+        new_comment["isLiked"] = False
         return new_comment
+
+    async def toggle_comment_like(self, comment_id: str, user_id: str) -> Dict[str, Any]:
+        """Toggle like on a comment."""
+        post = await self.collection.find_one({"comments.id": comment_id})
+        if not post:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found.")
+
+        target_comment = next((c for c in post.get("comments", []) if c.get("id") == comment_id), None)
+        if not target_comment:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found.")
+
+        likes = target_comment.get("likes", [])
+        if user_id in likes:
+            await self.collection.update_one(
+                {"comments.id": comment_id},
+                {"$pull": {"comments.$.likes": user_id}},
+            )
+            return {"likesCount": max(0, len(likes) - 1), "isLiked": False}
+        else:
+            await self.collection.update_one(
+                {"comments.id": comment_id},
+                {"$addToSet": {"comments.$.likes": user_id}},
+            )
+            return {"likesCount": len(likes) + 1, "isLiked": True}
 
     async def update_comment(
         self,

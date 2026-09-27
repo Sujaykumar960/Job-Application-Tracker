@@ -137,15 +137,26 @@ async def add_comment(
 
     author_id = user["id"] if user else "usr_guest"
     author_name = "CareerX Member"
-    author_headline = "Engineer"
+    author_headline = "Software Engineer"
+    author_avatar_url = None
+    author_role = None
 
     if user:
         profile = await user_repo.get_profile(author_id)
+        user_doc = await user_repo.get_by_id(author_id)
         if profile:
-            author_name = profile.get("name") or user.get("name") or author_name
+            author_name = profile.get("name") or (user_doc.get("name") if user_doc else None) or user.get("name") or author_name
             author_headline = profile.get("headline") or author_headline
+            author_avatar_url = profile.get("avatarUrl") or profile.get("avatar") or (user_doc.get("avatarUrl") if user_doc else None) or user.get("avatarUrl")
+            author_role = profile.get("role") or (user_doc.get("role") if user_doc else None) or user.get("role")
+        elif user_doc:
+            author_name = user_doc.get("name") or user.get("name") or author_name
+            author_avatar_url = user_doc.get("avatarUrl") or user.get("avatarUrl")
+            author_role = user_doc.get("role") or user.get("role")
         elif user.get("name"):
             author_name = user["name"]
+            author_avatar_url = user.get("avatarUrl")
+            author_role = user.get("role")
         elif user.get("email"):
             author_name = user["email"].split("@")[0].capitalize()
 
@@ -155,6 +166,8 @@ async def add_comment(
         author_name=author_name,
         author_headline=author_headline,
         content=comment_data.content,
+        author_avatar_url=author_avatar_url,
+        author_role=author_role,
     )
 
     if user:
@@ -170,6 +183,34 @@ async def add_comment(
             )
 
     return FeedComment(**created)
+
+
+@router.delete("/comments/{comment_id}", response_model=StandardSuccessResponse)
+@router.delete("/{post_id}/comments/{comment_id}", response_model=StandardSuccessResponse)
+async def delete_comment(
+    comment_id: str,
+    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Delete a comment (Comment Author or Post Author)."""
+    repo = PostRepository(db)
+    user_id = user["id"] if user else "usr_guest"
+    await repo.delete_comment(comment_id, user_id)
+    return StandardSuccessResponse(success=True, message="Comment deleted successfully.")
+
+
+@router.post("/comments/{comment_id}/like", response_model=LikeResponse)
+@router.post("/{post_id}/comments/{comment_id}/like", response_model=LikeResponse)
+async def toggle_comment_like(
+    comment_id: str,
+    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Toggle like status on a comment."""
+    repo = PostRepository(db)
+    user_id = user["id"] if user else "usr_guest"
+    res = await repo.toggle_comment_like(comment_id, user_id)
+    return LikeResponse(**res)
 
 
 @router.post("/{post_id}/bookmark", response_model=BookmarkResponse)

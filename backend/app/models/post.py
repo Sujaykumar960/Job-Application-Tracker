@@ -9,8 +9,12 @@ class FeedCommentModel(BaseModel):
     id: str
     authorId: Optional[str] = None
     authorName: str
-    authorHeadline: str
+    authorHeadline: Optional[str] = "Software Engineer"
+    authorAvatarUrl: Optional[str] = None
+    authorInitials: Optional[str] = None
+    authorRole: Optional[str] = None
     content: str
+    likes: List[str] = Field(default_factory=list)
     createdAt: str = Field(default_factory=utc_now_iso)
 
 

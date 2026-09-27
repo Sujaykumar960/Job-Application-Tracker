@@ -43,9 +43,14 @@ export interface FeedComment {
   postId?: string;
   authorId?: string;
   authorName: string;
-  authorHeadline: string;
+  authorHeadline?: string;
+  authorAvatarUrl?: string;
+  authorInitials?: string;
+  authorRole?: string;
   content: string;
   createdAt: string;
+  likesCount?: number;
+  isLiked?: boolean;
 }
 
 export interface FeedPost {
@@ -242,6 +247,7 @@ export interface UserProfile {
   email: string;
   role: RoleType;
   avatar?: string;
+  avatarUrl?: string;
   headline?: string;
   bio?: string;
   location?: string;

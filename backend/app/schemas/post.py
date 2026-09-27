@@ -42,9 +42,39 @@ class FeedComment(BaseModel):
     postId: Optional[str] = None
     authorId: Optional[str] = None
     authorName: str
-    authorHeadline: str
+    authorHeadline: Optional[str] = "Software Engineer"
+    authorAvatarUrl: Optional[str] = None
+    authorInitials: Optional[str] = None
+    authorRole: Optional[str] = None
     content: str
     createdAt: str
+    likesCount: int = 0
+    isLiked: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_comment_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            name = data.get("authorName") or "CareerX Member"
+            data["authorName"] = name
+            if not data.get("authorHeadline"):
+                data["authorHeadline"] = "Software Engineer"
+            if not data.get("authorAvatarUrl"):
+                data["authorAvatarUrl"] = data.get("avatarUrl") or data.get("avatar") or data.get("authorAvatar")
+            if not data.get("authorInitials"):
+                parts = name.strip().split()
+                if len(parts) >= 2:
+                    data["authorInitials"] = f"{parts[0][0]}{parts[-1][0]}".upper()
+                elif len(parts) == 1 and len(parts[0]) >= 2:
+                    data["authorInitials"] = parts[0][:2].upper()
+                elif len(parts) == 1 and len(parts[0]) == 1:
+                    data["authorInitials"] = parts[0].upper()
+                else:
+                    data["authorInitials"] = "CX"
+            likes = data.get("likes")
+            if isinstance(likes, list):
+                data["likesCount"] = len(likes)
+        return data
 
 
 class FeedCommentResponse(FeedComment):

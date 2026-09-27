@@ -129,6 +129,27 @@ export const FeedPage: React.FC = () => {
     }
   };
 
+  // Delete Comment
+  const handleDeleteComment = async (postId: string, commentId: string) => {
+    try {
+      await postApi.deleteComment(commentId, postId);
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                comments: p.comments.filter((c) => c.id !== commentId),
+                commentsCount: Math.max(0, p.commentsCount - 1),
+              }
+            : p
+        )
+      );
+    } catch (err) {
+      console.error('Failed to delete comment:', err);
+      alert('Failed to delete comment. You can only delete your own comments.');
+    }
+  };
+
   // Filtered Posts
   const filteredPosts = useMemo(() => {
     return posts.filter((p) => {
@@ -264,6 +285,7 @@ export const FeedPage: React.FC = () => {
                   onSave={handleSave}
                   onShare={handleShare}
                   onAddComment={handleAddComment}
+                  onDeleteComment={handleDeleteComment}
                 />
               ))}
             </div>

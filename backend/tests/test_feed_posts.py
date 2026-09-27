@@ -251,8 +251,14 @@ async def test_comments_lifecycle_and_author_protection(client):
     assert edit_bob.status_code == 200
     assert edit_bob.json()["content"] == "Updated: We use hybrid logical clocks."
 
+    # Bob likes his own comment
+    like_res = await client.post(f"/api/posts/comments/{comment_id}/like", headers=headers_b)
+    assert like_res.status_code == 200
+    assert like_res.json()["isLiked"] is True
+    assert like_res.json()["likesCount"] == 1
+
     # Bob deletes his comment
-    del_bob = await client.delete(f"/api/feed/comments/{comment_id}", headers=headers_b)
+    del_bob = await client.delete(f"/api/posts/comments/{comment_id}", headers=headers_b)
     assert del_bob.status_code == 200
     assert del_bob.json()["success"] is True
 

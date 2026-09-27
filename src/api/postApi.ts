@@ -62,6 +62,24 @@ export const postApi = {
   },
 
   /**
+   * Delete a comment
+   */
+  deleteComment: async (commentId: string, postId?: string): Promise<{ success: boolean; message: string }> => {
+    const url = postId ? `/posts/${postId}/comments/${commentId}` : `/posts/comments/${commentId}`;
+    const response = await apiClient.delete<{ success: boolean; message: string }>(url);
+    return response.data;
+  },
+
+  /**
+   * Like or unlike a comment
+   */
+  likeComment: async (commentId: string, postId?: string): Promise<{ likesCount: number; isLiked: boolean }> => {
+    const url = postId ? `/posts/${postId}/comments/${commentId}/like` : `/posts/comments/${commentId}/like`;
+    const response = await apiClient.post<{ likesCount: number; isLiked: boolean }>(url);
+    return response.data;
+  },
+
+  /**
    * Save or unsave a post to bookmarks
    */
   bookmarkPost: async (postId: string): Promise<{ isSaved: boolean }> => {
