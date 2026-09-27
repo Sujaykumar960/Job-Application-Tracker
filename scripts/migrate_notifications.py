@@ -48,7 +48,7 @@ async def main():
     await migrate_db('mongodb://localhost:27017', 'careerx_db')
     
     # 2. Atlas / Env Mongo if defined
-    atlas_uri = os.environ.get('MONGODB_URI', 'mongodb+srv://Job-Application-Tracker:5IpnA7DC0Sf8Crn8@cluster0.ol1xg9x.mongodb.net/?appName=Cluster0')
+    atlas_uri = os.environ.get('MONGODB_URI')
     if atlas_uri and 'mongodb+srv' in atlas_uri:
         await migrate_db(atlas_uri, 'careerx_db')
 
