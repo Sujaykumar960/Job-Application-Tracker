@@ -223,30 +223,30 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
         {/* Row 3: Status & Priority */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-[#1D2226]">Status *</label>
+            <label className="block text-xs font-semibold text-[#1D2226] dark:text-[#E2E8F0]">Status *</label>
             <select
-              className="w-full bg-white text-[#1D2226] text-xs sm:text-sm rounded-lg border border-[#D9D9D9] hover:border-[#788896] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#E8F3FF] focus:border-[#0A66C2] transition"
+              className="w-full bg-white dark:bg-[#1E293B] text-[#1D2226] dark:text-[#F8FAFC] text-xs sm:text-sm rounded-lg border border-[#D9D9D9] dark:border-[#475569] hover:border-[#788896] dark:hover:border-[#94A3B8] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#E8F3FF] dark:focus:ring-[#38BDF8]/20 focus:border-[#0A66C2] dark:focus:border-[#38BDF8] transition"
               {...register('status')}
             >
-              <option value="Applied" className="text-[#1D2226] bg-white">Applied</option>
-              <option value="Screening" className="text-[#1D2226] bg-white">Screening</option>
-              <option value="Shortlisted" className="text-[#1D2226] bg-white">Shortlisted</option>
-              <option value="Interview" className="text-[#1D2226] bg-white">Interview</option>
-              <option value="Offer" className="text-[#1D2226] bg-white">Offer</option>
-              <option value="Hired" className="text-[#1D2226] bg-white">Hired</option>
-              <option value="Rejected" className="text-[#1D2226] bg-white">Rejected</option>
+              <option value="Applied" className="text-[#1D2226] dark:text-[#F8FAFC] bg-white dark:bg-[#0F172A]">Applied</option>
+              <option value="Screening" className="text-[#1D2226] dark:text-[#F8FAFC] bg-white dark:bg-[#0F172A]">Screening</option>
+              <option value="Shortlisted" className="text-[#1D2226] dark:text-[#F8FAFC] bg-white dark:bg-[#0F172A]">Shortlisted</option>
+              <option value="Interview" className="text-[#1D2226] dark:text-[#F8FAFC] bg-white dark:bg-[#0F172A]">Interview</option>
+              <option value="Offer" className="text-[#1D2226] dark:text-[#F8FAFC] bg-white dark:bg-[#0F172A]">Offer</option>
+              <option value="Hired" className="text-[#1D2226] dark:text-[#F8FAFC] bg-white dark:bg-[#0F172A]">Hired</option>
+              <option value="Rejected" className="text-[#1D2226] dark:text-[#F8FAFC] bg-white dark:bg-[#0F172A]">Rejected</option>
             </select>
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-[#1D2226]">Priority Level *</label>
+            <label className="block text-xs font-semibold text-[#1D2226] dark:text-[#E2E8F0]">Priority Level *</label>
             <select
-              className="w-full bg-white text-[#1D2226] text-xs sm:text-sm rounded-lg border border-[#D9D9D9] hover:border-[#788896] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#E8F3FF] focus:border-[#0A66C2] transition"
+              className="w-full bg-white dark:bg-[#1E293B] text-[#1D2226] dark:text-[#F8FAFC] text-xs sm:text-sm rounded-lg border border-[#D9D9D9] dark:border-[#475569] hover:border-[#788896] dark:hover:border-[#94A3B8] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#E8F3FF] dark:focus:ring-[#38BDF8]/20 focus:border-[#0A66C2] dark:focus:border-[#38BDF8] transition"
               {...register('priority')}
             >
-              <option value="High" className="text-[#1D2226] bg-white">High Priority</option>
-              <option value="Medium" className="text-[#1D2226] bg-white">Medium Priority</option>
-              <option value="Low" className="text-[#1D2226] bg-white">Low Priority</option>
+              <option value="High" className="text-[#1D2226] dark:text-[#F8FAFC] bg-white dark:bg-[#0F172A]">High Priority</option>
+              <option value="Medium" className="text-[#1D2226] dark:text-[#F8FAFC] bg-white dark:bg-[#0F172A]">Medium Priority</option>
+              <option value="Low" className="text-[#1D2226] dark:text-[#F8FAFC] bg-white dark:bg-[#0F172A]">Low Priority</option>
             </select>
           </div>
         </div>
@@ -270,7 +270,7 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
           <Input
             label="Interview Date / Time"
             placeholder="e.g. 2026-09-08 10:00"
-            icon={<Calendar className="w-3.5 h-3.5 text-[#0A66C2]" />}
+            icon={<Calendar className="w-3.5 h-3.5 text-[#0A66C2] dark:text-[#38BDF8]" />}
             error={errors.interviewDate?.message}
             {...register('interviewDate')}
           />
@@ -287,47 +287,47 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
           />
 
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-[#1D2226]">Resume Attached</label>
+            <label className="block text-xs font-semibold text-[#1D2226] dark:text-[#E2E8F0]">Resume Attached</label>
             <div className="relative">
               <select
-                className="w-full bg-white text-[#1D2226] text-xs sm:text-sm rounded-lg border border-[#D9D9D9] hover:border-[#788896] pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#E8F3FF] focus:border-[#0A66C2] transition"
+                className="w-full bg-white dark:bg-[#1E293B] text-[#1D2226] dark:text-[#F8FAFC] text-xs sm:text-sm rounded-lg border border-[#D9D9D9] dark:border-[#475569] hover:border-[#788896] dark:hover:border-[#94A3B8] pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#E8F3FF] dark:focus:ring-[#38BDF8]/20 focus:border-[#0A66C2] dark:focus:border-[#38BDF8] transition"
                 {...register('resume')}
               >
                 {loadingResumes ? (
-                  <option value="" className="text-[#788896] bg-white">Loading resumes...</option>
+                  <option value="" className="text-[#788896] dark:text-[#94A3B8] bg-white dark:bg-[#0F172A]">Loading resumes...</option>
                 ) : userResumes.length > 0 ? (
                   userResumes.map((r) => (
-                    <option key={r.id} value={r.name} className="text-[#1D2226] bg-white">
+                    <option key={r.id} value={r.name} className="text-[#1D2226] dark:text-[#F8FAFC] bg-white dark:bg-[#0F172A]">
                       {r.name} {r.atsScore ? `(ATS ${r.atsScore}%)` : ''} {r.isActive ? '• Active' : ''}
                     </option>
                   ))
                 ) : (
-                  <option value="" className="text-[#788896] bg-white">No resume uploaded (upload in Resume AI)</option>
+                  <option value="" className="text-[#788896] dark:text-[#94A3B8] bg-white dark:bg-[#0F172A]">No resume uploaded (upload in Resume AI)</option>
                 )}
               </select>
-              <Paperclip className="w-3.5 h-3.5 text-[#788896] absolute left-3 top-3 pointer-events-none" />
+              <Paperclip className="w-3.5 h-3.5 text-[#788896] dark:text-[#94A3B8] absolute left-3 top-3 pointer-events-none" />
             </div>
             {errors.resume && (
-              <p className="text-xs text-[#E6395A] font-medium">{errors.resume.message}</p>
+              <p className="text-xs text-[#E6395A] dark:text-rose-400 font-medium">{errors.resume.message}</p>
             )}
           </div>
         </div>
 
         {/* Notes */}
         <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-[#1D2226]">
+          <label className="block text-xs font-semibold text-[#1D2226] dark:text-[#E2E8F0]">
             Interview Notes & Preparation Strategy
           </label>
           <textarea
             rows={3}
             placeholder="Key discussion topics, referral names, architectural talking points..."
-            className="w-full bg-white text-[#1D2226] placeholder-[#788896] text-xs sm:text-sm rounded-lg border border-[#D9D9D9] hover:border-[#788896] p-3 focus:outline-none focus:ring-2 focus:ring-[#E8F3FF] focus:border-[#0A66C2] transition"
+            className="w-full bg-white dark:bg-[#1E293B] text-[#1D2226] dark:text-[#F8FAFC] placeholder-[#788896] dark:placeholder-[#64748B] text-xs sm:text-sm rounded-lg border border-[#D9D9D9] dark:border-[#475569] hover:border-[#788896] dark:hover:border-[#94A3B8] p-3 focus:outline-none focus:ring-2 focus:ring-[#E8F3FF] dark:focus:ring-[#38BDF8]/20 focus:border-[#0A66C2] dark:focus:border-[#38BDF8] transition"
             {...register('notes')}
           />
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E8E8E8]">
+        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E8E8E8] dark:border-[#1E293B]">
           <Button type="button" variant="ghost" size="sm" onClick={onClose}>
             Cancel
           </Button>

@@ -55,19 +55,19 @@ export const Modal: React.FC<ModalProps> = ({
       {/* Modal Dialog */}
       <div
         className={cn(
-          'relative w-full flex flex-col max-h-[88vh] rounded-2xl bg-white border border-[#D9D9D9] shadow-2xl z-10 overflow-hidden my-auto',
+          'relative w-full flex flex-col max-h-[88vh] rounded-2xl bg-white dark:bg-[#0F172A] border border-[#D9D9D9] dark:border-[#334155] shadow-2xl z-10 overflow-hidden my-auto',
           maxWidthStyles[maxWidth]
         )}
       >
         {(title || subtitle) && (
-          <div className="px-5 py-3 sm:px-6 sm:py-3.5 border-b border-[#E8E8E8] flex items-center justify-between flex-shrink-0 bg-white">
+          <div className="px-5 py-3 sm:px-6 sm:py-3.5 border-b border-[#E8E8E8] dark:border-[#1E293B] flex items-center justify-between flex-shrink-0 bg-white dark:bg-[#0F172A]">
             <div>
-              {title && <h2 className="text-sm sm:text-base font-semibold text-[#1D2226]">{title}</h2>}
-              {subtitle && <p className="text-[11px] sm:text-xs text-[#56687A] mt-0.5">{subtitle}</p>}
+              {title && <h2 className="text-sm sm:text-base font-semibold text-[#1D2226] dark:text-[#F8FAFC]">{title}</h2>}
+              {subtitle && <p className="text-[11px] sm:text-xs text-[#56687A] dark:text-[#94A3B8] mt-0.5">{subtitle}</p>}
             </div>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-[#56687A] hover:text-[#1D2226] hover:bg-[#F3F6F8] transition"
+              className="p-1.5 rounded-lg text-[#56687A] dark:text-[#94A3B8] hover:text-[#1D2226] dark:hover:text-[#F8FAFC] hover:bg-[#F3F6F8] dark:hover:bg-[#1E293B] transition"
               aria-label="Close modal"
             >
               <X className="w-4 h-4" />
@@ -75,7 +75,7 @@ export const Modal: React.FC<ModalProps> = ({
           </div>
         )}
 
-        <div className="p-4 sm:p-5 overflow-y-auto flex-1">{children}</div>
+        <div className="p-4 sm:p-5 overflow-y-auto flex-1 bg-white dark:bg-[#0F172A] text-[#1D2226] dark:text-[#F8FAFC]">{children}</div>
       </div>
     </div>
   );
