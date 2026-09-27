@@ -23,7 +23,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
           'px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-2xl text-[13.5px] sm:text-sm leading-normal break-words whitespace-pre-wrap shadow-2xs',
           isOut
             ? 'bg-[#0A66C2] text-white rounded-tr-xs'
-            : 'bg-white text-slate-900 border border-slate-200/90 rounded-tl-xs'
+            : 'bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC] border border-slate-200/90 dark:border-[#334155] rounded-tl-xs'
         )}
       >
         {/* Message Text */}
@@ -36,14 +36,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
               'mt-2.5 p-2.5 rounded-xl flex items-center justify-between gap-3 border font-mono text-[11px]',
               isOut
                 ? 'bg-blue-800/50 border-white/20 text-white'
-                : 'bg-slate-50 border-slate-200 text-slate-900'
+                : 'bg-slate-50 dark:bg-[#0F172A] border-slate-200 dark:border-[#334155] text-slate-900 dark:text-[#F8FAFC]'
             )}
           >
             <div className="flex items-center gap-2.5 min-w-0">
               <div
                 className={cn(
                   'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
-                  isOut ? 'bg-white/20 text-white' : 'bg-blue-50 text-[#0A66C2]'
+                  isOut ? 'bg-white/20 text-white' : 'bg-blue-50 dark:bg-blue-950/40 text-[#0A66C2] dark:text-[#38BDF8]'
                 )}
               >
                 <FileText className="w-4 h-4" />
@@ -76,7 +76,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                 'p-1.5 rounded-lg transition-colors flex-shrink-0',
                 isOut
                   ? 'hover:bg-white/20 text-white'
-                  : 'hover:bg-slate-200/60 text-slate-600'
+                  : 'hover:bg-slate-200/60 dark:hover:bg-[#1E293B] text-slate-600 dark:text-[#94A3B8]'
               )}
               title="Download File"
             >

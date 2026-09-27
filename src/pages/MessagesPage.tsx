@@ -310,25 +310,25 @@ export const MessagesPage: React.FC = () => {
 
       {/* Main Container */}
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center min-h-[440px] bg-white rounded-2xl border border-slate-200 shadow-sm gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-[#0A66C2]" />
-          <span className="text-sm font-medium text-slate-500">Loading conversations...</span>
+        <div className="flex flex-col items-center justify-center min-h-[440px] bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200 dark:border-[#1E293B] shadow-sm gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-[#0A66C2] dark:text-[#38BDF8]" />
+          <span className="text-sm font-medium text-slate-500 dark:text-[#94A3B8]">Loading conversations...</span>
         </div>
       ) : error ? (
-        <div className="flex flex-col items-center justify-center min-h-[440px] bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center gap-4">
+        <div className="flex flex-col items-center justify-center min-h-[440px] bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200 dark:border-[#1E293B] shadow-sm p-8 text-center gap-4">
           <AlertCircle className="w-10 h-10 text-rose-500" />
           <div>
-            <h3 className="text-base font-semibold text-slate-900">Unable to load conversations</h3>
-            <p className="text-xs text-slate-500 mt-1">{error}</p>
+            <h3 className="text-base font-semibold text-slate-900 dark:text-[#F8FAFC]">Unable to load conversations</h3>
+            <p className="text-xs text-slate-500 dark:text-[#94A3B8] mt-1">{error}</p>
           </div>
           <Button size="sm" variant="primary" onClick={fetchConversations}>
             Retry
           </Button>
         </div>
       ) : (
-        <div className="h-[calc(100vh-200px)] min-h-[520px] max-h-[760px] rounded-2xl bg-white border border-slate-200/90 shadow-sm overflow-hidden flex flex-col md:flex-row">
+        <div className="h-[calc(100vh-200px)] min-h-[520px] max-h-[760px] rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200/90 dark:border-[#1E293B] shadow-sm overflow-hidden flex flex-col md:flex-row">
           {/* ==================== LEFT PANEL: CONVERSATIONS LIST ==================== */}
-          <div className="w-full md:w-80 lg:w-88 flex-shrink-0 h-full border-r border-slate-200/80">
+          <div className="w-full md:w-80 lg:w-88 flex-shrink-0 h-full border-r border-slate-200/80 dark:border-[#1E293B]">
             <ConversationList
               conversations={conversations}
               activeConversationId={activeConversationId}
@@ -340,30 +340,30 @@ export const MessagesPage: React.FC = () => {
           </div>
 
           {/* ==================== RIGHT PANEL: ACTIVE CHAT VIEW ==================== */}
-          <div className="flex-1 flex flex-col h-full bg-[#F8FAFC] min-w-0 border-t md:border-t-0">
+          <div className="flex-1 flex flex-col h-full bg-[#F8FAFC] dark:bg-[#0B1120] min-w-0 border-t md:border-t-0">
             {activeConversation ? (
               <>
                 {/* 1. Header: User Information */}
                 <ChatHeader conversation={activeConversation} />
 
                 {/* 2. Messages Stream */}
-                <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2.5 bg-[#F8FAFC]">
+                <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2.5 bg-[#F8FAFC] dark:bg-[#0B1120]">
                   <div className="text-center py-1.5">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-slate-200 text-[11px] font-medium text-slate-500 shadow-2xs">
-                      <ShieldCheck className="w-3.5 h-3.5 text-[#0A66C2]" />
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-[#334155] text-[11px] font-medium text-slate-500 dark:text-[#94A3B8] shadow-2xs">
+                      <ShieldCheck className="w-3.5 h-3.5 text-[#0A66C2] dark:text-[#38BDF8]" />
                       End-to-end encrypted channel • Direct hiring & peer communications
                     </span>
                   </div>
 
                   {isLoadingMessages && displayMessages.length === 0 ? (
-                    <div className="flex items-center justify-center py-12 text-slate-400 text-xs gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin text-[#0A66C2]" />
+                    <div className="flex items-center justify-center py-12 text-slate-400 dark:text-[#64748B] text-xs gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-[#0A66C2] dark:text-[#38BDF8]" />
                       <span>Loading messages...</span>
                     </div>
                   ) : displayMessages.length === 0 ? (
-                    <div className="text-center py-12 text-xs text-slate-400 space-y-1">
-                      <p className="font-semibold text-slate-600">No messages in this thread yet</p>
-                      <p>Send a message below to start the conversation.</p>
+                    <div className="text-center py-12 text-xs text-slate-400 dark:text-[#64748B] space-y-1">
+                      <p className="font-semibold text-slate-600 dark:text-[#F8FAFC]">No messages in this thread yet</p>
+                      <p className="text-slate-400 dark:text-[#94A3B8]">Send a message below to start the conversation.</p>
                     </div>
                   ) : (
                     displayMessages.map((msg) => (
@@ -372,13 +372,13 @@ export const MessagesPage: React.FC = () => {
                   )}
 
                   {isPeerTyping && (
-                    <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-white border border-slate-200 text-xs text-slate-600 w-fit shadow-xs animate-in fade-in duration-150">
+                    <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-[#334155] text-xs text-slate-600 dark:text-[#CBD5E1] w-fit shadow-xs animate-in fade-in duration-150">
                       <span className="flex gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#0A66C2] animate-bounce" />
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#0A66C2] animate-bounce [animation-delay:0.2s]" />
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#0A66C2] animate-bounce [animation-delay:0.4s]" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#0A66C2] dark:bg-[#38BDF8] animate-bounce" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#0A66C2] dark:bg-[#38BDF8] animate-bounce [animation-delay:0.2s]" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#0A66C2] dark:bg-[#38BDF8] animate-bounce [animation-delay:0.4s]" />
                       </span>
-                      <span className="text-[11px] font-medium text-slate-500 ml-1">
+                      <span className="text-[11px] font-medium text-slate-500 dark:text-[#94A3B8] ml-1">
                         {activeConversation.peer.name} is typing...
                       </span>
                     </div>
@@ -392,12 +392,12 @@ export const MessagesPage: React.FC = () => {
               </>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
-                <div className="w-16 h-16 rounded-2xl bg-brand-50 border border-brand-200/60 flex items-center justify-center text-[#0A66C2] shadow-xs">
+                <div className="w-16 h-16 rounded-2xl bg-brand-50 dark:bg-[#1E293B] border border-brand-200/60 dark:border-[#334155] flex items-center justify-center text-[#0A66C2] dark:text-[#38BDF8] shadow-xs">
                   <MessageSquarePlus className="w-8 h-8" />
                 </div>
                 <div className="max-w-sm space-y-1.5">
-                  <h3 className="text-base font-bold text-slate-900">Start a Conversation</h3>
-                  <p className="text-xs text-slate-500 leading-relaxed">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-[#F8FAFC]">Start a Conversation</h3>
+                  <p className="text-xs text-slate-500 dark:text-[#94A3B8] leading-relaxed">
                     {conversations.length === 0
                       ? 'You have no active message threads yet. Connect with other candidates and start chatting directly.'
                       : 'Select a conversation from the left panel or start a new chat with a connection.'}

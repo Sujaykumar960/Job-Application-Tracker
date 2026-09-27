@@ -130,9 +130,14 @@ html.dark .border-\[\#d0e6fc\] {
 html.dark .bg-\[\#F3F2EF\],
 html.dark .bg-\[\#F3F6F8\],
 html.dark .bg-\[\#F8F9FA\],
+html.dark .bg-\[\#F8FAFC\],
 html.dark .bg-slate-50,
 html.dark .bg-gray-50 {
   background-color: #0B1120 !important;
+}
+
+html.dark .bg-\[\#F0F7FF\] {
+  background-color: #1E293B !important;
 }
 
 html.dark .text-\[\#1D2226\],

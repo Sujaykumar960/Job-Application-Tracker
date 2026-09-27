@@ -44,17 +44,17 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
   };
 
   return (
-    <div className="p-3 sm:p-3.5 bg-white border-t border-slate-200/80 space-y-2">
+    <div className="p-3 sm:p-3.5 bg-white dark:bg-[#0F172A] border-t border-slate-200/80 dark:border-[#1E293B] space-y-2">
       {/* Attachment Preview Chip */}
       {attachment && (
-        <div className="flex items-center gap-2 p-1.5 px-3 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-800 font-mono w-fit animate-in fade-in">
-          <FileText className="w-4 h-4 text-[#0A66C2]" />
+        <div className="flex items-center gap-2 p-1.5 px-3 rounded-xl bg-slate-100 dark:bg-[#1E293B] border border-slate-200 dark:border-[#334155] text-xs text-slate-800 dark:text-[#F8FAFC] font-mono w-fit animate-in fade-in">
+          <FileText className="w-4 h-4 text-[#0A66C2] dark:text-[#38BDF8]" />
           <span className="truncate max-w-[240px] font-medium">{attachment.name}</span>
-          <span className="text-[10px] text-slate-500">({attachment.size})</span>
+          <span className="text-[10px] text-slate-500 dark:text-[#94A3B8]">({attachment.size})</span>
           <button
             type="button"
             onClick={() => setAttachment(null)}
-            className="text-slate-400 hover:text-rose-600 transition-colors ml-1 p-0.5"
+            className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors ml-1 p-0.5"
             title="Remove attachment"
           >
             <X className="w-3.5 h-3.5" />
@@ -78,7 +78,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled}
-          className="h-[42px] w-[42px] rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-[#0A66C2] border border-slate-200 transition-colors flex items-center justify-center flex-shrink-0 disabled:opacity-50"
+          className="h-[42px] w-[42px] rounded-xl bg-slate-50 dark:bg-[#1E293B] hover:bg-slate-100 dark:hover:bg-[#28384E] text-slate-500 dark:text-[#94A3B8] hover:text-[#0A66C2] dark:hover:text-[#38BDF8] border border-slate-200 dark:border-[#475569] transition-colors flex items-center justify-center flex-shrink-0 disabled:opacity-50"
           title="Attach PDF, code, or image"
         >
           <Paperclip className="w-4 h-4" />
@@ -93,7 +93,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
             onKeyDown={handleKeyDown}
             disabled={disabled}
             placeholder="Write a message... (Press Enter to send, Shift+Enter for new line)"
-            className="w-full bg-slate-50 hover:bg-slate-100/50 focus:bg-white text-slate-900 placeholder-slate-400 text-[13.5px] sm:text-sm rounded-xl border border-slate-200 p-2.5 min-h-[42px] max-h-28 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] focus:border-[#0A66C2] resize-none leading-relaxed transition-colors"
+            className="w-full bg-slate-50 dark:bg-[#1E293B] hover:bg-slate-100/50 dark:hover:bg-[#243348] focus:bg-white dark:focus:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-[#64748B] text-[13.5px] sm:text-sm rounded-xl border border-slate-200 dark:border-[#475569] p-2.5 min-h-[42px] max-h-28 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] dark:focus:ring-[#38BDF8] focus:border-[#0A66C2] dark:focus:border-[#38BDF8] resize-none leading-relaxed transition-colors"
           />
         </div>
 

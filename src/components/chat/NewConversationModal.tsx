@@ -113,7 +113,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by name, headline, company, or skill..."
-            className="w-full bg-white text-[#1D2226] placeholder-[#788896] text-xs rounded-xl border border-[#D9D9D9] pl-9 pr-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
+            className="w-full bg-white dark:bg-[#1E293B] text-[#1D2226] dark:text-[#F8FAFC] placeholder-[#788896] text-xs rounded-xl border border-[#D9D9D9] dark:border-[#334155] pl-9 pr-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] dark:focus:ring-[#38BDF8]"
             autoFocus
           />
         </div>
@@ -121,21 +121,21 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
         {/* Content Stream */}
         <div className="max-h-[380px] overflow-y-auto space-y-2 pr-1">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-2.5 text-[#56687A]">
-              <Loader2 className="w-7 h-7 animate-spin text-[#0A66C2]" />
+            <div className="flex flex-col items-center justify-center py-12 gap-2.5 text-[#56687A] dark:text-[#94A3B8]">
+              <Loader2 className="w-7 h-7 animate-spin text-[#0A66C2] dark:text-[#38BDF8]" />
               <span className="text-xs font-medium">Loading your connections...</span>
             </div>
           ) : error ? (
-            <div className="p-6 text-center rounded-xl bg-[#FDF2F2] border border-[#F8D7DA] space-y-2">
-              <AlertCircle className="w-6 h-6 text-[#E6395A] mx-auto" />
-              <p className="text-xs text-[#E6395A] font-semibold">{error}</p>
+            <div className="p-6 text-center rounded-xl bg-[#FDF2F2] dark:bg-[#451A22] border border-[#F8D7DA] dark:border-[#7F1D1D] space-y-2">
+              <AlertCircle className="w-6 h-6 text-[#E6395A] dark:text-[#F87171] mx-auto" />
+              <p className="text-xs text-[#E6395A] dark:text-[#F87171] font-semibold">{error}</p>
             </div>
           ) : connections.length === 0 ? (
-            <div className="p-8 text-center rounded-2xl border border-dashed border-[#D9D9D9] bg-[#F3F6F8] space-y-3">
-              <Users className="w-8 h-8 text-[#788896] mx-auto" />
+            <div className="p-8 text-center rounded-2xl border border-dashed border-[#D9D9D9] dark:border-[#334155] bg-[#F3F6F8] dark:bg-[#1E293B]/40 space-y-3">
+              <Users className="w-8 h-8 text-[#788896] dark:text-[#64748B] mx-auto" />
               <div>
-                <p className="text-sm font-semibold text-[#1D2226]">No connections yet</p>
-                <p className="text-xs text-[#56687A] mt-1 max-w-sm mx-auto">
+                <p className="text-sm font-semibold text-[#1D2226] dark:text-[#F8FAFC]">No connections yet</p>
+                <p className="text-xs text-[#56687A] dark:text-[#94A3B8] mt-1 max-w-sm mx-auto">
                   When you send or accept connection requests with candidates and peers, they will appear here so you can chat.
                 </p>
               </div>
@@ -151,8 +151,8 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
               </div>
             </div>
           ) : filteredConnections.length === 0 ? (
-            <div className="p-8 text-center rounded-xl bg-[#F3F6F8] text-[#56687A] text-xs">
-              No connections match <span className="font-semibold text-[#1D2226]">"{searchQuery}"</span>.
+            <div className="p-8 text-center rounded-xl bg-[#F3F6F8] dark:bg-[#1E293B]/50 text-[#56687A] dark:text-[#94A3B8] text-xs">
+              No connections match <span className="font-semibold text-[#1D2226] dark:text-[#F8FAFC]">"{searchQuery}"</span>.
             </div>
           ) : (
             filteredConnections.map((user) => {
@@ -162,7 +162,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
               return (
                 <div
                   key={user.id}
-                  className="p-3 rounded-xl border border-[#E8E8E8] hover:border-[#0A66C2]/50 hover:bg-[#F3F6F8]/60 transition flex items-center justify-between gap-3 group bg-white shadow-xs"
+                  className="p-3 rounded-xl border border-[#E8E8E8] dark:border-[#334155] hover:border-[#0A66C2]/50 hover:bg-[#F3F6F8]/60 dark:hover:bg-[#1E293B] transition flex items-center justify-between gap-3 group bg-white dark:bg-[#1E293B]/40 shadow-xs"
                 >
                   {/* Left: Avatar + Details */}
                   <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -177,20 +177,20 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
 
                     <div className="min-w-0 flex-1 space-y-0.5">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-[#1D2226] truncate">
+                        <span className="text-xs font-bold text-[#1D2226] dark:text-[#F8FAFC] truncate">
                           {user.name}
                         </span>
                         {hasExistingChat && (
-                          <span className="px-1.5 py-0.2 rounded-full bg-[#E8F3FF] text-[#0A66C2] text-[9px] font-mono font-semibold">
+                          <span className="px-1.5 py-0.2 rounded-full bg-[#E8F3FF] dark:bg-[#0A66C2]/20 text-[#0A66C2] dark:text-[#38BDF8] text-[9px] font-mono font-semibold">
                             Existing Chat
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-[#56687A] truncate">
+                      <p className="text-[11px] text-[#56687A] dark:text-[#94A3B8] truncate">
                         {user.headline || 'Software Engineer'} • {user.company || 'Tech'}
                       </p>
                       {user.location && (
-                        <p className="text-[10px] text-[#788896] flex items-center gap-1 font-mono">
+                        <p className="text-[10px] text-[#788896] dark:text-[#64748B] flex items-center gap-1 font-mono">
                           <MapPin className="w-2.5 h-2.5" />
                           {user.location}
                         </p>
