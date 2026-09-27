@@ -6,7 +6,6 @@ import {
   ChevronRight,
   Maximize2,
   X,
-  Play,
   Film,
   Image as ImageIcon,
 } from 'lucide-react';
@@ -18,6 +17,7 @@ export interface PostMediaSliderProps {
 
 export const PostMediaSlider: React.FC<PostMediaSliderProps> = ({ media }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [direction, setDirection] = useState<'next' | 'prev'>('next');
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const touchStartXRef = useRef<number | null>(null);
   const touchEndXRef = useRef<number | null>(null);
@@ -29,11 +29,13 @@ export const PostMediaSlider: React.FC<PostMediaSliderProps> = ({ media }) => {
 
   const handlePrev = (e?: React.MouseEvent) => {
     e?.stopPropagation();
+    setDirection('prev');
     setCurrentIndex((prev) => (prev > 0 ? prev - 1 : total - 1));
   };
 
   const handleNext = (e?: React.MouseEvent) => {
     e?.stopPropagation();
+    setDirection('next');
     setCurrentIndex((prev) => (prev < total - 1 ? prev + 1 : 0));
   };
 
@@ -62,33 +64,33 @@ export const PostMediaSlider: React.FC<PostMediaSliderProps> = ({ media }) => {
     touchEndXRef.current = null;
   };
 
-  // If only 1 media item, render clean single frame without extra slider controls
+  // If only 1 media item, render clean single frame with tight auto-height (no gap)
   if (total === 1) {
     const single = media[0];
     const isVideo = single.type === 'video';
 
     return (
-      <div className="relative rounded-2xl overflow-hidden border border-slate-200/90 bg-slate-950 flex items-center justify-center my-2 group max-h-[480px]">
+      <div className="relative rounded-2xl overflow-hidden border border-slate-200/80 bg-slate-50 flex items-center justify-center my-2 group">
         {isVideo ? (
           <video
             src={resolveMediaUrl(single.url)}
             controls
             preload="metadata"
             playsInline
-            className="w-full max-h-[480px] object-contain rounded-2xl bg-black"
+            className="w-full max-h-[520px] object-contain rounded-2xl bg-black"
           >
             Your browser does not support the video tag.
           </video>
         ) : (
           <div
-            className="w-full h-full flex items-center justify-center cursor-pointer relative"
+            className="w-full flex items-center justify-center cursor-pointer relative"
             onClick={() => setIsLightboxOpen(true)}
           >
             <img
               src={resolveMediaUrl(single.url)}
               alt={single.originalFilename || 'Post image'}
               loading="lazy"
-              className="w-full max-h-[480px] object-contain rounded-2xl transition hover:opacity-95"
+              className="w-full h-auto max-h-[520px] object-contain rounded-2xl transition hover:opacity-95"
             />
             <button
               type="button"
@@ -96,7 +98,7 @@ export const PostMediaSlider: React.FC<PostMediaSliderProps> = ({ media }) => {
                 e.stopPropagation();
                 setIsLightboxOpen(true);
               }}
-              className="absolute top-3 right-3 p-1.5 rounded-full bg-black/50 hover:bg-black/75 text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-3 right-3 p-1.5 rounded-full bg-black/50 hover:bg-black/75 text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
               title="Expand photo"
             >
               <Maximize2 className="w-4 h-4" />
@@ -130,9 +132,9 @@ export const PostMediaSlider: React.FC<PostMediaSliderProps> = ({ media }) => {
     );
   }
 
-  // Multi-media Slider / Carousel
+  // Multi-media Slider / Carousel with tight auto-height (no gap)
   return (
-    <div className="relative rounded-2xl overflow-hidden border border-slate-200/90 bg-slate-950 my-2 select-none group">
+    <div className="relative rounded-2xl overflow-hidden border border-slate-200/80 bg-slate-50 my-2 select-none group">
       {/* Top Counter Badge */}
       <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white font-mono text-[11px] font-semibold shadow-md pointer-events-none">
         {currentItem.type === 'video' ? (
@@ -157,43 +159,37 @@ export const PostMediaSlider: React.FC<PostMediaSliderProps> = ({ media }) => {
         </button>
       )}
 
-      {/* Slider Carousel Track */}
+      {/* Active Slide Display without Dead Gap */}
       <div
-        className="w-full h-full max-h-[480px] min-h-[300px] flex transition-transform duration-300 ease-out"
-        style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+        className="w-full relative flex items-center justify-center overflow-hidden"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {media.map((item, index) => {
-          const isVideo = item.type === 'video';
-          return (
-            <div
-              key={item.id || index}
-              className="min-w-full w-full h-full max-h-[480px] min-h-[300px] flex-shrink-0 flex items-center justify-center bg-black/90 relative"
-            >
-              {isVideo ? (
-                <video
-                  src={resolveMediaUrl(item.url)}
-                  controls
-                  preload="metadata"
-                  playsInline
-                  className="w-full max-h-[480px] object-contain rounded-2xl bg-black"
-                >
-                  Your browser does not support the video tag.
-                </video>
-              ) : (
-                <img
-                  src={resolveMediaUrl(item.url)}
-                  alt={item.originalFilename || `Slide ${index + 1}`}
-                  loading="lazy"
-                  onClick={() => setIsLightboxOpen(true)}
-                  className="w-full max-h-[480px] object-contain rounded-2xl cursor-pointer hover:opacity-95 transition-opacity select-none"
-                />
-              )}
-            </div>
-          );
-        })}
+        {currentItem.type === 'video' ? (
+          <video
+            key={currentItem.id || currentIndex}
+            src={resolveMediaUrl(currentItem.url)}
+            controls
+            preload="metadata"
+            playsInline
+            className="w-full max-h-[520px] object-contain rounded-2xl bg-black"
+          >
+            Your browser does not support the video tag.
+          </video>
+        ) : (
+          <img
+            key={currentItem.id || currentIndex}
+            src={resolveMediaUrl(currentItem.url)}
+            alt={currentItem.originalFilename || `Slide ${currentIndex + 1}`}
+            loading="lazy"
+            onClick={() => setIsLightboxOpen(true)}
+            className={cn(
+              'w-full h-auto max-h-[520px] object-contain rounded-2xl cursor-pointer hover:opacity-95 transition-all select-none animate-in fade-in duration-200',
+              direction === 'next' ? 'slide-in-from-right-4' : 'slide-in-from-left-4'
+            )}
+          />
+        )}
       </div>
 
       {/* Navigation Arrows */}
@@ -227,6 +223,7 @@ export const PostMediaSlider: React.FC<PostMediaSliderProps> = ({ media }) => {
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
+                setDirection(dotIdx > currentIndex ? 'next' : 'prev');
                 setCurrentIndex(dotIdx);
               }}
               className={cn(
@@ -241,7 +238,7 @@ export const PostMediaSlider: React.FC<PostMediaSliderProps> = ({ media }) => {
         </div>
       )}
 
-      {/* Lightbox Modal for Slider */}
+      {/* Lightbox Modal for Full View */}
       {isLightboxOpen && currentItem.type !== 'video' && (
         <div
           className="fixed inset-0 z-50 bg-black/95 backdrop-blur-lg flex items-center justify-center p-4 sm:p-8"
