@@ -9,15 +9,26 @@ from app.main import app
 @pytest_asyncio.fixture
 async def client():
     await DatabaseManager.connect()
+    db = DatabaseManager.db
+    if db is not None:
+        users = await db.users.find({"email": {"$regex": ".*@feedtest\\.io$"}}).to_list(100)
+        uids = [str(u["_id"]) for u in users]
+        await db.posts.delete_many({"tags": {"$in": ["TestFeed", "RedisTest", "TagA", "TagB"]}})
+        await db.users.delete_many({"email": {"$regex": ".*@feedtest\\.io$"}})
+        if uids:
+            await db.profiles.delete_many({"user_id": {"$in": uids}})
+
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
-    # Clean up test data
-    db = DatabaseManager.db
+
     if db is not None:
+        users = await db.users.find({"email": {"$regex": ".*@feedtest\\.io$"}}).to_list(100)
+        uids = [str(u["_id"]) for u in users]
         await db.posts.delete_many({"tags": {"$in": ["TestFeed", "RedisTest", "TagA", "TagB"]}})
         await db.users.delete_many({"email": {"$regex": ".*@feedtest\\.io$"}})
-        await db.profiles.delete_many({})
+        if uids:
+            await db.profiles.delete_many({"user_id": {"$in": uids}})
 
 
 async def create_user_token(client, email: str, name: str) -> str:
@@ -27,7 +38,13 @@ async def create_user_token(client, email: str, name: str) -> str:
         "password": "Password123!",
         "role": "seeker",
     })
-    return res.json()["access_token"]
+    if res.status_code == 201:
+        return res.json()["access_token"]
+    login_res = await client.post("/api/auth/login", json={
+        "email": email,
+        "password": "Password123!",
+    })
+    return login_res.json()["access_token"]
 
 
 @pytest.mark.asyncio

@@ -1,3 +1,5 @@
+import { API_BASE_URL } from '../api/client';
+
 /**
  * Resolves media URLs (e.g. /api/files/:id, avatars, post photos/videos)
  * ensuring relative paths point to the backend API origin instead of the frontend Vite port.
@@ -15,9 +17,8 @@ export function resolveMediaUrl(url?: string | null): string {
     return url;
   }
 
-  // Resolve backend origin from environment or default local port
-  const apiBase: string = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
-  const backendOrigin = apiBase.replace(/\/api\/?$/, '');
+  // Resolve backend origin from unified API configuration
+  const backendOrigin = API_BASE_URL.replace(/\/api\/?$/, '');
 
   const normalizedPath = url.startsWith('/') ? url : `/${url}`;
   return `${backendOrigin}${normalizedPath}`;

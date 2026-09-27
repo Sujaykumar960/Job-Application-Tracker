@@ -23,6 +23,20 @@ logger = logging.getLogger("careerx.main")
 async def lifespan(app: FastAPI):
     """Application lifecycle: connect to MongoDB and setup indexes on startup, disconnect on shutdown."""
     logger.info("Starting up %s (env=%s)...", settings.APP_NAME, settings.ENVIRONMENT)
+
+    # In production, require REDIS_URL for distributed rate limiting
+    if settings.ENVIRONMENT == "production":
+        if not settings.REDIS_URL:
+            raise RuntimeError("Production deployment requires REDIS_URL for distributed rate limiting.")
+        from app.middleware.rate_limiter import get_redis_client
+        client = await get_redis_client()
+        if not client:
+            raise RuntimeError(f"Could not connect to Redis at configured REDIS_URL: {settings.REDIS_URL}")
+        try:
+            await client.ping()
+        except Exception as e:
+            raise RuntimeError(f"Redis ping failed at {settings.REDIS_URL}: {e}")
+
     try:
         await DatabaseManager.connect()
     except Exception as e:
@@ -31,6 +45,12 @@ async def lifespan(app: FastAPI):
     yield
     logger.info("Shutting down %s...", settings.APP_NAME)
     await DatabaseManager.disconnect()
+    try:
+        from app.middleware import rate_limiter
+        if rate_limiter._redis_pool is not None:
+            await rate_limiter._redis_pool.aclose()
+    except Exception:
+        pass
 
 
 # Initialize FastAPI application

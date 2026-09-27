@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 class TestCase(BaseModel):
     id: str
     input: str
-    expectedOutput: str
+    expectedOutput: Optional[str] = ""
     actualOutput: Optional[str] = None
     passed: Optional[bool] = None
     executionTimeMs: Optional[int] = None

@@ -65,13 +65,14 @@ export const ApplicationsPage: React.FC = () => {
   // --- CRUD OPERATIONS ---
   const handleSaveApplication = async (appData: Application) => {
     try {
-      if (appData.id) {
+      if (editingApp && editingApp.id) {
         // Update existing
-        const updated = await applicationApi.updateApplication(appData.id, appData);
-        setApplications((prev) => prev.map((item) => (item.id === appData.id ? updated : item)));
+        const updated = await applicationApi.updateApplication(editingApp.id, appData);
+        setApplications((prev) => prev.map((item) => (item.id === editingApp.id ? updated : item)));
       } else {
         // Create new
-        const created = await applicationApi.createApplication(appData);
+        const { id, ...createPayload } = appData;
+        const created = await applicationApi.createApplication(createPayload);
         setApplications((prev) => [created, ...prev]);
       }
       setEditingApp(null);
@@ -194,27 +195,6 @@ export const ApplicationsPage: React.FC = () => {
     );
   }
 
-  // Empty state
-  if (applications.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <Briefcase className="w-12 h-12 text-[#788896]" />
-        <div className="text-center">
-          <h3 className="text-lg font-semibold text-[#1D2226]">No applications yet</h3>
-          <p className="text-[#56687A] mt-1">Start tracking your job applications here.</p>
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={() => setIsModalOpen(true)}
-            className="mt-4"
-          >
-            Add Your First Application
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
       {/* Top Header */}
@@ -241,10 +221,37 @@ export const ApplicationsPage: React.FC = () => {
         }
       />
 
-      {/* --- PIPELINE STATUS COUNTERS --- */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
-        <button
-          onClick={() => setStatusFilter('All')}
+      {applications.length === 0 ? (
+        /* Empty state */
+        <div className="flex flex-col items-center justify-center min-h-[380px] gap-4 bg-white rounded-2xl border border-[#D9D9D9] p-12 text-center shadow-xs">
+          <div className="w-16 h-16 rounded-2xl bg-[#E8F3FF] flex items-center justify-center text-[#0A66C2] shadow-xs border border-[#d0e6fc]">
+            <Briefcase className="w-8 h-8 text-[#0A66C2]" />
+          </div>
+          <div className="max-w-md">
+            <h3 className="text-lg font-semibold text-[#1D2226]">No applications yet</h3>
+            <p className="text-[#56687A] mt-1 text-sm">
+              Start tracking your job and internship applications, interview rounds, and offers here.
+            </p>
+            <Button
+              size="sm"
+              variant="primary"
+              icon={<Plus className="w-4 h-4" />}
+              onClick={() => {
+                setEditingApp(null);
+                setIsModalOpen(true);
+              }}
+              className="mt-4"
+            >
+              Add Your First Application
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* --- PIPELINE STATUS COUNTERS --- */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+            <button
+              onClick={() => setStatusFilter('All')}
           className={`p-2.5 rounded-xl border text-left transition flex items-center justify-between ${
             statusFilter === 'All'
               ? 'bg-[#F3F6F8] border-[#D9D9D9]'
@@ -439,6 +446,8 @@ export const ApplicationsPage: React.FC = () => {
           onDelete={handleDeleteApplication}
           onStatusChange={handleStatusChange}
         />
+      )}
+        </>
       )}
 
       {/* --- ADD / EDIT APPLICATION MODAL --- */}

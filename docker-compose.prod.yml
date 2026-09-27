@@ -1,34 +1,22 @@
+# ==============================================================================
+# CareerX Production Docker Compose - API & Sandbox Server
+# Architecture: Vercel (Frontend SPA) + Linux VPS (API Gateway, Backend, Sandbox, Redis)
+# Database: MongoDB Atlas (Managed Cloud Cluster)
+# ==============================================================================
+
 services:
   # ============================================================================
-  # 1. MongoDB Database Cluster (Isolated Database Network)
-  # ============================================================================
-  mongodb:
-    image: mongo:7.0
-    container_name: careerx-mongodb
-    restart: unless-stopped
-    volumes:
-      - mongodb_data:/data/db
-    networks:
-      - careerx_db_network
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
-  # ============================================================================
-  # 2. Redis Cache & Distributed Rate Limiter
+  # 1. Redis Cache & Distributed Rate Limiter
   # ============================================================================
   redis:
     image: redis:7.2-alpine
-    container_name: careerx-redis
+    container_name: careerx-prod-redis
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "64mb", "--maxmemory-policy", "volatile-lru"]
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "volatile-lru"]
     volumes:
       - redis_data:/data
     networks:
-      - careerx_db_network
+      - careerx_internal_network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -37,17 +25,15 @@ services:
       start_period: 5s
 
   # ============================================================================
-  # 3. FastAPI Backend Service (Gateway & Application Core)
+  # 2. FastAPI Backend Service (Gateway & Application Core)
   # ============================================================================
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: careerx-backend
+    container_name: careerx-prod-backend
     restart: unless-stopped
     depends_on:
-      mongodb:
-        condition: service_healthy
       redis:
         condition: service_healthy
     environment:
@@ -55,23 +41,25 @@ services:
       - APP_NAME=CareerX Backend API
       - HOST=0.0.0.0
       - PORT=8000
-      - MONGODB_URI=mongodb://mongodb:27017
+      - MONGODB_URI=${MONGODB_URI:?MONGODB_URI must be configured with your MongoDB Atlas connection string}
       - MONGODB_DB_NAME=${MONGODB_DB_NAME:-careerx_prod_db}
       - REDIS_URL=redis://redis:6379/0
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-47f83fa11d7efded5980e6216a747ee989821885e93a16395a27917f53fa16da}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set in the deployment environment}
       - JWT_ALGORITHM=HS256
       - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=1440
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost,http://localhost:80,http://127.0.0.1}
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://careerx.vercel.app,http://localhost:3000}
       - UPLOAD_DIR=/app/uploads
       - STORAGE_BACKEND=local
       - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GROQ_MODEL=${GROQ_MODEL:-llama-3.3-70b-versatile}
       - CODE_SANDBOX_URL=unix:///sandbox_ipc/sandbox.sock
+      - CODE_SANDBOX_TIMEOUT_SECONDS=5.0
     volumes:
       - backend_uploads:/app/uploads
       - sandbox_ipc:/sandbox_ipc
     networks:
       - careerx_ingress_network
-      - careerx_db_network
+      - careerx_internal_network
       - careerx_egress_network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
@@ -81,13 +69,13 @@ services:
       start_period: 15s
 
   # ============================================================================
-  # 4. Isolated Code Execution Sandbox (Zero-Network IPC via Unix Domain Socket)
+  # 3. Isolated Code Execution Sandbox (Zero-Network IPC via Unix Domain Socket)
   # ============================================================================
   code-sandbox:
     build:
       context: ./backend/sandbox
       dockerfile: Dockerfile
-    container_name: careerx-code-sandbox
+    container_name: careerx-prod-code-sandbox
     restart: unless-stopped
     network_mode: "none"
     read_only: true
@@ -106,29 +94,30 @@ services:
       - sandbox_ipc:/sandbox_ipc
     healthcheck:
       test: ["CMD", "python", "-c", "import os, sys; sys.exit(0 if os.path.exists('/sandbox_ipc/sandbox.sock') else 1)"]
-      interval: 15s
-      timeout: 5s
+      interval: 10s
+      timeout: 3s
       retries: 3
       start_period: 5s
 
   # ============================================================================
-  # 5. Nginx Static Frontend + Ingress Reverse Proxy
+  # 4. Nginx Edge Reverse Proxy (Ingress & SSL Termination Gateway)
   # ============================================================================
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: careerx-frontend
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: careerx-prod-nginx
     restart: unless-stopped
     ports:
       - "${PORT:-80}:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       backend:
         condition: service_healthy
     networks:
       - careerx_ingress_network
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80/"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80/api/health"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -138,31 +127,26 @@ services:
 # Persistent Named Volumes
 # ==============================================================================
 volumes:
-  mongodb_data:
-    name: careerx_mongodb_data
   redis_data:
-    name: careerx_redis_data
+    name: careerx_prod_redis_data
   backend_uploads:
-    name: careerx_backend_uploads
+    name: careerx_prod_backend_uploads
   sandbox_ipc:
-    name: careerx_sandbox_ipc
+    name: careerx_prod_sandbox_ipc
 
 # ==============================================================================
 # Isolated Network Topology
 # ==============================================================================
 networks:
-  # Ingress network: connects Nginx frontend to FastAPI backend
   careerx_ingress_network:
-    name: careerx_ingress_network
+    name: careerx_prod_ingress_network
     driver: bridge
 
-  # Database network: connects backend to MongoDB and Redis only (No sandbox access, internal only)
-  careerx_db_network:
-    name: careerx_db_network
+  careerx_internal_network:
+    name: careerx_prod_internal_network
     driver: bridge
     internal: true
 
-  # Egress network: allows backend to access external APIs (e.g. Groq LLM)
   careerx_egress_network:
-    name: careerx_egress_network
+    name: careerx_prod_egress_network
     driver: bridge

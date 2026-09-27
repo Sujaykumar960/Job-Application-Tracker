@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChatMessage } from '../../api/chatWebSocket';
-import { Check, CheckCheck, FileText, Download, ExternalLink } from 'lucide-react';
+import { Check, CheckCheck, FileText, Download } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 export interface MessageBubbleProps {
@@ -13,21 +13,21 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   return (
     <div
       className={cn(
-        'flex flex-col space-y-1 max-w-[80%] sm:max-w-[70%]',
+        'flex flex-col space-y-1 max-w-[82%] sm:max-w-[72%]',
         isOut ? 'ml-auto items-end' : 'mr-auto items-start'
       )}
     >
       {/* Bubble Container */}
       <div
         className={cn(
-          'p-3 rounded-2xl text-xs leading-relaxed shadow-sm break-words whitespace-pre-wrap',
+          'p-3.5 rounded-2xl text-xs leading-relaxed break-words whitespace-pre-wrap shadow-2xs',
           isOut
             ? 'bg-[#0A66C2] text-white rounded-tr-xs'
-            : 'bg-[#F3F6F8] text-[#1D2226] border border-[#E8E8E8] rounded-tl-xs'
+            : 'bg-white text-slate-900 border border-slate-200/90 rounded-tl-xs'
         )}
       >
         {/* Message Text */}
-        <p>{message.content}</p>
+        <p className="leading-relaxed font-normal">{message.content}</p>
 
         {/* Optional Attachment Card */}
         {message.attachment && (
@@ -35,15 +35,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
             className={cn(
               'mt-2.5 p-2.5 rounded-xl flex items-center justify-between gap-3 border font-mono text-[11px]',
               isOut
-                ? 'bg-[#004182]/80 border-blue-400/40 text-white'
-                : 'bg-white border-[#D9D9D9] text-[#1D2226]'
+                ? 'bg-blue-800/50 border-white/20 text-white'
+                : 'bg-slate-50 border-slate-200 text-slate-900'
             )}
           >
-            <div className="flex items-center gap-2 min-w-0">
-              <div className={cn(
-                'w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0',
-                isOut ? 'bg-white/20 text-white' : 'bg-[#E8F3FF] text-[#0A66C2]'
-              )}>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div
+                className={cn(
+                  'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
+                  isOut ? 'bg-white/20 text-white' : 'bg-blue-50 text-[#0A66C2]'
+                )}
+              >
                 <FileText className="w-4 h-4" />
               </div>
               <div className="min-w-0">
@@ -57,7 +59,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
               onClick={() => {
                 const element = document.createElement('a');
                 const file = new Blob(
-                  [`CareerX Secure Attachment\nFile: ${message.attachment?.name || 'document.pdf'}\nSize: ${message.attachment?.size || '1.0MB'}`],
+                  [
+                    `CareerX Secure Attachment\nFile: ${
+                      message.attachment?.name || 'document.pdf'
+                    }\nSize: ${message.attachment?.size || '1.0MB'}`,
+                  ],
                   { type: 'text/plain' }
                 );
                 element.href = URL.createObjectURL(file);
@@ -66,10 +72,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                 element.click();
                 document.body.removeChild(element);
               }}
-              className="p-1 hover:opacity-80 transition"
+              className={cn(
+                'p-1.5 rounded-lg transition-colors flex-shrink-0',
+                isOut
+                  ? 'hover:bg-white/20 text-white'
+                  : 'hover:bg-slate-200/60 text-slate-600'
+              )}
               title="Download File"
             >
-              <Download className="w-3.5 h-3.5" />
+              <Download className="w-4 h-4" />
             </button>
           </div>
         )}
@@ -78,7 +89,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
       {/* Timestamp & Delivery Receipts */}
       <div
         className={cn(
-          'flex items-center gap-1 text-[10px] font-mono text-[#788896] px-1',
+          'flex items-center gap-1.5 text-[10px] font-mono text-slate-400 px-1',
           isOut ? 'justify-end' : 'justify-start'
         )}
       >
@@ -86,11 +97,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
         {isOut && (
           <span>
             {message.status === 'read' ? (
-              <CheckCheck className="w-3 h-3 text-sky-500" />
+              <CheckCheck className="w-3.5 h-3.5 text-[#0A66C2]" />
             ) : message.status === 'delivered' ? (
-              <CheckCheck className="w-3 h-3 text-[#788896]" />
+              <CheckCheck className="w-3.5 h-3.5 text-slate-400" />
             ) : (
-              <Check className="w-3 h-3 text-[#788896]" />
+              <Check className="w-3.5 h-3.5 text-slate-400" />
             )}
           </span>
         )}

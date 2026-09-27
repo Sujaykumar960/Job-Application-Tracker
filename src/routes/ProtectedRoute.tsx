@@ -1,10 +1,21 @@
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { RoleType } from '../types';
 import { Sparkles } from 'lucide-react';
 
-export const ProtectedRoute: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+export interface ProtectedRouteProps {
+  allowedRoles?: RoleType[];
+  redirectTo?: string;
+  children?: React.ReactNode;
+}
+
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  allowedRoles,
+  redirectTo = '/dashboard',
+  children,
+}) => {
+  const { isAuthenticated, isLoading, role } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -23,7 +34,12 @@ export const ProtectedRoute: React.FC = () => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  return <Outlet />;
+  // Enforce role-based access control
+  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(role)) {
+    return <Navigate to={redirectTo} replace />;
+  }
+
+  return children ? <>{children}</> : <Outlet />;
 };
 
 export default ProtectedRoute;

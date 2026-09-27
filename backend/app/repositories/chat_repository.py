@@ -26,15 +26,36 @@ class ChatRepository:
                 detail="A user cannot start a conversation with themselves.",
             )
 
-        # Check existing conversation
-        doc = await self.conv_repo.find_one({
-            "participants": {"$all": [user_a, user_b], "$size": 2}
-        })
-        if doc:
-            return doc
+        participants_key = "_".join(sorted([user_a, user_b]))
+
+        # Check existing conversation (either by participantsKey or participants array)
+        existing_docs = await self.conv_repo.find_many({
+            "$or": [
+                {"participantsKey": participants_key},
+                {"participants": {"$all": [user_a, user_b], "$size": 2}},
+            ]
+        }, sort=[("updatedAt", -1)])
+
+        if existing_docs:
+            primary = existing_docs[0]
+            # If multiple duplicates exist, merge and delete extras
+            if len(existing_docs) > 1:
+                primary_id = primary.get("id") or str(primary.get("_id"))
+                for dup in existing_docs[1:]:
+                    dup_id = dup.get("id") or str(dup.get("_id"))
+                    await self.msg_repo.collection.update_many(
+                        {"conversationId": dup_id},
+                        {"$set": {"conversationId": primary_id}},
+                    )
+                    await self.conv_repo.delete(dup_id)
+            if not primary.get("participantsKey"):
+                pid = primary.get("id") or str(primary.get("_id"))
+                await self.conv_repo.update(pid, {"participantsKey": participants_key})
+            return primary
 
         new_conv = {
             "participants": [user_a, user_b],
+            "participantsKey": participants_key,
             "lastMessage": "",
             "lastMessageTime": "",
             "unreadCounts": {user_a: 0, user_b: 0},
@@ -84,10 +105,14 @@ class ChatRepository:
         """Fetch all conversations for user, calculating dynamic unread count and peer card."""
         docs = await self.conv_repo.find_many({"participants": user_id}, sort=[("updatedAt", -1)])
         results = []
+        seen_peers = set()
         for doc in docs:
             conv_id = doc.get("id") or str(doc.get("_id"))
             participants = doc.get("participants", [])
             peer_id = next((p for p in participants if p != user_id), None) or "usr_peer"
+            if peer_id in seen_peers:
+                continue
+            seen_peers.add(peer_id)
             peer_info = await self._resolve_peer_info(peer_id)
 
             # Calculate unread count strictly from unread messages sent by peer

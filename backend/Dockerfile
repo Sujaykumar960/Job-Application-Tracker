@@ -40,8 +40,8 @@ ENV PATH=/home/careerx/.local/bin:$PATH \
 COPY --chown=careerx:careerx app /app/app
 COPY --chown=careerx:careerx scripts /app/scripts
 
-# Prepare uploads directory with correct write permissions
-RUN mkdir -p /app/uploads && chown -R careerx:careerx /app/uploads
+# Prepare uploads and IPC directories with correct write permissions
+RUN mkdir -p /app/uploads /sandbox_ipc && chown -R careerx:careerx /app/uploads /sandbox_ipc && chmod 775 /sandbox_ipc
 
 USER careerx
 

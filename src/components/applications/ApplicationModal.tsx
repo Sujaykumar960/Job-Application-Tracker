@@ -143,7 +143,7 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
 
   const handleFormSubmit = (data: ApplicationFormData) => {
     const formatted: Application = {
-      id: initialData?.id || `app-${Date.now()}`,
+      id: initialData?.id || '',
       company: data.company,
       role: data.role,
       companyName: data.company,

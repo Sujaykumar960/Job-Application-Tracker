@@ -11,11 +11,15 @@ logger = logging.getLogger("careerx.database")
 
 def _get_client_kwargs() -> dict:
     kwargs = {"serverSelectionTimeoutMS": 5000}
-    try:
-        import certifi
-        kwargs["tlsCAFile"] = certifi.where()
-    except ImportError:
-        pass
+    # Only configure tlsCAFile for TLS/SSL connections (e.g. MongoDB Atlas mongodb+srv://)
+    # Passing tlsCAFile to unencrypted local mongodb:// forces TLS and causes SSL handshake failure
+    uri = settings.MONGODB_URI.lower()
+    if "mongodb+srv://" in uri or "tls=true" in uri or "ssl=true" in uri:
+        try:
+            import certifi
+            kwargs["tlsCAFile"] = certifi.where()
+        except ImportError:
+            pass
     return kwargs
 
 

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { PageHeader } from '../components/common/PageHeader';
 import { Badge } from '../components/common/Badge';
@@ -25,6 +25,7 @@ import {
   MessageSquarePlus,
   SquarePen,
   Users,
+  ShieldCheck,
 } from 'lucide-react';
 
 export const MessagesPage: React.FC = () => {
@@ -42,9 +43,23 @@ export const MessagesPage: React.FC = () => {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [wsStatus, setWsStatus] = useState<WsConnectionStatus>('CLOSED');
 
-  // Auto-scroll ref
+  // Auto-scroll ref and creation guard
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const isCreatingRef = useRef(false);
   const location = useLocation();
+
+  const deduplicate = (list: ChatConversation[]): ChatConversation[] => {
+    const seen = new Set<string>();
+    const out: ChatConversation[] = [];
+    for (const c of list) {
+      const key = c.peer?.id || c.id;
+      if (!seen.has(key)) {
+        seen.add(key);
+        out.push(c);
+      }
+    }
+    return out;
+  };
 
   // 1. Fetch conversations from backend
   const fetchConversations = async () => {
@@ -52,9 +67,10 @@ export const MessagesPage: React.FC = () => {
       setIsLoading(true);
       setError(null);
       const data = await messageApi.getConversations();
-      setConversations(data);
-      if (data.length > 0 && !activeConversationId) {
-        setActiveConversationId(data[0].id);
+      const deduped = deduplicate(data);
+      setConversations(deduped);
+      if (deduped.length > 0 && !activeConversationId) {
+        setActiveConversationId(deduped[0].id);
       }
     } catch (err) {
       setError('Failed to load conversations. Please try again.');
@@ -117,20 +133,23 @@ export const MessagesPage: React.FC = () => {
           c.peer.name.toLowerCase().includes(requestedUserId.toLowerCase())
       );
       if (matchedConv) {
-        setActiveConversationId(matchedConv.id);
-      } else {
+        if (activeConversationId !== matchedConv.id) {
+          setActiveConversationId(matchedConv.id);
+        }
+      } else if (!isCreatingRef.current) {
+        isCreatingRef.current = true;
         // Auto-create or fetch conversation thread with requested peer
         messageApi
           .createConversation(requestedUserId)
           .then((newConv) => {
-            setConversations((prev) => {
-              const alreadyIn = prev.some((c) => c.id === newConv.id);
-              return alreadyIn ? prev : [newConv, ...prev];
-            });
+            setConversations((prev) => deduplicate([newConv, ...prev]));
             setActiveConversationId(newConv.id);
           })
           .catch((err) => {
             console.error('Failed to auto-create conversation with peer:', err);
+          })
+          .finally(() => {
+            isCreatingRef.current = false;
           });
       }
     }
@@ -217,12 +236,13 @@ export const MessagesPage: React.FC = () => {
       return;
     }
 
-    const newConv = await messageApi.createConversation(peerId);
-    setConversations((prev) => {
-      const alreadyIn = prev.some((c) => c.id === newConv.id);
-      return alreadyIn ? prev : [newConv, ...prev];
-    });
-    setActiveConversationId(newConv.id);
+    try {
+      const newConv = await messageApi.createConversation(peerId);
+      setConversations((prev) => deduplicate([newConv, ...prev]));
+      setActiveConversationId(newConv.id);
+    } catch (err) {
+      console.error('Failed to create conversation:', err);
+    }
   };
 
   // Handle Send Message
@@ -264,6 +284,7 @@ export const MessagesPage: React.FC = () => {
     <div className="space-y-4">
       {/* Top Header */}
       <PageHeader
+        showBreadcrumbs={false}
         title="Candidate & Recruiter Messenger"
         description="Direct real-time communications with technical recruiters, hiring managers, and connected candidates."
         badge={
@@ -289,25 +310,25 @@ export const MessagesPage: React.FC = () => {
 
       {/* Main Container */}
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center min-h-[440px] bg-white rounded-2xl border border-[#D9D9D9] shadow-sm gap-3">
+        <div className="flex flex-col items-center justify-center min-h-[440px] bg-white rounded-2xl border border-slate-200 shadow-sm gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-[#0A66C2]" />
-          <span className="text-sm font-medium text-[#56687A]">Loading conversations...</span>
+          <span className="text-sm font-medium text-slate-500">Loading conversations...</span>
         </div>
       ) : error ? (
-        <div className="flex flex-col items-center justify-center min-h-[440px] bg-white rounded-2xl border border-[#D9D9D9] shadow-sm p-8 text-center gap-4">
-          <AlertCircle className="w-10 h-10 text-[#E6395A]" />
+        <div className="flex flex-col items-center justify-center min-h-[440px] bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center gap-4">
+          <AlertCircle className="w-10 h-10 text-rose-500" />
           <div>
-            <h3 className="text-base font-semibold text-[#1D2226]">Unable to load conversations</h3>
-            <p className="text-xs text-[#56687A] mt-1">{error}</p>
+            <h3 className="text-base font-semibold text-slate-900">Unable to load conversations</h3>
+            <p className="text-xs text-slate-500 mt-1">{error}</p>
           </div>
           <Button size="sm" variant="primary" onClick={fetchConversations}>
             Retry
           </Button>
         </div>
       ) : (
-        <div className="h-[calc(100vh-175px)] min-h-[440px] max-h-[720px] rounded-2xl bg-white border border-[#D9D9D9] shadow-sm overflow-hidden flex flex-col md:flex-row">
+        <div className="h-[calc(100vh-200px)] min-h-[520px] max-h-[760px] rounded-2xl bg-white border border-slate-200/90 shadow-sm overflow-hidden flex flex-col md:flex-row">
           {/* ==================== LEFT PANEL: CONVERSATIONS LIST ==================== */}
-          <div className="w-full md:w-72 lg:w-80 flex-shrink-0 h-full">
+          <div className="w-full md:w-80 lg:w-88 flex-shrink-0 h-full border-r border-slate-200/80">
             <ConversationList
               conversations={conversations}
               activeConversationId={activeConversationId}
@@ -319,28 +340,30 @@ export const MessagesPage: React.FC = () => {
           </div>
 
           {/* ==================== RIGHT PANEL: ACTIVE CHAT VIEW ==================== */}
-          <div className="flex-1 flex flex-col h-full bg-[#F3F2EF] min-w-0 border-t md:border-t-0 md:border-l border-[#D9D9D9]">
+          <div className="flex-1 flex flex-col h-full bg-[#F8FAFC] min-w-0 border-t md:border-t-0">
             {activeConversation ? (
               <>
                 {/* 1. Header: User Information */}
                 <ChatHeader conversation={activeConversation} />
 
                 {/* 2. Messages Stream */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-[#F3F2EF]">
-                  <div className="text-center py-2">
-                    <span className="px-3 py-1 rounded-full bg-white border border-[#D9D9D9] text-[10px] font-mono text-[#788896] shadow-xs">
-                      Encrypted channel • Direct hiring & peer communications
+                <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-[#F8FAFC]">
+                  <div className="text-center py-1.5">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-slate-200 text-[11px] font-medium text-slate-500 shadow-2xs">
+                      <ShieldCheck className="w-3.5 h-3.5 text-[#0A66C2]" />
+                      End-to-end encrypted channel • Direct hiring & peer communications
                     </span>
                   </div>
 
                   {isLoadingMessages && displayMessages.length === 0 ? (
-                    <div className="flex items-center justify-center py-8 text-[#788896] text-xs gap-2">
+                    <div className="flex items-center justify-center py-12 text-slate-400 text-xs gap-2">
                       <Loader2 className="w-4 h-4 animate-spin text-[#0A66C2]" />
                       <span>Loading messages...</span>
                     </div>
                   ) : displayMessages.length === 0 ? (
-                    <div className="text-center py-8 text-xs text-[#788896]">
-                      No messages in this thread yet. Send a message to start the conversation!
+                    <div className="text-center py-12 text-xs text-slate-400 space-y-1">
+                      <p className="font-semibold text-slate-600">No messages in this thread yet</p>
+                      <p>Send a message below to start the conversation.</p>
                     </div>
                   ) : (
                     displayMessages.map((msg) => (
@@ -349,11 +372,13 @@ export const MessagesPage: React.FC = () => {
                   )}
 
                   {isPeerTyping && (
-                    <div className="flex items-center gap-1.5 p-2 rounded-xl bg-white border border-[#D9D9D9] text-xs text-[#56687A] w-fit shadow-xs animate-in fade-in duration-150">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#0A66C2] animate-bounce" />
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#0A66C2] animate-bounce [animation-delay:0.2s]" />
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#0A66C2] animate-bounce [animation-delay:0.4s]" />
-                      <span className="text-[10px] font-mono ml-1 text-[#788896]">
+                    <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-white border border-slate-200 text-xs text-slate-600 w-fit shadow-xs animate-in fade-in duration-150">
+                      <span className="flex gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#0A66C2] animate-bounce" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#0A66C2] animate-bounce [animation-delay:0.2s]" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#0A66C2] animate-bounce [animation-delay:0.4s]" />
+                      </span>
+                      <span className="text-[11px] font-medium text-slate-500 ml-1">
                         {activeConversation.peer.name} is typing...
                       </span>
                     </div>
@@ -367,12 +392,12 @@ export const MessagesPage: React.FC = () => {
               </>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
-                <div className="w-14 h-14 rounded-2xl bg-[#E8F3FF] border border-[#0A66C2]/20 flex items-center justify-center text-[#0A66C2] shadow-xs">
-                  <MessageSquarePlus className="w-7 h-7" />
+                <div className="w-16 h-16 rounded-2xl bg-brand-50 border border-brand-200/60 flex items-center justify-center text-[#0A66C2] shadow-xs">
+                  <MessageSquarePlus className="w-8 h-8" />
                 </div>
-                <div className="max-w-sm space-y-1">
-                  <h3 className="text-base font-bold text-[#1D2226]">Start a Conversation</h3>
-                  <p className="text-xs text-[#56687A]">
+                <div className="max-w-sm space-y-1.5">
+                  <h3 className="text-base font-bold text-slate-900">Start a Conversation</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
                     {conversations.length === 0
                       ? 'You have no active message threads yet. Connect with other candidates and start chatting directly.'
                       : 'Select a conversation from the left panel or start a new chat with a connection.'}

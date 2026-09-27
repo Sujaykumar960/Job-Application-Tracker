@@ -45,6 +45,7 @@ export const ProfilePage: React.FC = () => {
 
   const isOwnProfile = !userId || (currentUser && currentUser.id === userId);
   const targetUserId = isOwnProfile ? currentUser?.id : userId;
+  const isRecruiter = currentUser?.role === 'recruiter';
 
   // Profile data & UI states
   const [profile, setProfile] = useState<PublicUserProfile | null>(null);
@@ -517,14 +518,16 @@ export const ProfilePage: React.FC = () => {
                     >
                       Withdraw
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => navigate(`/messages?user=${targetUserId}`)}
-                      icon={<MessageSquare className="w-3.5 h-3.5" />}
-                    >
-                      Message
-                    </Button>
+                    {isRecruiter && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => navigate(`/messages?user=${targetUserId}`)}
+                        icon={<MessageSquare className="w-3.5 h-3.5" />}
+                      >
+                        Message
+                      </Button>
+                    )}
                   </>
                 )}
 
@@ -548,14 +551,16 @@ export const ProfilePage: React.FC = () => {
                     >
                       Decline
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => navigate(`/messages?user=${targetUserId}`)}
-                      icon={<MessageSquare className="w-3.5 h-3.5" />}
-                    >
-                      Message
-                    </Button>
+                    {isRecruiter && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => navigate(`/messages?user=${targetUserId}`)}
+                        icon={<MessageSquare className="w-3.5 h-3.5" />}
+                      >
+                        Message
+                      </Button>
+                    )}
                   </>
                 )}
 
@@ -570,14 +575,16 @@ export const ProfilePage: React.FC = () => {
                     >
                       Connect
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => navigate(`/messages?user=${targetUserId}`)}
-                      icon={<MessageSquare className="w-3.5 h-3.5" />}
-                    >
-                      Message
-                    </Button>
+                    {isRecruiter && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => navigate(`/messages?user=${targetUserId}`)}
+                        icon={<MessageSquare className="w-3.5 h-3.5" />}
+                      >
+                        Message
+                      </Button>
+                    )}
                   </>
                 )}
               </>

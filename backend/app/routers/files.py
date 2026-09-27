@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from fastapi.responses import StreamingResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.config import settings
 from app.dependencies import get_current_user, get_db, get_optional_user
 from app.repositories.file_repository import FileRepository
 from app.schemas.file import FileDeleteResponse, FileMetadataResponse
@@ -26,6 +27,8 @@ async def upload_file(
     valid_purposes = {"resume", "chat_attachment", "profile_avatar", "feed_media", "other"}
     if purpose not in valid_purposes:
         purpose = "other"
+
+    content = await file.read()
 
     limit_by_purpose = {
         "resume": settings.RESUME_MAX_UPLOAD_SIZE_BYTES,

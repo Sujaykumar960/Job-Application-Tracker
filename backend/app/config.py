@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
 
+    # Code Execution Sandbox Service (isolated container runner)
+    CODE_SANDBOX_URL: str = ""
+    CODE_SANDBOX_TIMEOUT_SECONDS: float = 5.0
+
+    # Redis Distributed Cache / Rate Limiting (optional)
+    REDIS_URL: str = ""
+
     model_config = SettingsConfigDict(
         env_file=(
             str(Path(__file__).resolve().parent.parent / ".env"),

@@ -75,10 +75,24 @@ export const AppRoutes: React.FC = () => {
           <Route path="/matcher" element={<JobMatchPage />} />
           <Route path="/skills" element={<SkillGapPage />} />
 
-          {/* Complementary Protected Routes */}
-          <Route path="/recruiter" element={<RecruiterPage />} />
+          {/* Role-Protected Enterprise Portals */}
+          <Route
+            path="/recruiter"
+            element={
+              <ProtectedRoute allowedRoles={['recruiter', 'admin']} redirectTo="/dashboard">
+                <RecruiterPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="/admin" element={<AdminPage />} />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allowedRoles={['admin']} redirectTo="/dashboard">
+                <AdminPage />
+              </ProtectedRoute>
+            }
+          />
         </Route>
       </Route>
 

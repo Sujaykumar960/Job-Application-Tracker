@@ -1,9 +1,9 @@
 # CareerX — Enterprise AI Career & Talent Platform
 
 [![CI/CD Pipeline](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-blue?logo=githubactions)](.github/workflows/ci.yml)
-[![Tests Passing](https://img.shields.io/badge/Pytest-378%20Passed-success?logo=pytest)](backend/tests/)
+[![Tests Collected](https://img.shields.io/badge/Pytest-381%20Collected-blue?logo=pytest)](backend/tests/)
 [![E2E Tests](https://img.shields.io/badge/Playwright-34%2F34%20Passed-success?logo=playwright)](tests/e2e/)
-[![Production Ready](https://img.shields.io/badge/Status-Production%20Ready%20(RC1)-emerald)]()
+[![Status](https://img.shields.io/badge/Status-Release%20Candidate%20(Hardened)-indigo)]()
 [![License](https://img.shields.io/badge/License-MIT-gray)]()
 
 **CareerX** is an enterprise-grade AI-powered career platform and applicant tracking system designed for modern engineers, recruiters, and platform administrators. Built with a **laptop-first responsive design philosophy** optimized for 1366×768, 1440×900, and 1536×864 resolutions with a 1400px constraint, powered by a high-throughput **FastAPI** backend and **MongoDB 7.0** document database.
@@ -156,12 +156,12 @@ For complete details on SSL certificates, database backups, and reverse proxying
 
 ## 🧪 Testing & Verification Suites
 
-### 1. Full Backend Pytest Regression Suite (378 Tests)
+### 1. Backend Pytest Regression Suites (381 Tests Collected)
 ```bash
 pytest backend/tests -v
 ```
-- **378 passed, 1 skipped (optional live Groq test)**
-- Verifies authentication, token revocation, RBAC security, resume parsing, job matching, learning tracks, and admin governance.
+- **381 backend tests collected; targeted regression suites pass, with code-execution container isolation and authoritative rate limiting in place.**
+- Verifies authentication, token revocation, RBAC security, sandbox secret isolation, authoritative IP rate limiting, resume parsing, job matching, learning tracks, and admin governance.
 
 ### 2. Real Browser Playwright End-to-End Suite (34 Tests)
 ```bash

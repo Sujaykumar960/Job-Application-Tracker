@@ -185,19 +185,6 @@ export const FeedPage: React.FC = () => {
     );
   }
 
-  // Empty state
-  if (posts.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <MessageSquare className="w-12 h-12 text-[#788896]" />
-        <div className="text-center">
-          <h3 className="text-lg font-semibold text-[#1D2226]">No posts yet</h3>
-          <p className="text-[#56687A] mt-1">Be the first to share something with the community.</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
       {/* Page Header */}
