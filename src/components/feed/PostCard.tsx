@@ -23,6 +23,7 @@ import {
 import { cn } from '../../utils/cn';
 import { resolveMediaUrl } from '../../utils/media';
 import { formatDateTime } from '../../utils/formatters';
+import { PostMediaSlider } from './PostMediaSlider';
 
 export interface PostCardProps {
   post: FeedPost;
@@ -134,35 +135,9 @@ export const PostCard: React.FC<PostCardProps> = ({
         </div>
       )}
 
-      {/* Media Attachments: Images & Videos */}
+      {/* Media Attachments: Interactive Slider / Carousel for Photos & Videos */}
       {post.media && post.media.length > 0 && (
-        <div className="space-y-2 pt-1">
-          {post.media.map((item) => (
-            <div
-              key={item.id}
-              className="rounded-xl overflow-hidden border border-[#E8E8E8] bg-slate-50 flex items-center justify-center"
-            >
-              {item.type === 'video' ? (
-                <video
-                  src={resolveMediaUrl(item.url)}
-                  controls
-                  preload="metadata"
-                  playsInline
-                  className="w-full max-h-96 rounded-xl bg-black"
-                >
-                  Your browser does not support the video tag.
-                </video>
-              ) : (
-                <img
-                  src={resolveMediaUrl(item.url)}
-                  alt={item.originalFilename || 'Post media attachment'}
-                  loading="lazy"
-                  className="w-full max-h-96 object-contain rounded-xl hover:opacity-95 transition"
-                />
-              )}
-            </div>
-          ))}
-        </div>
+        <PostMediaSlider media={post.media} />
       )}
 
       {/* Code Snippet if present */}
