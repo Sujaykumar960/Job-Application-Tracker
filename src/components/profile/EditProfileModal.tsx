@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Modal } from '../common/Modal';
 import { Input } from '../common/Input';
+import { LocationInput } from '../common/LocationInput';
 import { Button } from '../common/Button';
 import { User, MapPin, Briefcase, Globe, Github, Linkedin, Sparkles } from 'lucide-react';
 
@@ -35,6 +36,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -58,12 +61,13 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             error={errors.name?.message}
             {...register('name')}
           />
-          <Input
+          <LocationInput
             label="Location *"
             placeholder="e.g. Seattle, WA (Open to Remote)"
-            icon={<MapPin className="w-3.5 h-3.5" />}
+            value={watch('location')}
+            onChange={(val) => setValue('location', val, { shouldValidate: true })}
             error={errors.location?.message}
-            {...register('location')}
+            required
           />
         </div>
 
