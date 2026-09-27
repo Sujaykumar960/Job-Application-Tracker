@@ -100,6 +100,7 @@ class ApplicationResponse(ApplicationBase):
     applicantHeadline: Optional[str] = None
     applicantAvatar: Optional[str] = None
     resumeUrl: Optional[str] = None
+    notesList: Optional[List[Any]] = None
     createdAt: Optional[str] = None
     updatedAt: Optional[str] = None
 

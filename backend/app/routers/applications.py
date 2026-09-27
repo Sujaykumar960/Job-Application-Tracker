@@ -5,6 +5,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.dependencies import get_current_active_user, get_db
 from app.repositories.application_repository import ApplicationRepository
 from app.repositories.job_repository import JobRepository
+from app.repositories.note_repository import NoteRepository
 from app.schemas.application import (
     ApplicationCreate,
     ApplicationFilterQuery,
@@ -13,6 +14,7 @@ from app.schemas.application import (
     ApplicationUpdate,
 )
 from app.schemas.common import StandardSuccessResponse
+from app.schemas.note import NoteCreate, NoteResponse
 from app.utils.helpers import utc_now_iso
 
 router = APIRouter(prefix="/applications", tags=["Applications"])
@@ -67,12 +69,19 @@ async def get_application_by_id(
     """Fetch single application strictly owned by the authenticated seeker."""
     repo = ApplicationRepository(db)
     user_id = user["id"]
-    doc = await repo.get_application_for_user(app_id, user_id)
+    doc = await repo.get_by_id(app_id)
     if not doc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Application with ID '{app_id}' not found.",
         )
+    if doc.get("userId") != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to access this application.",
+        )
+    notes_repo = NoteRepository(db)
+    doc["notesList"] = await notes_repo.get_notes_for_application(app_id)
     return doc
 
 
@@ -181,11 +190,16 @@ async def update_application(
     repo = ApplicationRepository(db)
     user_id = user["id"]
 
-    existing = await repo.get_application_for_user(app_id, user_id)
+    existing = await repo.get_by_id(app_id)
     if not existing:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Application with ID '{app_id}' not found.",
+        )
+    if existing.get("userId") != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to update this application.",
         )
 
     if existing.get("jobId") and app_data.status and user.get("role") not in ("recruiter", "admin"):
@@ -215,6 +229,18 @@ async def delete_application(
     """Delete an application record, ensuring ownership."""
     repo = ApplicationRepository(db)
     user_id = user["id"]
+    existing = await repo.get_by_id(app_id)
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Application with ID '{app_id}' not found.",
+        )
+    if existing.get("userId") != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to delete this application.",
+        )
+
     success = await repo.delete_application_for_user(app_id, user_id)
     if not success:
         raise HTTPException(
@@ -222,3 +248,108 @@ async def delete_application(
             detail=f"Application with ID '{app_id}' not found.",
         )
     return StandardSuccessResponse(success=True, message="Application record deleted.")
+
+
+@router.post("/{app_id}/notes", response_model=NoteResponse, status_code=status.HTTP_201_CREATED)
+async def add_note_to_application(
+    app_id: str,
+    note_data: NoteCreate,
+    user: Dict[str, Any] = Depends(get_current_active_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Add a short note to an application with strict validation and ownership checks."""
+    user_id = user["id"]
+    content = (note_data.content or note_data.note or note_data.text or "").strip()
+    if not content:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Note content cannot be empty.",
+        )
+
+    repo = ApplicationRepository(db)
+    app_doc = await repo.get_by_id(app_id)
+    if not app_doc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot add a note to a non-existent application with ID '{app_id}'.",
+        )
+
+    if app_doc.get("userId") != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to add notes to this application.",
+        )
+
+    notes_repo = NoteRepository(db)
+    created_note = await notes_repo.create_note(
+        application_id=app_id,
+        user_id=user_id,
+        content=content,
+    )
+
+    # Sync top-level notes on application
+    current_notes = app_doc.get("notes") or ""
+    new_notes = f"{current_notes}\n• {content}".strip() if current_notes else content
+    await repo.update_application_for_user(app_id, user_id, {"notes": new_notes})
+
+    return created_note
+
+
+@router.get("/{app_id}/notes", response_model=List[NoteResponse])
+async def get_notes_for_application(
+    app_id: str,
+    user: Dict[str, Any] = Depends(get_current_active_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Retrieve all notes for an application, enforcing strict ownership."""
+    user_id = user["id"]
+    repo = ApplicationRepository(db)
+    app_doc = await repo.get_by_id(app_id)
+    if not app_doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Application with ID '{app_id}' not found.",
+        )
+
+    if app_doc.get("userId") != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to view notes for this application.",
+        )
+
+    notes_repo = NoteRepository(db)
+    notes = await notes_repo.get_notes_for_application(app_id)
+    return notes
+
+
+@router.delete("/{app_id}/notes/{note_id}", response_model=StandardSuccessResponse)
+async def delete_application_note(
+    app_id: str,
+    note_id: str,
+    user: Dict[str, Any] = Depends(get_current_active_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Delete a note attached to an application, enforcing ownership."""
+    user_id = user["id"]
+    repo = ApplicationRepository(db)
+    app_doc = await repo.get_by_id(app_id)
+    if not app_doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Application with ID '{app_id}' not found.",
+        )
+
+    if app_doc.get("userId") != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to delete notes from this application.",
+        )
+
+    notes_repo = NoteRepository(db)
+    success = await notes_repo.delete_note(note_id, user_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Note with ID '{note_id}' not found.",
+        )
+    return StandardSuccessResponse(success=True, message="Note deleted successfully.")

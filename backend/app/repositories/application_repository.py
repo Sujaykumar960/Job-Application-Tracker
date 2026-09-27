@@ -20,8 +20,18 @@ class ApplicationRepository(BaseRepository):
 
         if filter_query:
             if filter_query.status and filter_query.status.lower() != "all":
-                safe_status = re.escape(filter_query.status)
-                filter_q["status"] = {"$regex": f"^{safe_status}$", "$options": "i"}
+                s_lower = filter_query.status.strip().lower()
+                if s_lower in ["interview", "interviewing"]:
+                    filter_q["status"] = {"$regex": "^(interview|interviewing)$", "$options": "i"}
+                elif s_lower in ["offer", "offered"]:
+                    filter_q["status"] = {"$regex": "^(offer|offered)$", "$options": "i"}
+                elif s_lower in ["shortlist", "shortlisted"]:
+                    filter_q["status"] = {"$regex": "^(shortlist|shortlisted)$", "$options": "i"}
+                elif s_lower in ["hired", "accepted"]:
+                    filter_q["status"] = {"$regex": "^(hired|accepted)$", "$options": "i"}
+                else:
+                    safe_status = re.escape(filter_query.status.strip())
+                    filter_q["status"] = {"$regex": f"^{safe_status}$", "$options": "i"}
             if filter_query.priority and filter_query.priority.lower() != "all":
                 safe_priority = re.escape(filter_query.priority)
                 filter_q["priority"] = {"$regex": f"^{safe_priority}$", "$options": "i"}

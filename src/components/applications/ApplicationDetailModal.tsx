@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '../common/Modal';
 import { Badge } from '../common/Badge';
 import { Button } from '../components/../common/Button';
 import { DeadlineBadge } from './DeadlineBadge';
-import { Application, ApplicationStatus } from '../../types';
+import { Application, ApplicationNote, ApplicationStatus } from '../../types';
+import { applicationApi } from '../../api/applicationApi';
 import {
   Building2,
   MapPin,
@@ -18,6 +19,9 @@ import {
   Trash2,
   Sparkles,
   ArrowRight,
+  StickyNote,
+  Plus,
+  Loader2,
 } from 'lucide-react';
 import { formatDate } from '../../utils/formatters';
 
@@ -38,6 +42,62 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
   onDelete,
   onStatusChange,
 }) => {
+  const [notes, setNotes] = useState<ApplicationNote[]>([]);
+  const [newNoteText, setNewNoteText] = useState('');
+  const [isAddingNote, setIsAddingNote] = useState(false);
+  const [noteError, setNoteError] = useState<string | null>(null);
+  const [isLoadingNotes, setIsLoadingNotes] = useState(false);
+
+  useEffect(() => {
+    if (application?.id && isOpen) {
+      if (application.notesList && application.notesList.length > 0) {
+        setNotes(application.notesList);
+      }
+      setIsLoadingNotes(true);
+      applicationApi
+        .getNotes(application.id)
+        .then((data) => setNotes(data))
+        .catch((err) => console.error('Failed to load notes:', err))
+        .finally(() => setIsLoadingNotes(false));
+    } else {
+      setNotes([]);
+      setNewNoteText('');
+      setNoteError(null);
+    }
+  }, [application?.id, isOpen]);
+
+  const handleAddNote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!application) return;
+    const trimmed = newNoteText.trim();
+    if (!trimmed) {
+      setNoteError('Note content cannot be empty.');
+      return;
+    }
+    setNoteError(null);
+    setIsAddingNote(true);
+    try {
+      const created = await applicationApi.addNote(application.id, trimmed);
+      setNotes((prev) => [created, ...prev]);
+      setNewNoteText('');
+    } catch (err: any) {
+      console.error('Failed to add note:', err);
+      setNoteError(err?.response?.data?.detail || 'Failed to add note. Please try again.');
+    } finally {
+      setIsAddingNote(false);
+    }
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    if (!application) return;
+    try {
+      await applicationApi.deleteNote(application.id, noteId);
+      setNotes((prev) => prev.filter((n) => n.id !== noteId));
+    } catch (err) {
+      console.error('Failed to delete note:', err);
+    }
+  };
+
   if (!application) return null;
 
   const statusVariants: Record<ApplicationStatus, 'brand' | 'success' | 'warning' | 'danger'> = {
@@ -195,15 +255,95 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
           )}
         </div>
 
-        {/* Notes */}
-        {application.notes && (
-          <div className="space-y-1">
-            <span className="text-xs font-semibold text-[#1D2226]">Preparation & Debrief Notes</span>
-            <div className="p-3 rounded-xl bg-[#F8FAFC] border border-[#E8E8E8] text-xs text-[#1D2226] leading-relaxed whitespace-pre-wrap">
-              {application.notes}
-            </div>
+        {/* Notes Section (JA-05) */}
+        <div className="space-y-3 pt-2 border-t border-[#E8E8E8]">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-[#1D2226] flex items-center gap-1.5">
+              <StickyNote className="w-3.5 h-3.5 text-[#0A66C2]" />
+              Application Notes ({notes.length})
+            </h3>
+            <span className="text-[11px] text-[#788896]">Recruiter info, feedback & logs</span>
           </div>
-        )}
+
+          {/* Add Note Form */}
+          <form onSubmit={handleAddNote} className="space-y-2">
+            <div className="relative">
+              <textarea
+                value={newNoteText}
+                onChange={(e) => {
+                  setNewNoteText(e.target.value);
+                  if (noteError) setNoteError(null);
+                }}
+                rows={2}
+                placeholder="Add a short note (e.g., Recruiter Sarah Lin, phone screen debrief, next interview topics)..."
+                className="w-full bg-[#F8FAFC] text-[#1D2226] placeholder-[#788896] text-xs rounded-xl border border-[#D9D9D9] p-2.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] focus:bg-white resize-none"
+              />
+            </div>
+
+            {noteError && (
+              <p className="text-[11px] text-[#E6395A] font-medium">{noteError}</p>
+            )}
+
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                size="xs"
+                variant="primary"
+                loading={isAddingNote}
+                disabled={!newNoteText.trim()}
+                icon={<Plus className="w-3 h-3" />}
+              >
+                Add Note
+              </Button>
+            </div>
+          </form>
+
+          {/* Notes List */}
+          {isLoadingNotes ? (
+            <div className="flex items-center justify-center py-4 text-xs text-[#56687A]">
+              <Loader2 className="w-4 h-4 animate-spin text-[#0A66C2] mr-2" />
+              Loading notes...
+            </div>
+          ) : notes.length === 0 ? (
+            <div className="p-3 rounded-xl bg-[#F8FAFC] border border-dashed border-[#D9D9D9] text-center text-xs text-[#788896]">
+              No notes added yet. Add a short note above to keep track of recruiter feedback or prep.
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              {notes.map((note) => (
+                <div
+                  key={note.id}
+                  className="p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E8E8E8] text-xs text-[#1D2226] flex items-start justify-between gap-2 group hover:bg-[#F3F6F8] transition"
+                >
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <p className="leading-relaxed whitespace-pre-wrap">{note.content}</p>
+                    <span className="text-[10px] text-[#788896] block font-mono">
+                      {formatDate(note.createdAt)}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteNote(note.id)}
+                    className="text-[#788896] hover:text-[#E6395A] p-1 rounded transition opacity-0 group-hover:opacity-100"
+                    title="Delete note"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Legacy Notes (if any) */}
+          {application.notes && notes.length === 0 && (
+            <div className="space-y-1 pt-1">
+              <span className="text-[11px] font-semibold text-[#56687A]">Initial Application Notes:</span>
+              <div className="p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E8E8E8] text-xs text-[#1D2226] leading-relaxed whitespace-pre-wrap">
+                {application.notes}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Footer */}
         <div className="flex justify-end pt-2 border-t border-[#E8E8E8]">

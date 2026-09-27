@@ -217,17 +217,17 @@ async def test_application_seeker_isolation_and_crud(client):
     assert get_res_a.status_code == 200
     assert get_res_a.json()["id"] == app_id
 
-    # Seeker B CANNOT read Seeker A's application (Strict Isolation)
+    # Seeker B CANNOT read Seeker A's application (Strict Isolation: 403 Forbidden or 404)
     get_res_b = await client.get(f"/api/applications/{app_id}", headers=headers_b)
-    assert get_res_b.status_code == 404
+    assert get_res_b.status_code in (403, 404)
 
     # Seeker B CANNOT update Seeker A's application
     patch_res_b = await client.patch(f"/api/applications/{app_id}", json={"status": "Rejected"}, headers=headers_b)
-    assert patch_res_b.status_code == 404
+    assert patch_res_b.status_code in (403, 404)
 
     # Seeker B CANNOT delete Seeker A's application
     del_res_b = await client.delete(f"/api/applications/{app_id}", headers=headers_b)
-    assert del_res_b.status_code == 404
+    assert del_res_b.status_code in (403, 404)
 
     # Seeker A CAN update their own application
     patch_res_a = await client.patch(f"/api/applications/{app_id}", json={"notes": "Final onsite cleared.", "status": "Offer"}, headers=headers_a)

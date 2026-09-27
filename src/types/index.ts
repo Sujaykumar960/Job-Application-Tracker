@@ -284,6 +284,15 @@ export type ApplicationStatus =
   | 'Wishlist';
 export type PriorityLevel = 'Low' | 'Medium' | 'High';
 
+export interface ApplicationNote {
+  id: string;
+  applicationId: string;
+  userId: string;
+  content: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface Application {
   id: string;
   company: string;
@@ -309,6 +318,7 @@ export interface Application {
   status: ApplicationStatus;
   priority: PriorityLevel;
   notes?: string;
+  notesList?: ApplicationNote[];
   resume?: string;
   matchScore: number;
   salaryRange?: string;

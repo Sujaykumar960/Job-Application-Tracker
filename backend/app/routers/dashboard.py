@@ -3,10 +3,24 @@ from fastapi import APIRouter, Depends, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.dependencies import get_current_user, get_db
+from app.repositories.application_repository import ApplicationRepository
+from app.schemas.application import ApplicationStatsResponse
 from app.schemas.dashboard import DashboardActivityResponse, DashboardOverviewResponse
 from app.services.dashboard_service import DashboardService
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
+
+
+@router.get("", response_model=ApplicationStatsResponse)
+@router.get("/stats", response_model=ApplicationStatsResponse)
+async def get_dashboard_application_stats(
+    user: Dict[str, Any] = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Retrieve application summary metrics: total applications + breakdown by status."""
+    repo = ApplicationRepository(db)
+    stats_dict = await repo.get_stats_for_user(user["id"])
+    return ApplicationStatsResponse(**stats_dict)
 
 
 @router.get("/overview", response_model=DashboardOverviewResponse)

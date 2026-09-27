@@ -198,6 +198,11 @@ class DatabaseManager:
             await cls.db.calendar_events.create_index([("userId", ASCENDING), ("createdAt", DESCENDING)])
             await cls.db.calendar_events.create_index([("participants", ASCENDING)])
 
+            # 16. Notes Collection (Application Notes)
+            await cls.db.notes.create_index([("applicationId", ASCENDING)])
+            await cls.db.notes.create_index([("userId", ASCENDING)])
+            await cls.db.notes.create_index([("applicationId", ASCENDING), ("createdAt", DESCENDING)])
+            await cls.db.notes.create_index([("userId", ASCENDING), ("createdAt", DESCENDING)])
 
             logger.info("All domain MongoDB indexes verified / created successfully.")
         except Exception as e:

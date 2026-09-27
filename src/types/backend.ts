@@ -79,7 +79,17 @@ export interface Application {
   salaryRange?: string;
   tags: string[];
   notes?: string;
+  notesList?: ApplicationNote[];
   resumeUrl?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface ApplicationNote {
+  id: string;
+  applicationId: string;
+  userId: string;
+  content: string;
   createdAt: string;
   updatedAt?: string;
 }

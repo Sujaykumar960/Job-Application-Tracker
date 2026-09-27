@@ -161,9 +161,9 @@ export const HomePage: React.FC = () => {
       />
 
       {/* ========================================================================= */}
-      {/* 1. KEY METRIC COUNTERS (8 items) - 4-Col Laptop, 8-Col Desktop Grid       */}
+      {/* 1. KEY METRIC COUNTERS - Total + Status Breakdown (JA-08)                */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 laptop-lg:grid-cols-8 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-5 laptop-lg:grid-cols-5 gap-2.5">
         {/* 1. Total applications */}
         <Card className="p-3 bg-white border border-[#D9D9D9] shadow-[0_1px_3px_rgba(0,0,0,0.08)] flex flex-col justify-between">
           <div className="flex items-center justify-between text-[#56687A]">
@@ -172,23 +172,35 @@ export const HomePage: React.FC = () => {
           </div>
           <div className="mt-2">
             <div className="text-xl font-extrabold text-[#1D2226] tracking-tight">{dashboardData.applications.total}</div>
-            <p className="text-[10px] text-[#788896] mt-0.5 truncate">Active pipeline</p>
+            <p className="text-[10px] text-[#788896] mt-0.5 truncate">Total tracked</p>
           </div>
         </Card>
 
-        {/* 2. Interviews */}
+        {/* 2. Applied */}
+        <Card className="p-3 bg-white border border-[#D9D9D9] shadow-[0_1px_3px_rgba(0,0,0,0.08)] flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-[#8A6100]">Applied</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+          </div>
+          <div className="mt-2">
+            <div className="text-xl font-extrabold text-[#8A6100] tracking-tight">{dashboardData.applications.applied}</div>
+            <p className="text-[10px] text-[#8A6100] font-medium mt-0.5 truncate">Submitted</p>
+          </div>
+        </Card>
+
+        {/* 3. Interviews */}
         <Card className="p-3 bg-white border border-[#D9D9D9] shadow-[0_1px_3px_rgba(0,0,0,0.08)] flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-[#0A66C2]">Interviews</span>
             <Users className="w-3.5 h-3.5 text-[#0A66C2]" />
           </div>
           <div className="mt-2">
-            <div className="text-xl font-extrabold text-[#0A66C2] tracking-tight">{dashboardData.upcomingInterviews.length}</div>
-            <p className="text-[10px] text-[#12B886] font-medium mt-0.5 truncate">Upcoming</p>
+            <div className="text-xl font-extrabold text-[#0A66C2] tracking-tight">{dashboardData.applications.interviewing}</div>
+            <p className="text-[10px] text-[#0A66C2] font-medium mt-0.5 truncate">In progress</p>
           </div>
         </Card>
 
-        {/* 3. Offers */}
+        {/* 4. Offers */}
         <Card className="p-3 bg-white border border-[#D9D9D9] shadow-[0_1px_3px_rgba(0,0,0,0.08)] flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-[#12B886]">Offers</span>
@@ -200,8 +212,8 @@ export const HomePage: React.FC = () => {
           </div>
         </Card>
 
-        {/* 4. Rejected applications */}
-        <Card className="p-3 bg-white border border-[#D9D9D9] shadow-[0_1px_3px_rgba(0,0,0,0.08)] flex flex-col justify-between">
+        {/* 5. Rejected applications */}
+        <Card className="p-3 bg-white border border-[#D9D9D9] shadow-[0_1px_3px_rgba(0,0,0,0.08)] flex flex-col justify-between col-span-2 sm:col-span-1">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-[#E6395A]">Rejected</span>
             <XCircle className="w-3.5 h-3.5 text-[#E6395A]" />

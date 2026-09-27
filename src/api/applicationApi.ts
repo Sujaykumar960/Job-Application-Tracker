@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { Application } from '../types';
+import { Application, ApplicationNote } from '../types';
 
 export const applicationApi = {
   /**
@@ -48,6 +48,30 @@ export const applicationApi = {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('careerx:refresh_dashboard'));
     }
+    return response.data;
+  },
+
+  /**
+   * Fetch all notes for an application
+   */
+  getNotes: async (applicationId: string): Promise<ApplicationNote[]> => {
+    const response = await apiClient.get<ApplicationNote[]>(`/applications/${applicationId}/notes`);
+    return response.data;
+  },
+
+  /**
+   * Add a short note to an application
+   */
+  addNote: async (applicationId: string, content: string): Promise<ApplicationNote> => {
+    const response = await apiClient.post<ApplicationNote>(`/applications/${applicationId}/notes`, { content });
+    return response.data;
+  },
+
+  /**
+   * Delete a note from an application
+   */
+  deleteNote: async (applicationId: string, noteId: string): Promise<{ success: boolean }> => {
+    const response = await apiClient.delete<{ success: boolean }>(`/applications/${applicationId}/notes/${noteId}`);
     return response.data;
   },
 };
