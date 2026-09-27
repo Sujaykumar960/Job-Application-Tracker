@@ -13,3 +13,4 @@ export * from './Skeleton';
 export * from './StatCard';
 export * from './Tabs';
 export * from './LocationInput';
+export * from './ThemeToggle';
