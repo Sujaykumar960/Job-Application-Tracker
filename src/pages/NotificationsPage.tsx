@@ -9,6 +9,7 @@ import {
   NotificationCategory,
 } from '../types';
 import { notificationApi } from '../api/notificationApi';
+import { connectionApi } from '../api/connectionApi';
 import {
   Bell,
   Calendar,
@@ -185,6 +186,66 @@ export const NotificationsPage: React.FC = () => {
       setNotifications((prev) => prev.filter((n) => !n.isRead));
     } catch (err) {
       console.error('Failed to clear read:', err);
+    }
+  };
+
+  // Handle action click (e.g. View Profile, View Post, Reply to Message)
+  const handleNotificationAction = async (notif: CareerNotification) => {
+    // Automatically mark as read when action is clicked
+    if (!notif.isRead) {
+      handleToggleRead(notif.id, false);
+    }
+
+    // 1. Connection accepted or "View Profile"
+    if (notif.actionLabel === 'View Profile' || notif.category === 'connection_accepted') {
+      const payload = notif.actionPayload as Record<string, any> | undefined;
+      const peerId = payload?.peerId;
+      const peerName = payload?.peerName;
+      const requestId = payload?.requestId;
+
+      // If actionUrl is already a direct profile link
+      if (notif.actionUrl && notif.actionUrl.startsWith('/profile/') && notif.actionUrl !== '/profile') {
+        navigate(notif.actionUrl);
+        return;
+      }
+
+      // If peerId is provided
+      if (peerId) {
+        navigate(`/profile/${peerId}`);
+        return;
+      }
+
+      // If requestId is provided, try to resolve from connections
+      if (requestId) {
+        try {
+          const connections = await connectionApi.getConnections();
+          const conn = connections.find(
+            (c: any) =>
+              c.requestId === requestId ||
+              (peerName && c.name && c.name.toLowerCase() === peerName.toLowerCase())
+          );
+          if (conn && conn.id) {
+            navigate(`/profile/${conn.id}`);
+            return;
+          }
+        } catch (e) {
+          console.error('Failed to resolve connection for profile navigation:', e);
+        }
+      }
+
+      // If peerName is available, navigate to /profile/:name
+      if (peerName) {
+        navigate(`/profile/${encodeURIComponent(peerName)}`);
+        return;
+      }
+
+      navigate('/network?tab=connections');
+      return;
+    }
+
+    // 2. Default: navigate to actionUrl if present
+    if (notif.actionUrl) {
+      navigate(notif.actionUrl);
     }
   };
 
@@ -376,14 +437,14 @@ export const NotificationsPage: React.FC = () => {
                 {/* Right: Actions */}
                 <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-center">
                   {/* Action Link Button */}
-                  {notif.actionLabel && notif.actionUrl && (
+                  {(notif.actionLabel || notif.category === 'connection_accepted') && (
                     <Button
                       size="xs"
                       variant="primary"
-                      onClick={() => navigate(notif.actionUrl!)}
+                      onClick={() => handleNotificationAction(notif)}
                       icon={<ArrowRight className="w-3 h-3" />}
                     >
-                      {notif.actionLabel}
+                      {notif.actionLabel || 'View Profile'}
                     </Button>
                   )}
 

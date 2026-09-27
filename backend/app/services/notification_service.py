@@ -143,11 +143,13 @@ class NotificationService:
         peer_name: str,
         peer_company: Optional[str] = None,
         request_id: Optional[str] = None,
+        peer_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Generate a connection_accepted notification when an invitation is accepted."""
         repo = NotificationRepository(db)
         dedup_key = f"conn_acc:{recipient_id}:{peer_name}"
         company_info = f" ({peer_company})" if peer_company else ""
+        action_url = f"/profile/{peer_id}" if peer_id else (f"/profile/{peer_name}" if peer_name else "/network?tab=connections")
         doc = {
             "userId": recipient_id,
             "category": "connection_accepted",
@@ -156,8 +158,8 @@ class NotificationService:
             "priority": "normal",
             "company": peer_company,
             "actionLabel": "View Profile",
-            "actionUrl": "/network",
-            "actionPayload": {"peerName": peer_name, "requestId": request_id},
+            "actionUrl": action_url,
+            "actionPayload": {"peerName": peer_name, "requestId": request_id, "peerId": peer_id},
         }
         return await repo.create_deduped_notification(doc, dedup_key=dedup_key)
 

@@ -37,24 +37,46 @@ class UserRepository(BaseRepository):
         )
         return serialize_mongo_doc(res)
 
+    async def get_by_id(self, id_val: str) -> Optional[Dict[str, Any]]:
+        doc = await super().get_by_id(id_val)
+        if not doc and id_val:
+            clean_id = id_val.strip()
+            # 1. Check if id_val matches a profile's userId
+            prof = await self.profiles_collection.find_one({"userId": clean_id})
+            if prof and prof.get("userId") and prof["userId"] != clean_id:
+                doc = await super().get_by_id(prof["userId"])
+            # 2. Case-insensitive lookup by name or email
+            if not doc:
+                import re
+                esc = re.escape(clean_id)
+                raw = await self.collection.find_one({
+                    "$or": [
+                        {"name": {"$regex": f"^{esc}$", "$options": "i"}},
+                        {"email": {"$regex": f"^{esc}$", "$options": "i"}},
+                    ]
+                })
+                doc = serialize_mongo_doc(raw)
+        return doc
+
     async def get_public_profile(self, user_id: str, viewing_user_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Fetch sanitized public profile with dynamic relationship status."""
         user_doc = await self.get_by_id(user_id)
         if not user_doc:
             return None
 
-        profile_doc = await self.get_profile(user_id) or {}
+        actual_uid = str(user_doc.get("id") or user_doc.get("_id"))
+        profile_doc = await self.get_profile(actual_uid) or await self.get_profile(user_id) or {}
 
         connection_status = "none"
         request_id = None
         if viewing_user_id:
-            if viewing_user_id == user_id:
+            if viewing_user_id in (actual_uid, user_id):
                 connection_status = "self"
             else:
                 conn = await self.db["connections"].find_one({
                     "$or": [
-                        {"requesterId": viewing_user_id, "receiverId": user_id},
-                        {"requesterId": user_id, "receiverId": viewing_user_id},
+                        {"requesterId": viewing_user_id, "receiverId": actual_uid},
+                        {"requesterId": actual_uid, "receiverId": viewing_user_id},
                     ]
                 })
                 if conn:
@@ -70,8 +92,8 @@ class UserRepository(BaseRepository):
                 else:
                     req_alt = await self.db["connection_requests"].find_one({
                         "$or": [
-                            {"senderId": viewing_user_id, "recipientId": user_id},
-                            {"senderId": user_id, "recipientId": viewing_user_id},
+                            {"senderId": viewing_user_id, "recipientId": actual_uid},
+                            {"senderId": actual_uid, "recipientId": viewing_user_id},
                         ]
                     })
                     if req_alt:
@@ -89,7 +111,7 @@ class UserRepository(BaseRepository):
         avatar_initials = profile_doc.get("avatarInitials") or "".join([p[0].upper() for p in name.split()[:2]]) or "CX"
 
         return {
-            "id": user_id,
+            "id": actual_uid,
             "name": name,
             "role": user_doc.get("role", "seeker"),
             "headline": profile_doc.get("headline") or "",

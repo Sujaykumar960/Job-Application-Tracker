@@ -417,6 +417,7 @@ class ConnectionRepository(BaseRepository):
             peer_name=rec_name,
             peer_company=rec_company,
             request_id=resolved_req_id,
+            peer_id=receiver_id,
         )
 
         return {
