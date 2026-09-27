@@ -100,12 +100,36 @@
 }
 
 /* Comprehensive Dark Mode Global Overrides */
+html.dark header {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+  border-color: #1E293B !important;
+}
+
+html.dark aside {
+  background-color: #0B1120 !important;
+  border-color: #1E293B !important;
+}
+
 html.dark .bg-white {
   background-color: #1E293B !important;
 }
 
+html.dark [class*="bg-white/"] {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+}
+
+html.dark .bg-\[\#E8F3FF\] {
+  background-color: #1E293B !important;
+  color: #38BDF8 !important;
+}
+
+html.dark .border-\[\#d0e6fc\] {
+  border-color: #334155 !important;
+}
+
 html.dark .bg-\[\#F3F2EF\],
 html.dark .bg-\[\#F3F6F8\],
+html.dark .bg-\[\#F8F9FA\],
 html.dark .bg-slate-50,
 html.dark .bg-gray-50 {
   background-color: #0B1120 !important;
@@ -130,7 +154,7 @@ html.dark .border-\[\#E8E8E8\],
 html.dark .border-\[\#E2E8F0\],
 html.dark .border-slate-200,
 html.dark .border-gray-200 {
-  border-color: #334155 !important;
+  border-color: #1E293B !important;
 }
 
 html.dark input,

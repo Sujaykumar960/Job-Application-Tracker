@@ -73,7 +73,7 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({
   return (
     <nav
       aria-label="Breadcrumb"
-      className={cn('flex items-center space-x-1.5 text-xs text-[#56687A] select-none', className)}
+      className={cn('flex items-center space-x-1.5 text-xs text-[#56687A] dark:text-[#94A3B8] select-none', className)}
     >
       {breadcrumbs.map((crumb, index) => {
         const isLast = index === breadcrumbs.length - 1;
@@ -81,20 +81,20 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({
 
         return (
           <div key={`${crumb.label}-${index}`} className="flex items-center space-x-1.5">
-            {index > 0 && <ChevronRight className="w-3.5 h-3.5 text-[#788896] flex-shrink-0" />}
+            {index > 0 && <ChevronRight className="w-3.5 h-3.5 text-[#788896] dark:text-[#64748B] flex-shrink-0" />}
             {crumb.href && !isLast ? (
               <Link
                 to={crumb.href}
-                className="hover:text-[#0A66C2] transition-colors duration-150 flex items-center gap-1"
+                className="hover:text-[#0A66C2] dark:hover:text-[#38BDF8] transition-colors duration-150 flex items-center gap-1"
               >
-                {isFirst && showHomeIcon && <Home className="w-3.5 h-3.5 text-[#788896]" />}
+                {isFirst && showHomeIcon && <Home className="w-3.5 h-3.5 text-[#788896] dark:text-[#64748B]" />}
                 <span>{crumb.label}</span>
               </Link>
             ) : (
               <span
                 className={cn(
                   'font-medium truncate max-w-[200px]',
-                  isLast ? 'text-[#1D2226] font-semibold' : 'text-[#56687A]'
+                  isLast ? 'text-[#1D2226] dark:text-[#F8FAFC] font-semibold' : 'text-[#56687A] dark:text-[#94A3B8]'
                 )}
                 aria-current={isLast ? 'page' : undefined}
               >

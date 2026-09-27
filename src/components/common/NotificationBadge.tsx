@@ -31,7 +31,7 @@ export const NotificationBadge: React.FC<NotificationBadgeProps> = ({
     return (
       <span
         className={cn(
-          'w-2 h-2 rounded-full ring-2 ring-white animate-pulse',
+          'w-2 h-2 rounded-full ring-2 ring-white dark:ring-[#0F172A] animate-pulse',
           variantStyles[variant].split(' ')[0],
           className
         )}
@@ -44,7 +44,7 @@ export const NotificationBadge: React.FC<NotificationBadgeProps> = ({
   return (
     <span
       className={cn(
-        'inline-flex items-center justify-center font-mono font-bold text-[10px] min-w-[18px] h-[18px] px-1 rounded-full shadow-sm ring-2 ring-white',
+        'inline-flex items-center justify-center font-mono font-bold text-[10px] min-w-[18px] h-[18px] px-1 rounded-full shadow-sm ring-2 ring-white dark:ring-[#0F172A]',
         variantStyles[variant],
         className
       )}

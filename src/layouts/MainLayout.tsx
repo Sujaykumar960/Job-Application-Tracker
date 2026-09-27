@@ -66,7 +66,7 @@ export const MainLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F3F2EF] text-[#1D2226] flex flex-col antialiased selection:bg-[#E8F3FF] selection:text-[#0A66C2] overflow-x-hidden">
+    <div className="min-h-screen bg-[#F3F2EF] dark:bg-[#0B1120] text-[#1D2226] dark:text-[#F8FAFC] flex flex-col antialiased selection:bg-[#E8F3FF] dark:selection:bg-[#1E293B] selection:text-[#0A66C2] dark:selection:text-[#38BDF8] overflow-x-hidden">
       {/* Fixed Left Sidebar */}
       <Sidebar
         isCollapsed={isCollapsed}
