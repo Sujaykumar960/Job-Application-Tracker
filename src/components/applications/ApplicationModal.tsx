@@ -223,30 +223,30 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
         {/* Row 3: Status & Priority */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-slate-300">Status *</label>
+            <label className="block text-xs font-semibold text-[#1D2226]">Status *</label>
             <select
-              className="w-full bg-surface-950 text-slate-100 text-xs rounded-lg border border-surface-700/80 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              className="w-full bg-white text-[#1D2226] text-xs sm:text-sm rounded-lg border border-[#D9D9D9] hover:border-[#788896] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#E8F3FF] focus:border-[#0A66C2] transition"
               {...register('status')}
             >
-              <option value="Applied">Applied</option>
-              <option value="Screening">Screening</option>
-              <option value="Shortlisted">Shortlisted</option>
-              <option value="Interview">Interview</option>
-              <option value="Offer">Offer</option>
-              <option value="Hired">Hired</option>
-              <option value="Rejected">Rejected</option>
+              <option value="Applied" className="text-[#1D2226] bg-white">Applied</option>
+              <option value="Screening" className="text-[#1D2226] bg-white">Screening</option>
+              <option value="Shortlisted" className="text-[#1D2226] bg-white">Shortlisted</option>
+              <option value="Interview" className="text-[#1D2226] bg-white">Interview</option>
+              <option value="Offer" className="text-[#1D2226] bg-white">Offer</option>
+              <option value="Hired" className="text-[#1D2226] bg-white">Hired</option>
+              <option value="Rejected" className="text-[#1D2226] bg-white">Rejected</option>
             </select>
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-slate-300">Priority Level *</label>
+            <label className="block text-xs font-semibold text-[#1D2226]">Priority Level *</label>
             <select
-              className="w-full bg-surface-950 text-slate-100 text-xs rounded-lg border border-surface-700/80 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              className="w-full bg-white text-[#1D2226] text-xs sm:text-sm rounded-lg border border-[#D9D9D9] hover:border-[#788896] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#E8F3FF] focus:border-[#0A66C2] transition"
               {...register('priority')}
             >
-              <option value="High">High Priority</option>
-              <option value="Medium">Medium Priority</option>
-              <option value="Low">Low Priority</option>
+              <option value="High" className="text-[#1D2226] bg-white">High Priority</option>
+              <option value="Medium" className="text-[#1D2226] bg-white">Medium Priority</option>
+              <option value="Low" className="text-[#1D2226] bg-white">Low Priority</option>
             </select>
           </div>
         </div>
@@ -270,7 +270,7 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
           <Input
             label="Interview Date / Time"
             placeholder="e.g. 2026-09-08 10:00"
-            icon={<Calendar className="w-3.5 h-3.5 text-brand-400" />}
+            icon={<Calendar className="w-3.5 h-3.5 text-[#0A66C2]" />}
             error={errors.interviewDate?.message}
             {...register('interviewDate')}
           />
@@ -287,47 +287,47 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
           />
 
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-slate-300">Resume Attached</label>
+            <label className="block text-xs font-semibold text-[#1D2226]">Resume Attached</label>
             <div className="relative">
               <select
-                className="w-full bg-surface-950 text-slate-100 text-xs rounded-lg border border-surface-700/80 pl-8 pr-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                className="w-full bg-white text-[#1D2226] text-xs sm:text-sm rounded-lg border border-[#D9D9D9] hover:border-[#788896] pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#E8F3FF] focus:border-[#0A66C2] transition"
                 {...register('resume')}
               >
                 {loadingResumes ? (
-                  <option value="">Loading resumes...</option>
+                  <option value="" className="text-[#788896] bg-white">Loading resumes...</option>
                 ) : userResumes.length > 0 ? (
                   userResumes.map((r) => (
-                    <option key={r.id} value={r.name}>
+                    <option key={r.id} value={r.name} className="text-[#1D2226] bg-white">
                       {r.name} {r.atsScore ? `(ATS ${r.atsScore}%)` : ''} {r.isActive ? '• Active' : ''}
                     </option>
                   ))
                 ) : (
-                  <option value="">No resume uploaded (upload in Resume AI)</option>
+                  <option value="" className="text-[#788896] bg-white">No resume uploaded (upload in Resume AI)</option>
                 )}
               </select>
-              <Paperclip className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
+              <Paperclip className="w-3.5 h-3.5 text-[#788896] absolute left-3 top-3 pointer-events-none" />
             </div>
             {errors.resume && (
-              <p className="text-xs text-rose-400 font-medium">{errors.resume.message}</p>
+              <p className="text-xs text-[#E6395A] font-medium">{errors.resume.message}</p>
             )}
           </div>
         </div>
 
         {/* Notes */}
         <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-slate-300">
+          <label className="block text-xs font-semibold text-[#1D2226]">
             Interview Notes & Preparation Strategy
           </label>
           <textarea
             rows={3}
             placeholder="Key discussion topics, referral names, architectural talking points..."
-            className="w-full bg-surface-950 text-slate-100 placeholder-slate-500 text-xs rounded-lg border border-surface-700/80 p-3 focus:outline-none focus:ring-1 focus:ring-brand-500"
+            className="w-full bg-white text-[#1D2226] placeholder-[#788896] text-xs sm:text-sm rounded-lg border border-[#D9D9D9] hover:border-[#788896] p-3 focus:outline-none focus:ring-2 focus:ring-[#E8F3FF] focus:border-[#0A66C2] transition"
             {...register('notes')}
           />
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-surface-800">
+        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E8E8E8]">
           <Button type="button" variant="ghost" size="sm" onClick={onClose}>
             Cancel
           </Button>
