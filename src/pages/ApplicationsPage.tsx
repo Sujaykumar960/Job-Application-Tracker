@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { PageHeader } from '../components/common/PageHeader';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
+import { ThemeToggle } from '../components/common/ThemeToggle';
 import { ApplicationTableView } from '../components/applications/ApplicationTableView';
 import { ApplicationKanbanView } from '../components/applications/ApplicationKanbanView';
 import { ApplicationModal } from '../components/applications/ApplicationModal';
@@ -207,17 +208,20 @@ export const ApplicationsPage: React.FC = () => {
           </Badge>
         }
         actions={
-          <Button
-            size="sm"
-            variant="primary"
-            icon={<Plus className="w-4 h-4" />}
-            onClick={() => {
-              setEditingApp(null);
-              setIsModalOpen(true);
-            }}
-          >
-            Add Application
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle size="sm" />
+            <Button
+              size="sm"
+              variant="primary"
+              icon={<Plus className="w-4 h-4" />}
+              onClick={() => {
+                setEditingApp(null);
+                setIsModalOpen(true);
+              }}
+            >
+              Add Application
+            </Button>
+          </div>
         }
       />
 

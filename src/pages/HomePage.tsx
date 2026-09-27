@@ -5,6 +5,7 @@ import { PageHeader } from '../components/common/PageHeader';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
+import { ThemeToggle } from '../components/common/ThemeToggle';
 import { dashboardApi, DashboardOverview } from '../api/dashboardApi';
 import {
   Briefcase,
@@ -144,6 +145,7 @@ export const HomePage: React.FC = () => {
         }
         actions={
           <div className="flex items-center gap-2">
+            <ThemeToggle size="xs" />
             <Link to="/applications">
               <Button size="xs" variant="primary" icon={<Briefcase className="w-3.5 h-3.5" />}>
                 Add Application

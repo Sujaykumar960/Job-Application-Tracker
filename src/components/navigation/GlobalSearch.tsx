@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Search,
@@ -164,14 +164,14 @@ export const GlobalSearch: React.FC = () => {
         ref={triggerRef}
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#F3F6F8] border border-[#D9D9D9] text-xs text-[#56687A] hover:text-[#1D2226] hover:border-[#0A66C2] transition w-44 sm:w-60 lg:w-72 justify-between group"
+        className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#F3F6F8] dark:bg-[#1E293B] border border-[#D9D9D9] dark:border-[#334155] text-xs text-[#56687A] dark:text-[#94A3B8] hover:text-[#1D2226] dark:hover:text-[#F8FAFC] hover:border-[#0A66C2] dark:hover:border-[#38BDF8] transition w-44 sm:w-60 lg:w-72 justify-between group"
         aria-label="Global Search"
       >
         <span className="flex items-center gap-2 truncate">
-          <Search className="w-3.5 h-3.5 text-[#56687A] group-hover:text-[#0A66C2] transition" />
+          <Search className="w-3.5 h-3.5 text-[#56687A] dark:text-[#94A3B8] group-hover:text-[#0A66C2] dark:group-hover:text-[#38BDF8] transition" />
           <span className="truncate">Search candidates, companies, jobs...</span>
         </span>
-        <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-mono px-1.5 py-0.5 rounded bg-white border border-[#D9D9D9] text-[#788896]">
+        <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-mono px-1.5 py-0.5 rounded bg-white dark:bg-[#0F172A] border border-[#D9D9D9] dark:border-[#334155] text-[#788896] dark:text-[#94A3B8]">
           <Command className="w-3 h-3" />K
         </kbd>
       </button>
@@ -182,7 +182,7 @@ export const GlobalSearch: React.FC = () => {
           <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-16 sm:pt-20 p-4">
             {/* Fullscreen Backdrop (Click anywhere on backdrop closes) */}
             <div
-              className="fixed inset-0 bg-black/45 backdrop-blur-xs transition-opacity duration-150"
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-150"
               onClick={() => setIsOpen(false)}
               aria-hidden="true"
             />
@@ -190,25 +190,25 @@ export const GlobalSearch: React.FC = () => {
             {/* Modal Dialog Container */}
             <div
               ref={modalRef}
-              className="relative w-full max-w-xl rounded-2xl bg-white border border-[#D9D9D9] shadow-2xl overflow-hidden z-10 flex flex-col max-h-[80vh] animate-in fade-in zoom-in-95 duration-150"
+              className="relative w-full max-w-xl rounded-2xl bg-white dark:bg-[#0F172A] border border-[#D9D9D9] dark:border-[#1E293B] shadow-2xl overflow-hidden z-10 flex flex-col max-h-[80vh] animate-in fade-in zoom-in-95 duration-150"
             >
               {/* Top Search Input Bar */}
-              <div className="flex items-center px-4 py-3.5 border-b border-[#E8E8E8] gap-3">
-                <Search className="w-4 h-4 text-[#0A66C2] flex-shrink-0" />
+              <div className="flex items-center px-4 py-3.5 border-b border-[#E8E8E8] dark:border-[#1E293B] gap-3">
+                <Search className="w-4 h-4 text-[#0A66C2] dark:text-[#38BDF8] flex-shrink-0" />
                 <input
                   ref={inputRef}
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search candidates by name/skills, companies, or jobs..."
-                  className="w-full bg-transparent text-sm text-[#1D2226] placeholder-[#788896] focus:outline-none"
+                  className="w-full bg-transparent text-sm text-[#1D2226] dark:text-[#F8FAFC] placeholder-[#788896] dark:placeholder-[#64748B] focus:outline-none"
                 />
-                {isLoading && <Loader2 className="w-4 h-4 animate-spin text-[#0A66C2] flex-shrink-0" />}
+                {isLoading && <Loader2 className="w-4 h-4 animate-spin text-[#0A66C2] dark:text-[#38BDF8] flex-shrink-0" />}
                 {query && !isLoading && (
                   <button
                     type="button"
                     onClick={() => setQuery('')}
-                    className="p-1 text-[#788896] hover:text-[#1D2226] rounded-md transition"
+                    className="p-1 text-[#788896] dark:text-[#94A3B8] hover:text-[#1D2226] dark:hover:text-[#F8FAFC] rounded-md transition"
                     title="Clear search"
                   >
                     <X className="w-4 h-4" />
@@ -217,7 +217,7 @@ export const GlobalSearch: React.FC = () => {
               </div>
 
               {/* Category Filter Pills */}
-              <div className="px-4 py-2 border-b border-[#E8E8E8] bg-[#F8F9FA] flex items-center gap-1.5 overflow-x-auto text-[11px] font-semibold">
+              <div className="px-4 py-2 border-b border-[#E8E8E8] dark:border-[#1E293B] bg-[#F8F9FA] dark:bg-[#1E293B]/50 flex items-center gap-1.5 overflow-x-auto text-[11px] font-semibold">
                 <button
                   type="button"
                   onClick={() => setActiveTab('all')}
@@ -225,7 +225,7 @@ export const GlobalSearch: React.FC = () => {
                     'px-2.5 py-1 rounded-lg transition flex items-center gap-1',
                     activeTab === 'all'
                       ? 'bg-[#0A66C2] text-white shadow-xs'
-                      : 'text-[#56687A] hover:bg-white hover:text-[#1D2226]'
+                      : 'text-[#56687A] dark:text-[#94A3B8] hover:bg-white dark:hover:bg-[#1E293B] hover:text-[#1D2226] dark:hover:text-[#F8FAFC]'
                   )}
                 >
                   All Results
@@ -237,7 +237,7 @@ export const GlobalSearch: React.FC = () => {
                     'px-2.5 py-1 rounded-lg transition flex items-center gap-1.5',
                     activeTab === 'candidates'
                       ? 'bg-[#0A66C2] text-white shadow-xs'
-                      : 'text-[#56687A] hover:bg-white hover:text-[#1D2226]'
+                      : 'text-[#56687A] dark:text-[#94A3B8] hover:bg-white dark:hover:bg-[#1E293B] hover:text-[#1D2226] dark:hover:text-[#F8FAFC]'
                   )}
                 >
                   <Users className="w-3 h-3" />
@@ -253,7 +253,7 @@ export const GlobalSearch: React.FC = () => {
                     'px-2.5 py-1 rounded-lg transition flex items-center gap-1.5',
                     activeTab === 'companies'
                       ? 'bg-[#0A66C2] text-white shadow-xs'
-                      : 'text-[#56687A] hover:bg-white hover:text-[#1D2226]'
+                      : 'text-[#56687A] dark:text-[#94A3B8] hover:bg-white dark:hover:bg-[#1E293B] hover:text-[#1D2226] dark:hover:text-[#F8FAFC]'
                   )}
                 >
                   <Building2 className="w-3 h-3" />
@@ -269,7 +269,7 @@ export const GlobalSearch: React.FC = () => {
                     'px-2.5 py-1 rounded-lg transition flex items-center gap-1.5',
                     activeTab === 'jobs'
                       ? 'bg-[#0A66C2] text-white shadow-xs'
-                      : 'text-[#56687A] hover:bg-white hover:text-[#1D2226]'
+                      : 'text-[#56687A] dark:text-[#94A3B8] hover:bg-white dark:hover:bg-[#1E293B] hover:text-[#1D2226] dark:hover:text-[#F8FAFC]'
                   )}
                 >
                   <Briefcase className="w-3 h-3" />
@@ -283,11 +283,11 @@ export const GlobalSearch: React.FC = () => {
               {/* Search Results Stream */}
               <div className="flex-1 overflow-y-auto p-2.5 space-y-3">
                 {totalResultsCount === 0 && !isLoading ? (
-                  <div className="px-4 py-12 text-center text-xs text-[#788896] space-y-2">
-                    <p className="font-semibold text-[#1D2226] text-sm">
+                  <div className="px-4 py-12 text-center text-xs text-[#788896] dark:text-[#64748B] space-y-2">
+                    <p className="font-semibold text-[#1D2226] dark:text-[#F8FAFC] text-sm">
                       {query ? `No matches found for "${query}"` : 'No results found'}
                     </p>
-                    <p className="text-[#56687A]">
+                    <p className="text-[#56687A] dark:text-[#94A3B8]">
                       Try searching by candidate name, programming skill, company, or job title.
                     </p>
                   </div>
@@ -296,9 +296,9 @@ export const GlobalSearch: React.FC = () => {
                     {/* SECTION 1: CANDIDATES / USERS */}
                     {(activeTab === 'all' || activeTab === 'candidates') && candidates.length > 0 && (
                       <div className="space-y-1">
-                        <div className="px-2.5 py-1 text-[10px] font-mono font-bold uppercase text-[#788896] tracking-wider flex items-center justify-between">
+                        <div className="px-2.5 py-1 text-[10px] font-mono font-bold uppercase text-[#788896] dark:text-[#64748B] tracking-wider flex items-center justify-between">
                           <span className="flex items-center gap-1.5">
-                            <Users className="w-3 h-3 text-[#0A66C2]" />
+                            <Users className="w-3 h-3 text-[#0A66C2] dark:text-[#38BDF8]" />
                             Candidates & Engineering Profiles
                           </span>
                           <span>{candidates.length}</span>
@@ -308,7 +308,7 @@ export const GlobalSearch: React.FC = () => {
                             key={user.id}
                             type="button"
                             onClick={() => handleSelectCandidate(user.id)}
-                            className="w-full flex items-center justify-between p-2.5 rounded-xl text-left hover:bg-[#F3F6F8] transition text-xs group border border-transparent hover:border-[#D9D9D9]"
+                            className="w-full flex items-center justify-between p-2.5 rounded-xl text-left hover:bg-[#F3F6F8] dark:hover:bg-[#1E293B] transition text-xs group border border-transparent hover:border-[#D9D9D9] dark:hover:border-[#334155]"
                           >
                             <div className="flex items-center gap-3 min-w-0 flex-1">
                               <div
@@ -320,21 +320,21 @@ export const GlobalSearch: React.FC = () => {
                                 {getInitials(user.name, user.avatarInitials)}
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className="font-bold text-[#1D2226] group-hover:text-[#0A66C2] transition truncate">
+                                <p className="font-bold text-[#1D2226] dark:text-[#F8FAFC] group-hover:text-[#0A66C2] dark:group-hover:text-[#38BDF8] transition truncate">
                                   {user.name}
                                 </p>
-                                <p className="text-[11px] text-[#56687A] truncate">
+                                <p className="text-[11px] text-[#56687A] dark:text-[#94A3B8] truncate">
                                   {user.headline || 'Software Engineer'} • {user.company || 'Tech'}
                                 </p>
                                 {user.location && (
-                                  <p className="text-[10px] text-[#788896] flex items-center gap-1 font-mono">
+                                  <p className="text-[10px] text-[#788896] dark:text-[#64748B] flex items-center gap-1 font-mono">
                                     <MapPin className="w-2.5 h-2.5" />
                                     {user.location}
                                   </p>
                                 )}
                               </div>
                             </div>
-                            <span className="text-[10px] text-[#0A66C2] font-semibold opacity-0 group-hover:opacity-100 transition flex items-center gap-1 flex-shrink-0 ml-2">
+                            <span className="text-[10px] text-[#0A66C2] dark:text-[#38BDF8] font-semibold opacity-0 group-hover:opacity-100 transition flex items-center gap-1 flex-shrink-0 ml-2">
                               <span>View Profile</span>
                               <ArrowRight className="w-3 h-3" />
                             </span>
@@ -346,9 +346,9 @@ export const GlobalSearch: React.FC = () => {
                     {/* SECTION 2: COMPANIES */}
                     {(activeTab === 'all' || activeTab === 'companies') && companies.length > 0 && (
                       <div className="space-y-1">
-                        <div className="px-2.5 py-1 text-[10px] font-mono font-bold uppercase text-[#788896] tracking-wider flex items-center justify-between">
+                        <div className="px-2.5 py-1 text-[10px] font-mono font-bold uppercase text-[#788896] dark:text-[#64748B] tracking-wider flex items-center justify-between">
                           <span className="flex items-center gap-1.5">
-                            <Building2 className="w-3 h-3 text-emerald-600" />
+                            <Building2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                             Companies & Employers
                           </span>
                           <span>{companies.length}</span>
@@ -358,23 +358,23 @@ export const GlobalSearch: React.FC = () => {
                             key={company.id || company.slug}
                             type="button"
                             onClick={() => handleSelectCompany(company)}
-                            className="w-full flex items-center justify-between p-2.5 rounded-xl text-left hover:bg-[#F3F6F8] transition text-xs group border border-transparent hover:border-[#D9D9D9]"
+                            className="w-full flex items-center justify-between p-2.5 rounded-xl text-left hover:bg-[#F3F6F8] dark:hover:bg-[#1E293B] transition text-xs group border border-transparent hover:border-[#D9D9D9] dark:hover:border-[#334155]"
                           >
                             <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <div className="w-9 h-9 rounded-xl bg-white border border-[#D9D9D9] flex items-center justify-center font-bold text-xs text-[#0A66C2] flex-shrink-0 shadow-xs">
+                              <div className="w-9 h-9 rounded-xl bg-white dark:bg-[#1E293B] border border-[#D9D9D9] dark:border-[#334155] flex items-center justify-center font-bold text-xs text-[#0A66C2] dark:text-[#38BDF8] flex-shrink-0 shadow-xs">
                                 {company.logoInitials || company.name.slice(0, 2).toUpperCase()}
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className="font-bold text-[#1D2226] group-hover:text-[#0A66C2] transition truncate">
+                                <p className="font-bold text-[#1D2226] dark:text-[#F8FAFC] group-hover:text-[#0A66C2] dark:group-hover:text-[#38BDF8] transition truncate">
                                   {company.name}
                                 </p>
-                                <p className="text-[11px] text-[#56687A] truncate">
+                                <p className="text-[11px] text-[#56687A] dark:text-[#94A3B8] truncate">
                                   {company.industry || 'Technology'}
                                   {company.headquarters ? ` • ${company.headquarters}` : ''}
                                 </p>
                               </div>
                             </div>
-                            <span className="text-[10px] text-emerald-700 bg-[#E6F4EA] border border-[#c6ecd2] px-2 py-0.5 rounded-full font-mono font-semibold flex-shrink-0 ml-2">
+                            <span className="text-[10px] text-emerald-700 dark:text-emerald-300 bg-[#E6F4EA] dark:bg-emerald-950/40 border border-[#c6ecd2] dark:border-emerald-800 px-2 py-0.5 rounded-full font-mono font-semibold flex-shrink-0 ml-2">
                               View Company
                             </span>
                           </button>
@@ -385,9 +385,9 @@ export const GlobalSearch: React.FC = () => {
                     {/* SECTION 3: JOBS */}
                     {(activeTab === 'all' || activeTab === 'jobs') && jobs.length > 0 && (
                       <div className="space-y-1">
-                        <div className="px-2.5 py-1 text-[10px] font-mono font-bold uppercase text-[#788896] tracking-wider flex items-center justify-between">
+                        <div className="px-2.5 py-1 text-[10px] font-mono font-bold uppercase text-[#788896] dark:text-[#64748B] tracking-wider flex items-center justify-between">
                           <span className="flex items-center gap-1.5">
-                            <Briefcase className="w-3 h-3 text-purple-600" />
+                            <Briefcase className="w-3 h-3 text-purple-600 dark:text-purple-400" />
                             Active Jobs & Opportunities
                           </span>
                           <span>{jobs.length}</span>
@@ -397,23 +397,23 @@ export const GlobalSearch: React.FC = () => {
                             key={job.id}
                             type="button"
                             onClick={() => handleSelectJob(job)}
-                            className="w-full flex items-center justify-between p-2.5 rounded-xl text-left hover:bg-[#F3F6F8] transition text-xs group border border-transparent hover:border-[#D9D9D9]"
+                            className="w-full flex items-center justify-between p-2.5 rounded-xl text-left hover:bg-[#F3F6F8] dark:hover:bg-[#1E293B] transition text-xs group border border-transparent hover:border-[#D9D9D9] dark:hover:border-[#334155]"
                           >
                             <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <div className="w-9 h-9 rounded-xl bg-[#F3E5F5] border border-[#E1BEE7] text-[#6A1B9A] flex items-center justify-center flex-shrink-0">
+                              <div className="w-9 h-9 rounded-xl bg-[#F3E5F5] dark:bg-purple-950/40 border border-[#E1BEE7] dark:border-purple-800 text-[#6A1B9A] dark:text-purple-300 flex items-center justify-center flex-shrink-0">
                                 <Briefcase className="w-4 h-4" />
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className="font-bold text-[#1D2226] group-hover:text-[#0A66C2] transition truncate">
+                                <p className="font-bold text-[#1D2226] dark:text-[#F8FAFC] group-hover:text-[#0A66C2] dark:group-hover:text-[#38BDF8] transition truncate">
                                   {job.title}
                                 </p>
-                                <p className="text-[11px] text-[#56687A] truncate">
+                                <p className="text-[11px] text-[#56687A] dark:text-[#94A3B8] truncate">
                                   {job.company} • {job.location || 'Remote'}
                                   {job.workType ? ` (${job.workType})` : ''}
                                 </p>
                               </div>
                             </div>
-                            <ArrowRight className="w-3.5 h-3.5 text-[#D9D9D9] group-hover:text-[#0A66C2] group-hover:translate-x-0.5 transition flex-shrink-0 ml-2" />
+                            <ArrowRight className="w-3.5 h-3.5 text-[#D9D9D9] dark:text-[#64748B] group-hover:text-[#0A66C2] dark:group-hover:text-[#38BDF8] group-hover:translate-x-0.5 transition flex-shrink-0 ml-2" />
                           </button>
                         ))}
                       </div>
@@ -423,15 +423,15 @@ export const GlobalSearch: React.FC = () => {
               </div>
 
               {/* Bottom Keyboard Hint Bar */}
-              <div className="px-4 py-2.5 border-t border-[#E8E8E8] bg-[#F8F9FA] flex items-center justify-between text-[11px] text-[#788896]">
+              <div className="px-4 py-2.5 border-t border-[#E8E8E8] dark:border-[#1E293B] bg-[#F8F9FA] dark:bg-[#1E293B]/50 flex items-center justify-between text-[11px] text-[#788896] dark:text-[#94A3B8]">
                 <span className="flex items-center gap-2">
                   <span>Click outside or press</span>
-                  <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-white border border-[#D9D9D9] text-[#788896]">
+                  <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-white dark:bg-[#0F172A] border border-[#D9D9D9] dark:border-[#334155] text-[#788896] dark:text-[#94A3B8]">
                     ESC
                   </kbd>
                   <span>to close</span>
                 </span>
-                <span className="text-[10px] font-mono text-[#56687A]">
+                <span className="text-[10px] font-mono text-[#56687A] dark:text-[#94A3B8]">
                   CareerX Universal Search
                 </span>
               </div>

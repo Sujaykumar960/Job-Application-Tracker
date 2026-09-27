@@ -105,7 +105,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Sidebar Element */}
       <aside
         className={cn(
-          'fixed top-0 bottom-0 left-0 z-50 flex flex-col bg-white border-r border-[#D9D9D9] transition-all duration-300 ease-in-out',
+          'fixed top-0 bottom-0 left-0 z-50 flex flex-col bg-white dark:bg-[#0B1120] border-r border-[#D9D9D9] dark:border-[#1E293B] transition-all duration-300 ease-in-out',
           // Desktop sizing: 240px on laptop, 256px on large screens, or 72px (collapsed)
           isCollapsed ? 'lg:w-[72px]' : 'lg:w-60 laptop-lg:w-64',
           // Mobile responsive slide-in
@@ -115,7 +115,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       >
         {/* Sidebar Header: Brand & Logo */}
-        <div className="h-14 flex items-center justify-between px-3.5 border-b border-[#D9D9D9] flex-shrink-0">
+        <div className="h-14 flex items-center justify-between px-3.5 border-b border-[#D9D9D9] dark:border-[#1E293B] flex-shrink-0">
           <NavLink
             to="/"
             onClick={onCloseMobile}
@@ -127,10 +127,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             {(!isCollapsed || isMobileOpen) && (
               <div className="flex items-center gap-1.5 overflow-hidden transition-opacity duration-200">
-                <span className="font-extrabold text-sm tracking-tight text-[#1D2226] font-sans">
+                <span className="font-extrabold text-sm tracking-tight text-[#1D2226] dark:text-[#F8FAFC] font-sans">
                   Career<span className="text-[#0A66C2]">X</span>
                 </span>
-                <span className="text-[9px] font-mono font-semibold px-1 py-0.2 rounded bg-[#E8F3FF] text-[#0A66C2] border border-[#d0e6fc]">
+                <span className="text-[9px] font-mono font-semibold px-1 py-0.2 rounded bg-[#E8F3FF] dark:bg-[#1E293B] text-[#0A66C2] dark:text-[#38BDF8] border border-[#d0e6fc] dark:border-[#334155]">
                   PRO
                 </span>
               </div>
@@ -140,7 +140,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Close button on mobile */}
           <button
             onClick={onCloseMobile}
-            className="lg:hidden p-1.5 rounded-lg text-[#56687A] hover:text-[#1D2226] hover:bg-[#F3F6F8]"
+            className="lg:hidden p-1.5 rounded-lg text-[#56687A] dark:text-[#94A3B8] hover:text-[#1D2226] dark:hover:text-[#F8FAFC] hover:bg-[#F3F6F8] dark:hover:bg-[#1E293B]"
             aria-label="Close Sidebar"
           >
             <X className="w-4 h-4" />
@@ -165,15 +165,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 className={cn(
                   'group relative flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150',
                   isActive
-                    ? 'bg-[#E8F3FF] text-[#0A66C2] font-semibold'
-                    : 'text-[#56687A] hover:text-[#1D2226] hover:bg-[#F3F6F8]',
+                    ? 'bg-[#E8F3FF] dark:bg-[#1E293B] text-[#0A66C2] dark:text-[#38BDF8] font-semibold'
+                    : 'text-[#56687A] dark:text-[#94A3B8] hover:text-[#1D2226] dark:hover:text-[#F8FAFC] hover:bg-[#F3F6F8] dark:hover:bg-[#1E293B]',
                   isCollapsed && !isMobileOpen && 'justify-center px-2 py-2'
                 )}
               >
                 <Icon
                   className={cn(
                     'w-4 h-4 flex-shrink-0 transition-transform duration-150 group-hover:scale-110',
-                    isActive ? 'text-[#0A66C2]' : 'text-[#56687A] group-hover:text-[#1D2226]'
+                    isActive ? 'text-[#0A66C2] dark:text-[#38BDF8]' : 'text-[#56687A] dark:text-[#94A3B8] group-hover:text-[#1D2226] dark:group-hover:text-[#F8FAFC]'
                   )}
                 />
 
@@ -202,7 +202,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
 
         {/* Sidebar Footer: Role Status & Desktop Collapse Toggle */}
-        <div className="p-3 border-t border-[#D9D9D9] bg-white flex-shrink-0 flex items-center justify-between">
+        <div className="p-3 border-t border-[#D9D9D9] dark:border-[#1E293B] bg-white dark:bg-[#0B1120] flex-shrink-0 flex items-center justify-between">
           {(!isCollapsed || isMobileOpen) && (
             <div className="flex items-center gap-2 overflow-hidden">
               <span
@@ -211,7 +211,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   role === 'seeker' ? 'bg-[#0A66C2]' : 'bg-[#12B886]'
                 )}
               />
-              <span className="text-[11px] text-[#56687A] truncate capitalize">
+              <span className="text-[11px] text-[#56687A] dark:text-[#94A3B8] truncate capitalize">
                 {role === 'seeker' ? 'Job Seeker Mode' : 'Recruiter Mode'}
               </span>
             </div>
@@ -221,7 +221,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             onClick={onToggleCollapse}
             className={cn(
-              'hidden lg:flex items-center justify-center p-1.5 rounded-lg text-[#56687A] hover:text-[#1D2226] hover:bg-[#F3F6F8] transition duration-150',
+              'hidden lg:flex items-center justify-center p-1.5 rounded-lg text-[#56687A] dark:text-[#94A3B8] hover:text-[#1D2226] dark:hover:text-[#F8FAFC] hover:bg-[#F3F6F8] dark:hover:bg-[#1E293B] transition duration-150',
               isCollapsed && 'w-full'
             )}
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
