@@ -347,7 +347,7 @@ export const MessagesPage: React.FC = () => {
                 <ChatHeader conversation={activeConversation} />
 
                 {/* 2. Messages Stream */}
-                <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-[#F8FAFC]">
+                <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2.5 bg-[#F8FAFC]">
                   <div className="text-center py-1.5">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-slate-200 text-[11px] font-medium text-slate-500 shadow-2xs">
                       <ShieldCheck className="w-3.5 h-3.5 text-[#0A66C2]" />

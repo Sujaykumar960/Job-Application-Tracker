@@ -44,7 +44,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
   };
 
   return (
-    <div className="p-3.5 bg-white border-t border-slate-200/80 space-y-2.5">
+    <div className="p-3 sm:p-3.5 bg-white border-t border-slate-200/80 space-y-2">
       {/* Attachment Preview Chip */}
       {attachment && (
         <div className="flex items-center gap-2 p-1.5 px-3 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-800 font-mono w-fit animate-in fade-in">
@@ -93,7 +93,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
             onKeyDown={handleKeyDown}
             disabled={disabled}
             placeholder="Write a message... (Press Enter to send, Shift+Enter for new line)"
-            className="w-full bg-slate-50 hover:bg-slate-100/50 focus:bg-white text-slate-900 placeholder-slate-400 text-xs rounded-xl border border-slate-200 p-2.5 min-h-[42px] max-h-28 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] focus:border-[#0A66C2] resize-none leading-relaxed transition-colors"
+            className="w-full bg-slate-50 hover:bg-slate-100/50 focus:bg-white text-slate-900 placeholder-slate-400 text-[13.5px] sm:text-sm rounded-xl border border-slate-200 p-2.5 min-h-[42px] max-h-28 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] focus:border-[#0A66C2] resize-none leading-relaxed transition-colors"
           />
         </div>
 

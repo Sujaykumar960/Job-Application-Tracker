@@ -13,21 +13,21 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   return (
     <div
       className={cn(
-        'flex flex-col space-y-1 max-w-[82%] sm:max-w-[72%]',
+        'flex flex-col space-y-0.5 max-w-[85%] sm:max-w-[70%]',
         isOut ? 'ml-auto items-end' : 'mr-auto items-start'
       )}
     >
       {/* Bubble Container */}
       <div
         className={cn(
-          'p-3.5 rounded-2xl text-xs leading-relaxed break-words whitespace-pre-wrap shadow-2xs',
+          'px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-2xl text-[13.5px] sm:text-sm leading-normal break-words whitespace-pre-wrap shadow-2xs',
           isOut
             ? 'bg-[#0A66C2] text-white rounded-tr-xs'
             : 'bg-white text-slate-900 border border-slate-200/90 rounded-tl-xs'
         )}
       >
         {/* Message Text */}
-        <p className="leading-relaxed font-normal">{message.content}</p>
+        <p className="leading-normal font-normal">{message.content}</p>
 
         {/* Optional Attachment Card */}
         {message.attachment && (
