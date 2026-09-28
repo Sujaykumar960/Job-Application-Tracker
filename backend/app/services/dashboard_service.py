@@ -38,138 +38,7 @@ class DashboardService:
             pass
 
         try:
-            # 2. Ensure ATS Score & Resume Analysis
-            existing_analysis = await self.db.resume_analyses.find_one({"userId": user_id})
-            if not existing_analysis:
-                analysis_doc = {
-                    "id": f"ana_{uuid.uuid4().hex[:10]}",
-                    "userId": user_id,
-                    "resumeId": f"res_{uuid.uuid4().hex[:10]}",
-                    "atsScore": 88,
-                    "targetRole": "Senior Full Stack Engineer",
-                    "targetProfile": "Full Stack / Distributed Systems & Cloud Architecture",
-                    "percentile": 92,
-                    "atsBreakdown": {
-                        "overallScore": 88,
-                        "keywordsScore": 92,
-                        "impactScore": 86,
-                        "formattingScore": 94,
-                        "completenessScore": 90,
-                    },
-                    "pillars": [
-                        {
-                            "title": "Keywords & Hard Skills",
-                            "weight": "35% weight",
-                            "score": 92,
-                            "status": "strong",
-                            "summary": "High density of targeted keywords: React, TypeScript, FastAPI, PostgreSQL, Docker, AWS.",
-                        },
-                        {
-                            "title": "Impact & Metrics",
-                            "weight": "30% weight",
-                            "score": 86,
-                            "status": "strong",
-                            "summary": "Strong quantifiable achievements with revenue, latency, and throughput impact metrics.",
-                        },
-                        {
-                            "title": "Formatting & Readability",
-                            "weight": "20% weight",
-                            "score": 94,
-                            "status": "strong",
-                            "summary": "Clean ATS-compliant layout, standard section hierarchy, and concise bullet points.",
-                        },
-                        {
-                            "title": "Section Completeness",
-                            "weight": "15% weight",
-                            "score": 90,
-                            "status": "strong",
-                            "summary": "All primary sections (Summary, Experience, Projects, Skills, Education) thoroughly documented.",
-                        },
-                    ],
-                    "strengths": [
-                        "Strong keyword match for modern enterprise full stack engineering",
-                        "Clear quantifiable metrics demonstrating high business impact",
-                        "ATS-optimized section headers and chronological formatting",
-                    ],
-                    "weaknesses": [
-                        "Could emphasize distributed caching strategies (e.g. Redis cluster, CDN edge routing)",
-                    ],
-                    "optimizationAreas": [
-                        "Add system throughput numbers (e.g. 'Handled 50k req/sec at peak')",
-                        "Highlight security/compliance certifications or SOC2 auditing experience",
-                    ],
-                    "keywords": [
-                        {"name": "TypeScript", "priority": "High", "category": "Programming Language"},
-                        {"name": "Python", "priority": "High", "category": "Programming Language"},
-                        {"name": "React", "priority": "High", "category": "Frontend Framework"},
-                        {"name": "FastAPI", "priority": "High", "category": "Backend Framework"},
-                        {"name": "PostgreSQL", "priority": "High", "category": "Database"},
-                        {"name": "Docker", "priority": "High", "category": "DevOps"},
-                        {"name": "AWS", "priority": "High", "category": "Cloud Infrastructure"},
-                        {"name": "Redis", "priority": "Medium", "category": "Caching"},
-                        {"name": "Kubernetes", "priority": "Medium", "category": "Orchestration"},
-                    ],
-                    "missingKeywords": [
-                        {"name": "Terraform", "priority": "Medium", "category": "IaC"},
-                        {"name": "GraphQL", "priority": "Low", "category": "API Paradigm"},
-                    ],
-                    "extractedSkills": {
-                        "Languages": ["TypeScript", "Python", "JavaScript", "Go", "SQL"],
-                        "Frameworks & Runtimes": ["React", "FastAPI", "Node.js", "Next.js", "Express", "Tailwind CSS"],
-                        "Databases & Storage": ["PostgreSQL", "MongoDB", "Redis"],
-                        "DevOps & Cloud": ["Docker", "Kubernetes", "AWS (ECS, S3, RDS)", "GitHub Actions"],
-                        "Architecture & Tools": ["REST APIs", "Microservices", "System Design", "Git"],
-                    },
-                    "bulletImprovements": [
-                        {
-                            "original": "Built REST APIs for user authentication.",
-                            "improved": "Architected low-latency OAuth2 JWT authentication microservice handling 15,000+ daily requests.",
-                            "rationale": "Adds scale metrics and technical specifics that ATS scoring algorithms index on.",
-                        }
-                    ],
-                    "experienceRewrites": [],
-                    "formattingRecommendations": [
-                        "Ensure font hierarchy remains uniform across all subheadings.",
-                    ],
-                    "recommendations": [
-                        "Include links to live GitHub repositories or published system architecture case studies.",
-                    ],
-                    "rawTextSnippet": "Senior Full Stack Engineer with 4+ years building high-throughput distributed applications...",
-                    "isAiGenerated": True,
-                    "analyzedAt": utc_now_iso(),
-                    "createdAt": utc_now_iso(),
-                    "originalFilename": "Full_Stack_Engineer_Resume.pdf",
-                    "filename": "Full_Stack_Engineer_Resume.pdf",
-                    "status": "completed",
-                    "engine": "openai/gpt-oss-120b",
-                }
-                await self.db.resume_analyses.insert_one(analysis_doc)
-
-            # Ensure resume document exists
-            existing_resume = await self.db.resumes.find_one({"userId": user_id})
-            if not existing_resume:
-                resume_doc = {
-                    "id": f"res_{uuid.uuid4().hex[:10]}",
-                    "userId": user_id,
-                    "name": "Full_Stack_Engineer_Resume.pdf",
-                    "filename": "Full_Stack_Engineer_Resume.pdf",
-                    "format": "PDF",
-                    "size": "142 KB",
-                    "fileSizeBytes": 145408,
-                    "atsScore": 88,
-                    "isActive": True,
-                    "uploadDate": utc_now_iso()[:10],
-                    "createdAt": utc_now_iso(),
-                    "updatedAt": utc_now_iso(),
-                }
-                await self.db.resumes.insert_one(resume_doc)
-            elif existing_resume.get("atsScore") is None:
-                await self.db.resumes.update_one({"_id": existing_resume["_id"]}, {"$set": {"atsScore": 88}})
-        except Exception:
-            pass
-
-        try:
-            # 3. Ensure 8 Saved Jobs
+            # 2. Ensure 8 Saved Jobs
             saved_count = await self.db.saved_jobs.count_documents({"userId": user_id})
             if saved_count < 8:
                 cursor = self.db.jobs.find({}).limit(8)
@@ -202,7 +71,7 @@ class DashboardService:
                     "accuracy": 87.5,
                     "streakDays": 7,
                     "codingStreakDays": 7,
-                    "currentAtsScore": 88,
+                    "currentAtsScore": 0,
                     "projectsCompleted": 3,
                     "certificationsCount": 2,
                     "coursesEnrolled": 4,
@@ -246,7 +115,7 @@ class DashboardService:
                         "accuracy": 87.5,
                         "streakDays": 7,
                         "codingStreakDays": 7,
-                        "currentAtsScore": 88,
+                        "currentAtsScore": prog.get("currentAtsScore", 0),
                         "updatedAt": utc_now_iso(),
                     }}
                 )
@@ -276,7 +145,7 @@ class DashboardService:
             if u:
                 email = u.get("email", "")
 
-        # Auto-ensure complete dashboard defaults (50 apps, 88% ATS score, 8 saved jobs, 24 solved/7d streak)
+        # Auto-ensure complete dashboard defaults (50 apps, 8 saved jobs, 24 solved/7d streak)
         await self.ensure_user_dashboard_defaults(user_id, name, email)
 
         # Fetch ATS score strictly from the user's latest completed resume analysis
@@ -294,14 +163,14 @@ class DashboardService:
         if ats_score is None:
             # Check user's uploaded resumes for any scored resume
             res_doc = await self.db.resumes.find_one(
-                {"userId": user_id, "atsScore": {"$exists": True, "$ne": None}},
+                {"userId": user_id, "atsScore": {"$exists": True, "$ne": None, "$gt": 0}},
                 sort=[("updatedAt", -1), ("createdAt", -1)],
             )
             if res_doc and res_doc.get("atsScore") is not None:
                 ats_score = int(res_doc["atsScore"])
 
         if ats_score is None:
-            ats_score = 88
+            ats_score = 0
 
         profile_overview = UserProfileOverview(
             id=user_id,

@@ -250,10 +250,16 @@ export const HomePage: React.FC = () => {
             </div>
             <div className="mt-2">
               <div className="text-xl font-extrabold text-[#0A66C2] dark:text-blue-400 tracking-tight">
-                {dashboardData.profile.atsScore != null && dashboardData.profile.atsScore > 0 ? `${dashboardData.profile.atsScore}%` : '88%'}
+                {dashboardData.profile.atsScore != null && dashboardData.profile.atsScore > 0 ? `${dashboardData.profile.atsScore}%` : '0%'}
               </div>
               <p className="text-[10px] text-[#0A66C2] dark:text-blue-400/80 font-medium mt-0.5 truncate">
-                High Match (Top 10%)
+                {dashboardData.profile.atsScore != null && dashboardData.profile.atsScore > 0
+                  ? dashboardData.profile.atsScore >= 80
+                    ? 'High Match (Top 10%)'
+                    : dashboardData.profile.atsScore >= 60
+                    ? 'Moderate Match'
+                    : 'Needs Optimization'
+                  : 'Upload resume to analyze'}
               </p>
             </div>
           </Card>

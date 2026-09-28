@@ -69,7 +69,7 @@ class AuthService:
             "headline": headline,
             "bio": "",
             "location": "Remote",
-            "atsScore": 80 if data.role == "seeker" else None,
+            "atsScore": 0 if data.role == "seeker" else None,
             "skills": initial_skills,
         })
 
@@ -99,7 +99,7 @@ class AuthService:
             headline=headline,
             bio="",
             location="Remote",
-            atsScore=88 if data.role == "seeker" else None,
+            atsScore=0 if data.role == "seeker" else None,
             skills=initial_skills,
         )
 
@@ -225,13 +225,13 @@ class AuthService:
                 return int(latest_analysis["atsScore"])
 
         res_doc = await self.db.resumes.find_one(
-            {"userId": user_id, "atsScore": {"$exists": True, "$ne": None}},
+            {"userId": user_id, "atsScore": {"$exists": True, "$ne": None, "$gt": 0}},
             sort=[("updatedAt", -1), ("createdAt", -1)],
         )
         if res_doc and res_doc.get("atsScore") is not None:
             return int(res_doc["atsScore"])
 
-        return 88
+        return 0
 
     async def get_user_profile(self, user_id: str) -> UserProfile:
         user_doc = await self.user_repo.get_by_id(user_id)

@@ -88,7 +88,7 @@ export const LeftProfileSummary: React.FC<LeftProfileSummaryProps> = ({
           <div className="p-2 rounded-lg bg-[#F3F6F8] dark:bg-slate-800 border border-[#E8E8E8] dark:border-slate-700">
             <span className="text-[9px] uppercase text-[#788896] dark:text-slate-500 block">ATS Score</span>
             <span className="font-bold text-[#137333] dark:text-emerald-400">
-              {user?.atsScore != null ? `${user.atsScore}% Ready` : 'Not analyzed'}
+              {user?.atsScore != null && user.atsScore > 0 ? `${user.atsScore}% Ready` : '0%'}
             </span>
           </div>
 
