@@ -17,34 +17,7 @@ from app.schemas.common import StandardSuccessResponse
 from app.schemas.note import NoteCreate, NoteResponse
 from app.utils.helpers import utc_now_iso
 
-from pymongo import UpdateOne
-from app.data.applications import get_seeded_applications_50
-
 router = APIRouter(prefix="/applications", tags=["Applications"])
-
-
-async def _ensure_user_has_50_applications(db: AsyncIOMotorDatabase, user: Dict[str, Any]) -> None:
-    """Ensure that the authenticated seeker has at least 50 realistic application records."""
-    user_id = str(user.get("id"))
-    count = await db.applications.count_documents({"userId": user_id})
-    if count < 50:
-        user_name = user.get("name") or "Alex Rivera"
-        user_email = user.get("email") or "alex.rivera@devmail.io"
-        seed_apps = get_seeded_applications_50(user_id=user_id, user_name=user_name, user_email=user_email)
-        ops = [
-            UpdateOne(
-                {"userId": user_id, "jobId": app["jobId"]},
-                {"$set": app},
-                upsert=True,
-            )
-            for app in seed_apps
-        ]
-        if ops:
-            try:
-                await db.applications.bulk_write(ops, ordered=False)
-            except Exception as e:
-                import logging
-                logging.getLogger("careerx.applications").warning("Auto-seed applications error: %s", e)
 
 
 @router.get("/stats", response_model=ApplicationStatsResponse)
@@ -54,7 +27,6 @@ async def get_application_stats(
 ):
     """Fetch live dashboard aggregation statistics for the authenticated seeker."""
     user_id = user["id"]
-    await _ensure_user_has_50_applications(db, user)
     repo = ApplicationRepository(db)
     stats_dict = await repo.get_stats_for_user(user_id)
     return ApplicationStatsResponse(**stats_dict)
@@ -73,9 +45,8 @@ async def get_applications(
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Fetch tracked job applications for the authenticated seeker."""
-    user_id = user["id"]
-    await _ensure_user_has_50_applications(db, user)
     repo = ApplicationRepository(db)
+    user_id = user["id"]
     filter_query = ApplicationFilterQuery(
         status=status,
         priority=priority,
