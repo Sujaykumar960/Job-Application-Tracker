@@ -1,0 +1,5 @@
+backend/
+tests/
+Dockerfile
+docker-compose*.yml
+nginx*.conf
