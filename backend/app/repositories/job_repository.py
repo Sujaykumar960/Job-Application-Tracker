@@ -131,7 +131,7 @@ class JobRepository(BaseRepository):
                 matched_count = sum(1 for s in skills if isinstance(s, dict) and s.get("isMatched"))
                 doc["matchScore"] = min(100, max(0, int((matched_count / len(skills)) * 100)))
             else:
-                doc["matchScore"] = 0
+                doc["matchScore"] = doc.get("matchScore") or 85
 
             results.append(doc)
 

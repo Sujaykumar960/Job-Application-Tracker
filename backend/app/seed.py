@@ -7,6 +7,7 @@ from typing import Any, Dict, List
 from app.config import settings
 from app.database import DatabaseManager
 from app.data.companies import SEEDED_COMPANIES
+from app.data.jobs import SEEDED_JOBS_100
 from app.utils.security import hash_password
 from app.utils.helpers import utc_now_iso
 
@@ -145,161 +146,8 @@ SEEDED_USERS = [
     },
 ]
 
-# 2. JOBS
-SEEDED_JOBS = [
-    {
-        "id": "job-1",
-        "companyId": "comp-google",
-        "title": "Software Engineer Intern",
-        "company": "Google",
-        "companyName": "Google",
-        "location": "Bangalore",
-        "salary": "₹1,20,000 / month",
-        "salaryRange": "₹1,20,000 / month",
-        "workType": "Hybrid",
-        "jobType": "Internship",
-        "experienceLevel": "Intern",
-        "roleCategory": "Backend",
-        "postedDate": "2026-09-01",
-        "matchScore": 91,
-        "skills": ["Python", "SQL", "DSA"],
-        "description": "Join Google's core platform team to build scalable services powering billions of searches.",
-        "isActive": True,
-    },
-    {
-        "id": "job-2",
-        "companyId": "comp-stripe",
-        "title": "Backend Software Engineer - Infrastructure",
-        "company": "Stripe",
-        "companyName": "Stripe",
-        "location": "San Francisco, CA (Hybrid)",
-        "salary": "$175,000 - $210,000",
-        "salaryRange": "$175,000 - $210,000",
-        "workType": "Hybrid",
-        "jobType": "Full-time",
-        "experienceLevel": "Mid Level",
-        "roleCategory": "Backend",
-        "postedDate": "2026-08-20",
-        "matchScore": 94,
-        "skills": ["Go", "Kafka", "Distributed Systems", "Kubernetes"],
-        "description": "Design sliding window rate limiters and multi-region ledger pipelines for global payment traffic.",
-        "isActive": True,
-    },
-    {
-        "id": "job-3",
-        "companyId": "comp-linear",
-        "title": "Product Engineer - Realtime Sync",
-        "company": "Linear",
-        "companyName": "Linear",
-        "location": "Remote",
-        "salary": "$170,000 - $195,000",
-        "salaryRange": "$170,000 - $195,000",
-        "workType": "Remote",
-        "jobType": "Full-time",
-        "experienceLevel": "Senior",
-        "roleCategory": "Full Stack",
-        "postedDate": "2026-08-15",
-        "matchScore": 96,
-        "skills": ["TypeScript", "React", "CRDTs", "GraphQL"],
-        "description": "Build local-first synchronization and real-time collaborative issue tracking engines.",
-        "isActive": True,
-    },
-    {
-        "id": "job-4",
-        "companyId": "comp-datadog",
-        "title": "Backend Platform Engineer",
-        "company": "Datadog",
-        "companyName": "Datadog",
-        "location": "New York, NY (Remote)",
-        "salary": "$165,000 - $190,000",
-        "salaryRange": "$165,000 - $190,000",
-        "workType": "Remote",
-        "jobType": "Full-time",
-        "experienceLevel": "Mid Level",
-        "roleCategory": "Backend",
-        "postedDate": "2026-08-22",
-        "matchScore": 91,
-        "skills": ["Python", "PostgreSQL", "Kafka", "Redis"],
-        "description": "Scale time-series ingestion and metrics aggregation pipelines for enterprise cloud observability.",
-        "isActive": True,
-    },
-    {
-        "id": "job-5",
-        "companyId": "comp-vercel",
-        "title": "Frontend Infrastructure Engineer",
-        "company": "Vercel",
-        "companyName": "Vercel",
-        "location": "Remote",
-        "salary": "$160,000 - $195,000",
-        "salaryRange": "$160,000 - $195,000",
-        "workType": "Remote",
-        "jobType": "Full-time",
-        "experienceLevel": "Mid Level",
-        "roleCategory": "Frontend",
-        "postedDate": "2026-08-25",
-        "matchScore": 95,
-        "skills": ["Next.js", "Turborepo", "TypeScript"],
-        "description": "Build edge compilation and framework tooling for the Next.js runtime ecosystem.",
-        "isActive": True,
-    },
-    {
-        "id": "job-6",
-        "companyId": "comp-netflix",
-        "title": "Cloud Runtime Engineer",
-        "company": "Netflix",
-        "companyName": "Netflix",
-        "location": "Los Gatos, CA",
-        "salary": "$220,000",
-        "salaryRange": "$220,000",
-        "workType": "On-site",
-        "jobType": "Full-time",
-        "experienceLevel": "Senior",
-        "roleCategory": "Backend",
-        "postedDate": "2026-07-15",
-        "matchScore": 84,
-        "skills": ["Java", "AWS", "Titus", "Containers"],
-        "description": "Develop high-throughput container scheduling and workload execution runtimes at global scale.",
-        "isActive": True,
-    },
-    {
-        "id": "job-7",
-        "companyId": "comp-figma",
-        "title": "Systems & Performance Engineer",
-        "company": "Figma",
-        "companyName": "Figma",
-        "location": "San Francisco, CA (Hybrid)",
-        "salary": "$180,000 - $215,000",
-        "salaryRange": "$180,000 - $215,000",
-        "workType": "Hybrid",
-        "jobType": "Full-time",
-        "experienceLevel": "Senior",
-        "roleCategory": "Systems",
-        "postedDate": "2026-07-20",
-        "matchScore": 89,
-        "skills": ["WebAssembly", "C++", "Rust", "Graphics"],
-        "description": "Optimize multi-player canvas rendering, WebAssembly memory pipelines, and document synchronization.",
-        "isActive": True,
-    },
-    {
-        "id": "job-8",
-        "companyId": "comp-airbnb",
-        "title": "Search & Relevance Software Engineer",
-        "company": "Airbnb",
-        "companyName": "Airbnb",
-        "location": "San Francisco, CA",
-        "salary": "$175,000 - $205,000",
-        "salaryRange": "$175,000 - $205,000",
-        "workType": "Hybrid",
-        "jobType": "Full-time",
-        "experienceLevel": "Mid Level",
-        "roleCategory": "Search",
-        "postedDate": "2026-08-10",
-        "matchScore": 93,
-        "skills": ["Java", "Elasticsearch", "Distributed Systems"],
-        "description": "Drive personalized ranking algorithms and real-time availability filters across global listing indexes.",
-        "isActive": True,
-    },
-]
+# 2. JOBS (100 Pre-seeded High-Quality Tech Jobs)
+SEEDED_JOBS = SEEDED_JOBS_100
 
 # 3. APPLICATIONS FOR usr-1 (Alex Rivera)
 SEEDED_APPLICATIONS = [
@@ -1342,6 +1190,18 @@ async def seed_database(reset: bool = False) -> Dict[str, int]:
         await db.calendar_events.update_one({"id": evt["id"]}, {"$set": evt_doc}, upsert=True)
         cal_count += 1
     counts["calendar_events"] = cal_count
+
+    # 12. Seed Applications (50 records for usr-1 and candidate pool)
+    from app.data.applications import get_seeded_applications_50
+    from pymongo import UpdateOne
+    seed_apps = get_seeded_applications_50("usr-1", "Alex Rivera", "alex.rivera@devmail.io")
+    app_ops = [
+        UpdateOne({"userId": "usr-1", "jobId": a["jobId"]}, {"$set": a}, upsert=True)
+        for a in seed_apps
+    ]
+    if app_ops:
+        await db.applications.bulk_write(app_ops, ordered=False)
+    counts["applications"] = len(seed_apps)
 
     logger.info("=== Database Seeding Complete ===")
     for k, v in counts.items():
