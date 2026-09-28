@@ -22,11 +22,28 @@ import {
 
 import { resumeApi, ResumeItem } from '../../api/resumeApi';
 
+const isValidUrlOrDomain = (val?: string) => {
+  if (!val || !val.trim()) return true;
+  const trimmed = val.trim();
+  try {
+    const withProto = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    const parsed = new URL(withProto);
+    return Boolean(parsed.hostname && parsed.hostname.length > 0);
+  } catch {
+    return false;
+  }
+};
+
 const applicationSchema = z.object({
   company: z.string().min(1, 'Company name is required'),
   role: z.string().min(1, 'Role title is required'),
   location: z.string().min(1, 'Location is required'),
-  jobUrl: z.string().url('Must be a valid URL').or(z.literal('')),
+  jobUrl: z
+    .string()
+    .optional()
+    .refine((val) => isValidUrlOrDomain(val), {
+      message: 'Please enter a valid URL (e.g. https://company.com/job)',
+    }),
   appliedDate: z.string().min(1, 'Application date is required'),
   deadline: z.string().optional(),
   interviewDate: z.string().optional(),
@@ -144,6 +161,11 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
   }, [initialData, reset, isOpen, userResumes]);
 
   const handleFormSubmit = (data: ApplicationFormData) => {
+    let cleanJobUrl = data.jobUrl?.trim() || undefined;
+    if (cleanJobUrl && !/^https?:\/\//i.test(cleanJobUrl)) {
+      cleanJobUrl = `https://${cleanJobUrl}`;
+    }
+
     const formatted: Application = {
       id: initialData?.id || '',
       company: data.company,
@@ -151,7 +173,7 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
       companyName: data.company,
       roleTitle: data.role,
       location: data.location,
-      jobUrl: data.jobUrl || undefined,
+      jobUrl: cleanJobUrl,
       appliedDate: data.appliedDate,
       deadline: data.deadline || undefined,
       deadlineDate: data.deadline || undefined,
@@ -181,7 +203,7 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
       }
       maxWidth="2xl"
     >
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(handleFormSubmit)} noValidate className="space-y-4">
         {/* Row 1: Company & Role */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <Input
@@ -212,7 +234,9 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
           />
           <Input
             label="Job Posting URL"
-            type="url"
+            type="text"
+            inputMode="url"
+            autoComplete="url"
             placeholder="https://company.com/jobs/123"
             icon={<Globe className="w-3.5 h-3.5" />}
             error={errors.jobUrl?.message}

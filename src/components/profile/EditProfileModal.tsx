@@ -8,14 +8,26 @@ import { LocationInput } from '../common/LocationInput';
 import { Button } from '../common/Button';
 import { User, MapPin, Briefcase, Globe, Github, Linkedin, Sparkles } from 'lucide-react';
 
+const isValidUrlOrDomain = (val?: string) => {
+  if (!val || !val.trim()) return true;
+  const trimmed = val.trim();
+  try {
+    const withProto = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    const parsed = new URL(withProto);
+    return Boolean(parsed.hostname && parsed.hostname.length > 0);
+  } catch {
+    return false;
+  }
+};
+
 const profileSchema = z.object({
   name: z.string().min(2, 'Name is required'),
   headline: z.string().min(5, 'Headline is required'),
   location: z.string().min(2, 'Location is required'),
   bio: z.string().min(10, 'Bio must be at least 10 characters'),
-  github: z.string().url('Must be a valid URL').or(z.literal('')),
-  linkedin: z.string().url('Must be a valid URL').or(z.literal('')),
-  website: z.string().url('Must be a valid URL').or(z.literal('')),
+  github: z.string().optional().refine(isValidUrlOrDomain, { message: 'Must be a valid URL or profile handle' }),
+  linkedin: z.string().optional().refine(isValidUrlOrDomain, { message: 'Must be a valid URL or profile handle' }),
+  website: z.string().optional().refine(isValidUrlOrDomain, { message: 'Must be a valid website URL' }),
 });
 
 export type ProfileFormData = z.infer<typeof profileSchema>;
@@ -44,6 +56,20 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     defaultValues: initialData,
   });
 
+  const handleSave = (data: ProfileFormData) => {
+    const normalize = (u?: string) => {
+      if (!u || !u.trim()) return '';
+      const t = u.trim();
+      return /^https?:\/\//i.test(t) ? t : `https://${t}`;
+    };
+    onSave({
+      ...data,
+      github: normalize(data.github),
+      linkedin: normalize(data.linkedin),
+      website: normalize(data.website),
+    });
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -52,7 +78,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       subtitle="Update your public engineering profile, verified contact links, and bio"
       maxWidth="2xl"
     >
-      <form onSubmit={handleSubmit(onSave)} className="space-y-4">
+      <form onSubmit={handleSubmit(handleSave)} noValidate className="space-y-4">
         {/* Name & Location */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <Input
