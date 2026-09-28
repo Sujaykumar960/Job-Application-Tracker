@@ -914,6 +914,53 @@ RAW_APPLICATIONS_50: List[Dict[str, Any]] = [
 ]
 
 
+def calculate_status_distribution(ats_score: Optional[int], user_id: str) -> Dict[str, int]:
+    """
+    Computes a realistic, resume-calibrated breakdown of 50 applications:
+    - Higher ATS score = more Offers and Interviews, fewer Rejections.
+    - Lower ATS score = more Rejections and unreviewed Applications, fewer Offers.
+    - Uses deterministic pseudo-random jitter seeded by (user_id, ats_score) so that
+      each user gets their own distinct, realistic numbers.
+    """
+    # Baseline ATS score clamped to realistic range 35..98
+    score = max(35, min(98, ats_score if ats_score is not None and ats_score > 0 else 72))
+    norm = (score - 35) / 63.0  # 0.0 at score 35, 1.0 at score 98
+
+    # Deterministic hash seed from user_id & score
+    h = int(hashlib.md5(f"{user_id}_{score}".encode()).hexdigest()[:6], 16)
+    j1 = (h % 5) - 2        # -2 .. +2
+    j2 = ((h >> 4) % 5) - 2  # -2 .. +2
+    j3 = ((h >> 8) % 3) - 1  # -1 .. +1
+
+    # Offers: scales from 2 at low ATS to ~15 at high ATS
+    offers = max(1, min(18, int(round(2 + norm * 12 + j3))))
+    # Interviews: scales from 5 at low ATS to ~22 at high ATS
+    interviews = max(4, min(24, int(round(6 + norm * 15 + j1))))
+    # Rejected: scales inversely from ~18 at low ATS down to ~3 at high ATS
+    rejected = max(2, min(22, int(round(18 - norm * 14 + j2))))
+    # Applied: absorbs the remainder so total is ALWAYS exactly 50
+    applied = 50 - (offers + interviews + rejected)
+
+    if applied < 6:
+        diff = 6 - applied
+        applied = 6
+        if interviews > offers:
+            interviews -= diff
+        else:
+            offers -= diff
+    elif applied > 28:
+        diff = applied - 28
+        applied = 28
+        rejected += diff
+
+    return {
+        "Applied": applied,
+        "Interview": interviews,
+        "Offer": offers,
+        "Rejected": rejected,
+    }
+
+
 def get_seeded_applications_50(
     user_id: str = "usr-1",
     user_name: str = "Alex Rivera",
@@ -925,33 +972,64 @@ def get_seeded_applications_50(
     """
     Generate 50 fully resolved application documents for a given seeker user ID,
     calibrated to their uploaded resume and ATS score predictions.
+    Every user receives a unique, resume-driven breakdown of Applied, Interview,
+    Offer, and Rejected counts.
     """
     results: List[Dict[str, Any]] = []
     clean_uid = str(user_id)
     short_uid = clean_uid.replace("-", "")[:8]
 
-    # Calculate match modifier based on ATS score if available
-    score_delta = 0
-    if ats_score is not None and ats_score > 0:
-        score_delta = ats_score - 88
+    # Compute resume-calibrated status distribution
+    dist = calculate_status_distribution(ats_score, clean_uid)
+    offer_target = dist["Offer"]
+    interview_target = dist["Interview"]
+    applied_target = dist["Applied"]
+    rejected_target = dist["Rejected"]
 
+    # Calculate item match scores calibrated to user's ATS score + unique variance
+    effective_ats = ats_score if (ats_score is not None and ats_score > 0) else 72
+    score_delta = (effective_ats - 80) // 2
+
+    scored_items = []
     for item in RAW_APPLICATIONS_50:
+        base_match = item["matchScore"]
+        job_hash = int(hashlib.md5(f"{clean_uid}_{item['jobId']}".encode()).hexdigest()[:4], 16)
+        job_jitter = (job_hash % 9) - 4  # -4 to +4
+        calibrated_match = max(45, min(99, base_match + score_delta + job_jitter))
+        scored_items.append((item, calibrated_match))
+
+    # Sort items by calibrated_match descending to assign statuses logically
+    scored_items.sort(key=lambda x: x[1], reverse=True)
+
+    assigned: List[tuple] = []
+    for i, (item, m_score) in enumerate(scored_items):
+        if i < offer_target:
+            status = "Offer"
+            final_match = max(88, min(99, m_score))
+        elif i < offer_target + interview_target:
+            status = "Interview"
+            final_match = max(78, min(95, m_score))
+        elif i < offer_target + interview_target + applied_target:
+            status = "Applied"
+            final_match = max(60, min(86, m_score))
+        else:
+            status = "Rejected"
+            final_match = max(45, min(70, m_score))
+        assigned.append((item, status, final_match))
+
+    # Re-sort back by original index to maintain predictable list ordering
+    assigned.sort(key=lambda x: x[0]["index"])
+
+    resolved_resume = resume_filename or (
+        "Alex_Rivera_Staff_Engineer_Resume.pdf" if user_name == "Alex Rivera" else f"{user_name.replace(' ', '_')}_Resume.pdf"
+    )
+
+    for item, status, match_val in assigned:
         idx = item["index"]
         app_id = f"app-{short_uid}-{idx:02d}"
-        
-        base_match = item["matchScore"]
-        adjusted_match = max(45, min(99, base_match + (score_delta // 2)))
-        
-        status = item["status"]
-        if score_delta != 0:
-            if adjusted_match >= 85 and status == "Applied":
-                status = "Interview"
-            elif adjusted_match < 60 and status == "Interview":
-                status = "Applied"
 
-        resolved_resume = resume_filename or (
-            "Alex_Rivera_Staff_Engineer_Resume.pdf" if user_name == "Alex Rivera" else f"{user_name.replace(' ', '_')}_Resume.pdf"
-        )
+        # Only retain interview date if status is Interview or Offer
+        interview_dt = item.get("interviewDate") if status in ("Interview", "Offer") else None
 
         doc = {
             "id": app_id,
@@ -971,11 +1049,11 @@ def get_seeded_applications_50(
             "salaryRange": item["salaryRange"],
             "status": status,
             "priority": item["priority"],
-            "matchScore": adjusted_match,
+            "matchScore": match_val,
             "appliedDate": item["appliedDate"],
             "deadline": item.get("deadline"),
             "deadlineDate": item.get("deadline"),
-            "interviewDate": item.get("interviewDate"),
+            "interviewDate": interview_dt,
             "recruiter": item.get("recruiter"),
             "tags": list(item.get("tags", [])),
             "notes": item.get("notes", ""),

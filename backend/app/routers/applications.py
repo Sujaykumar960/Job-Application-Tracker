@@ -23,8 +23,8 @@ from app.data.applications import get_seeded_applications_50
 router = APIRouter(prefix="/applications", tags=["Applications"])
 
 
-async def _ensure_user_has_50_applications(db: AsyncIOMotorDatabase, user: Any) -> None:
-    """Ensure that the authenticated seeker has at least 50 realistic application records."""
+async def _ensure_user_has_50_applications(db: AsyncIOMotorDatabase, user: Any, force: bool = False) -> None:
+    """Ensure that the authenticated seeker has 50 resume-calibrated applications if a resume exists."""
     if isinstance(user, dict):
         user_id = str(user.get("id"))
         user_name = user.get("name") or "Alex Rivera"
@@ -33,6 +33,7 @@ async def _ensure_user_has_50_applications(db: AsyncIOMotorDatabase, user: Any) 
         user_id = str(user)
         u_doc = await db.users.find_one({"$or": [{"id": user_id}, {"_id": user_id}]})
         user_name = (u_doc and u_doc.get("name")) or "Alex Rivera"
+        user_email = (u_doc and u_doc.get("email")) or ""
     if user_email and user_email.endswith("@r2test.io"):
         return
 
@@ -46,7 +47,11 @@ async def _ensure_user_has_50_applications(db: AsyncIOMotorDatabase, user: Any) 
             # Without a resume, the user starts with 0 applications and 0 predictions!
             return
 
-    count = await db.applications.count_documents({"userId": user_id})
+    if force:
+        await db.applications.delete_many({"userId": user_id})
+        count = 0
+    else:
+        count = await db.applications.count_documents({"userId": user_id})
     if count == 0:
         resume_filename = (resume_doc and (resume_doc.get("name") or resume_doc.get("filename"))) or None
         ats_val = None
