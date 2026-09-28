@@ -918,24 +918,47 @@ def get_seeded_applications_50(
     user_id: str = "usr-1",
     user_name: str = "Alex Rivera",
     user_email: str = "alex.rivera@devmail.io",
+    resume_filename: Optional[str] = None,
+    ats_score: Optional[int] = None,
+    target_role: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
-    Generate 50 fully resolved application documents for a given seeker user ID.
-    Guarantees deterministic, production-grade application data.
+    Generate 50 fully resolved application documents for a given seeker user ID,
+    calibrated to their uploaded resume and ATS score predictions.
     """
     results: List[Dict[str, Any]] = []
     clean_uid = str(user_id)
     short_uid = clean_uid.replace("-", "")[:8]
 
+    # Calculate match modifier based on ATS score if available
+    score_delta = 0
+    if ats_score is not None and ats_score > 0:
+        score_delta = ats_score - 88
+
     for item in RAW_APPLICATIONS_50:
         idx = item["index"]
         app_id = f"app-{short_uid}-{idx:02d}"
+        
+        base_match = item["matchScore"]
+        adjusted_match = max(45, min(99, base_match + (score_delta // 2)))
+        
+        status = item["status"]
+        if score_delta != 0:
+            if adjusted_match >= 85 and status == "Applied":
+                status = "Interview"
+            elif adjusted_match < 60 and status == "Interview":
+                status = "Applied"
+
+        resolved_resume = resume_filename or (
+            "Alex_Rivera_Staff_Engineer_Resume.pdf" if user_name == "Alex Rivera" else f"{user_name.replace(' ', '_')}_Resume.pdf"
+        )
+
         doc = {
             "id": app_id,
             "userId": clean_uid,
             "applicantName": user_name,
             "applicantEmail": user_email,
-            "applicantHeadline": "Full Stack & Distributed Systems Engineer",
+            "applicantHeadline": target_role or "Full Stack & Distributed Systems Engineer",
             "applicantAvatar": "AR" if user_name == "Alex Rivera" else "".join([p[0] for p in user_name.split()[:2]]).upper(),
             "resumeUrl": f"/api/recruiter/applications/{app_id}/resume",
             "company": item["company"],
@@ -946,9 +969,9 @@ def get_seeded_applications_50(
             "roleTitle": item["role"],
             "location": item["location"],
             "salaryRange": item["salaryRange"],
-            "status": item["status"],
+            "status": status,
             "priority": item["priority"],
-            "matchScore": item["matchScore"],
+            "matchScore": adjusted_match,
             "appliedDate": item["appliedDate"],
             "deadline": item.get("deadline"),
             "deadlineDate": item.get("deadline"),
@@ -956,7 +979,7 @@ def get_seeded_applications_50(
             "recruiter": item.get("recruiter"),
             "tags": list(item.get("tags", [])),
             "notes": item.get("notes", ""),
-            "resume": "Alex_Rivera_Staff_Engineer_Resume.pdf" if user_name == "Alex Rivera" else f"{user_name.replace(' ', '_')}_Resume.pdf",
+            "resume": resolved_resume,
         }
         results.append(doc)
 

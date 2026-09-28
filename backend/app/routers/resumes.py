@@ -218,6 +218,13 @@ async def delete_resume(
     # Delete from MongoDB
     await repo.delete_resume(user["id"], resume_id)
 
+    # If user has no more resumes left, reset ATS score and clear predicted applications
+    remaining_resumes = await repo.get_user_resumes(user["id"])
+    if not remaining_resumes and user["id"] != "usr-1":
+        await db.profiles.update_one({"userId": user["id"]}, {"$set": {"atsScore": 0}})
+        await db.progress.update_one({"userId": user["id"]}, {"$set": {"currentAtsScore": 0}})
+        await db.applications.delete_many({"userId": user["id"]})
+
     return ResumeDeleteResponse(
         success=True,
         id=resume_id,
@@ -292,6 +299,22 @@ async def analyze_resume_generic(
 
     # Update resume document with real ATS score
     await repo.update_resume_score(resume["id"], analysis_result.atsScore)
+
+    # Automatically provision profile & applications predictions calibrated to this resume
+    try:
+        from app.routers.applications import _ensure_user_has_50_applications
+        skills_to_update = [k.name for k in analysis_result.keywords if k.name] if analysis_result.keywords else []
+        profile_update = {"atsScore": analysis_result.atsScore}
+        if skills_to_update:
+            profile_update["skills"] = skills_to_update[:12]
+        if analysis_result.targetRole:
+            profile_update["headline"] = analysis_result.targetRole
+        await db.profiles.update_one({"userId": user["id"]}, {"$set": profile_update})
+        await db.progress.update_one({"userId": user["id"]}, {"$set": {"currentAtsScore": analysis_result.atsScore}})
+        await _ensure_user_has_50_applications(db, user)
+    except Exception as e:
+        import logging
+        logging.getLogger("careerx.resumes").warning("Error provisioning resume predictions: %s", e)
 
     return analysis_result
 

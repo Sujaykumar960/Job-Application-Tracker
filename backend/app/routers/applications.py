@@ -36,9 +36,39 @@ async def _ensure_user_has_50_applications(db: AsyncIOMotorDatabase, user: Any) 
     if user_email and user_email.endswith("@r2test.io"):
         return
 
+    # ONLY populate if user has an uploaded/analyzed resume OR is demo user usr-1!
+    resume_doc = None
+    analysis_doc = None
+    if user_id != "usr-1":
+        analysis_doc = await db.resume_analyses.find_one({"userId": user_id}, sort=[("createdAt", -1)])
+        resume_doc = await db.resumes.find_one({"userId": user_id}, sort=[("updatedAt", -1)])
+        if not analysis_doc and not resume_doc:
+            # Without a resume, the user starts with 0 applications and 0 predictions!
+            return
+
     count = await db.applications.count_documents({"userId": user_id})
-    if count < 50:
-        seed_apps = get_seeded_applications_50(user_id=user_id, user_name=user_name, user_email=user_email)
+    if count == 0:
+        resume_filename = (resume_doc and (resume_doc.get("name") or resume_doc.get("filename"))) or None
+        ats_val = None
+        target_role = None
+        if analysis_doc:
+            if "analysis" in analysis_doc and isinstance(analysis_doc["analysis"], dict):
+                ats_val = analysis_doc["analysis"].get("atsScore")
+                target_role = analysis_doc["analysis"].get("targetRole")
+            elif "atsScore" in analysis_doc:
+                ats_val = analysis_doc.get("atsScore")
+                target_role = analysis_doc.get("targetRole")
+        if ats_val is None and resume_doc:
+            ats_val = resume_doc.get("atsScore")
+
+        seed_apps = get_seeded_applications_50(
+            user_id=user_id,
+            user_name=user_name,
+            user_email=user_email,
+            resume_filename=resume_filename,
+            ats_score=ats_val,
+            target_role=target_role,
+        )
         ops = [
             UpdateOne(
                 {"userId": user_id, "jobId": app["jobId"]},
