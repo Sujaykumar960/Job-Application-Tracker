@@ -97,9 +97,9 @@ app.include_router(root_metrics_router)
 app.include_router(api_router, prefix=settings.API_PREFIX)
 
 
-@app.get("/", tags=["Root"])
+@app.api_route("/", methods=["GET", "HEAD"], tags=["Root"])
 async def root():
-    """Root metadata endpoint."""
+    """Root metadata endpoint. Supports HEAD for Render health checks."""
     return {
         "name": settings.APP_NAME,
         "environment": settings.ENVIRONMENT,
