@@ -47,6 +47,19 @@ async def lifespan(app: FastAPI):
 
     try:
         await DatabaseManager.connect()
+        if DatabaseManager.db is not None:
+            job_cnt = await DatabaseManager.db.jobs.count_documents({})
+            if job_cnt == 0:
+                from app.data.jobs import SEEDED_JOBS_100
+                from pymongo import UpdateOne
+                from app.utils.helpers import utc_now_iso
+                ops = [
+                    UpdateOne({"id": j["id"]}, {"$set": dict(j, createdAt=utc_now_iso(), updatedAt=utc_now_iso())}, upsert=True)
+                    for j in SEEDED_JOBS_100
+                ]
+                if ops:
+                    await DatabaseManager.db.jobs.bulk_write(ops, ordered=False)
+                    logger.info("Auto-seeded 100 jobs on platform startup.")
     except Exception as e:
         logger.error("Startup MongoDB connection failure: %s", e)
         # We don't exit hard so the server can still launch even if MongoDB starts shortly after

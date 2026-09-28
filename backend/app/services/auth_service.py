@@ -158,6 +158,14 @@ class AuthService:
             skills=profile.get("skills", []) if profile else [],
         )
 
+        if role == "seeker":
+            try:
+                from app.services.dashboard_service import DashboardService
+                dash_svc = DashboardService(self.db)
+                await dash_svc.ensure_user_dashboard_defaults(user_id, name, email)
+            except Exception:
+                pass
+
         return AuthResponse(
             access_token=access_token,
             refresh_token=refresh_token,
