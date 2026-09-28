@@ -225,21 +225,35 @@ def solution(*args):
 
 
 @pytest.mark.asyncio
-async def test_production_startup_fails_without_redis():
-    """Verify that in production mode, app startup fails fast if REDIS_URL is not set."""
+async def test_production_startup_fails_without_redis_when_required():
+    """Verify that in production mode, app startup fails fast if REDIS_URL is not set and REQUIRE_REDIS=True."""
     with patch("app.config.settings.ENVIRONMENT", "production"):
-        with patch("app.config.settings.REDIS_URL", ""):
-            with pytest.raises(RuntimeError, match="Production deployment requires REDIS_URL"):
-                async with lifespan(app):
-                    pass
+        with patch("app.config.settings.REQUIRE_REDIS", True):
+            with patch("app.config.settings.REDIS_URL", ""):
+                with pytest.raises(RuntimeError, match="Production deployment requires REDIS_URL"):
+                    async with lifespan(app):
+                        pass
 
 
 @pytest.mark.asyncio
-async def test_production_startup_fails_if_redis_unreachable():
-    """Verify that in production mode, app startup fails fast if Redis cannot be pinged."""
+async def test_production_startup_fails_if_redis_unreachable_when_required():
+    """Verify that in production mode, app startup fails fast if Redis cannot be reached and REQUIRE_REDIS=True."""
     with patch("app.config.settings.ENVIRONMENT", "production"):
-        with patch("app.config.settings.REDIS_URL", "redis://invalid-host:6379/0"):
-            with patch("app.middleware.rate_limiter.get_redis_client", AsyncMock(return_value=None)):
-                with pytest.raises(RuntimeError, match="Could not connect to Redis"):
-                    async with lifespan(app):
-                        pass
+        with patch("app.config.settings.REQUIRE_REDIS", True):
+            with patch("app.config.settings.REDIS_URL", "redis://invalid-host:6379/0"):
+                with patch("app.middleware.rate_limiter.get_redis_client", AsyncMock(return_value=None)):
+                    with pytest.raises(RuntimeError, match="Could not connect to Redis"):
+                        async with lifespan(app):
+                            pass
+
+
+@pytest.mark.asyncio
+async def test_production_startup_succeeds_without_redis_by_default():
+    """Verify that in production mode, app startup falls back gracefully to in-memory rate limiter when REDIS_URL is not set."""
+    with patch("app.config.settings.ENVIRONMENT", "production"):
+        with patch("app.config.settings.REQUIRE_REDIS", False):
+            with patch("app.config.settings.REDIS_URL", ""):
+                with patch("app.database.DatabaseManager.connect", AsyncMock()):
+                    with patch("app.database.DatabaseManager.disconnect", AsyncMock()):
+                        async with lifespan(app):
+                            pass

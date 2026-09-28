@@ -24,18 +24,26 @@ async def lifespan(app: FastAPI):
     """Application lifecycle: connect to MongoDB and setup indexes on startup, disconnect on shutdown."""
     logger.info("Starting up %s (env=%s)...", settings.APP_NAME, settings.ENVIRONMENT)
 
-    # In production, require REDIS_URL for distributed rate limiting
-    if settings.ENVIRONMENT == "production":
-        if not settings.REDIS_URL:
-            raise RuntimeError("Production deployment requires REDIS_URL for distributed rate limiting.")
+    # Redis distributed rate limiting (with graceful in-memory fallback unless explicitly required)
+    if settings.REDIS_URL:
         from app.middleware.rate_limiter import get_redis_client
         client = await get_redis_client()
         if not client:
-            raise RuntimeError(f"Could not connect to Redis at configured REDIS_URL: {settings.REDIS_URL}")
-        try:
-            await client.ping()
-        except Exception as e:
-            raise RuntimeError(f"Redis ping failed at {settings.REDIS_URL}: {e}")
+            if settings.REQUIRE_REDIS:
+                raise RuntimeError(f"Could not connect to Redis at configured REDIS_URL: {settings.REDIS_URL}")
+            logger.warning("Could not connect to Redis at %s; falling back to in-memory rate limiter.", settings.REDIS_URL)
+        else:
+            try:
+                await client.ping()
+                logger.info("Connected to Redis distributed rate limiter successfully.")
+            except Exception as e:
+                if settings.REQUIRE_REDIS:
+                    raise RuntimeError(f"Redis ping failed at {settings.REDIS_URL}: {e}")
+                logger.warning("Redis ping failed at %s (%s); falling back to in-memory rate limiter.", settings.REDIS_URL, e)
+    elif settings.REQUIRE_REDIS:
+        raise RuntimeError("Production deployment requires REDIS_URL for distributed rate limiting.")
+    else:
+        logger.info("REDIS_URL not configured. Operating with high-performance in-memory sliding window rate limiter.")
 
     try:
         await DatabaseManager.connect()

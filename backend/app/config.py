@@ -41,6 +41,7 @@ class Settings(BaseSettings):
 
     # Redis Distributed Cache / Rate Limiting (optional)
     REDIS_URL: str = ""
+    REQUIRE_REDIS: bool = False
 
     model_config = SettingsConfigDict(
         env_file=(
