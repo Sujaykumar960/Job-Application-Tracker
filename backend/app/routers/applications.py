@@ -66,20 +66,19 @@ async def get_application_by_id(
     user: Dict[str, Any] = Depends(get_current_active_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
-    """Fetch single application strictly owned by the authenticated seeker.
-
-    Returns 404 (not 403) when the resource belongs to another user to prevent
-    IDOR enumeration: an attacker learns nothing about whether the ID exists.
-    """
+    """Fetch single application strictly owned by the authenticated seeker."""
     repo = ApplicationRepository(db)
     user_id = user["id"]
     doc = await repo.get_by_id(app_id)
-    # Collapse both "not found" and "wrong owner" into a single 404 so that
-    # cross-tenant IDs are indistinguishable from non-existent IDs.
-    if not doc or doc.get("userId") != user_id:
+    if not doc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Application with ID '{app_id}' not found.",
+        )
+    if doc.get("userId") != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to access this application.",
         )
     notes_repo = NoteRepository(db)
     doc["notesList"] = await notes_repo.get_notes_for_application(app_id)
@@ -187,20 +186,20 @@ async def update_application(
     user: Dict[str, Any] = Depends(get_current_active_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
-    """Update an existing application stage, priority, or notes, ensuring ownership.
-
-    Returns 404 (not 403) when the resource belongs to another user to prevent
-    IDOR enumeration.
-    """
+    """Update an existing application stage, priority, or notes, ensuring ownership."""
     repo = ApplicationRepository(db)
     user_id = user["id"]
 
     existing = await repo.get_by_id(app_id)
-    # Collapse "not found" and "wrong owner" into a single 404 (IDOR-safe).
-    if not existing or existing.get("userId") != user_id:
+    if not existing:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Application with ID '{app_id}' not found.",
+        )
+    if existing.get("userId") != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to update this application.",
         )
 
     if existing.get("jobId") and app_data.status and user.get("role") not in ("recruiter", "admin"):
@@ -227,19 +226,19 @@ async def delete_application(
     user: Dict[str, Any] = Depends(get_current_active_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
-    """Delete an application record, ensuring ownership.
-
-    Returns 404 (not 403) when the resource belongs to another user to prevent
-    IDOR enumeration.
-    """
+    """Delete an application record, ensuring ownership."""
     repo = ApplicationRepository(db)
     user_id = user["id"]
     existing = await repo.get_by_id(app_id)
-    # Collapse "not found" and "wrong owner" into a single 404 (IDOR-safe).
-    if not existing or existing.get("userId") != user_id:
+    if not existing:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Application with ID '{app_id}' not found.",
+        )
+    if existing.get("userId") != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to delete this application.",
         )
 
     success = await repo.delete_application_for_user(app_id, user_id)

@@ -125,9 +125,9 @@ async def test_privacy_and_ownership_constraints(client):
     assert create_res.status_code == 201
     app_id = create_res.json()["id"]
 
-    # 1. Intruder CANNOT read Owner's application -> 404 (IDOR-safe isolation) or 403
+    # 1. Intruder CANNOT read Owner's application -> 403 Forbidden
     get_res = await client.get(f"/api/applications/{app_id}", headers=headers_intruder)
-    assert get_res.status_code in (403, 404)
+    assert get_res.status_code == 403
 
     # 2. Intruder CANNOT add note to Owner's application -> 403 Forbidden
     add_note_res = await client.post(f"/api/applications/{app_id}/notes", json={
@@ -139,15 +139,15 @@ async def test_privacy_and_ownership_constraints(client):
     get_notes_res = await client.get(f"/api/applications/{app_id}/notes", headers=headers_intruder)
     assert get_notes_res.status_code == 403
 
-    # 4. Intruder CANNOT update Owner's application -> 404 (IDOR-safe isolation) or 403
+    # 4. Intruder CANNOT update Owner's application -> 403 Forbidden
     patch_res = await client.patch(f"/api/applications/{app_id}", json={
         "status": "Rejected"
     }, headers=headers_intruder)
-    assert patch_res.status_code in (403, 404)
+    assert patch_res.status_code == 403
 
-    # 5. Intruder CANNOT delete Owner's application -> 404 (IDOR-safe isolation) or 403
+    # 5. Intruder CANNOT delete Owner's application -> 403 Forbidden
     del_res = await client.delete(f"/api/applications/{app_id}", headers=headers_intruder)
-    assert del_res.status_code in (403, 404)
+    assert del_res.status_code == 403
 
     # 6. Intruder querying applications list gets empty results
     list_res = await client.get("/api/applications", headers=headers_intruder)
