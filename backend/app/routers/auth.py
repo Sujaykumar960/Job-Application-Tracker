@@ -138,10 +138,10 @@ async def forgot_password(
         {"$set": {"resetToken": reset_token, "resetTokenExpiresAt": expires_at}},
     )
 
-    if settings.ENVIRONMENT == "production":
-        message = f"If an account with this email exists, password reset instructions have been dispatched to {email}."
-    else:
+    if settings.dev_tools_enabled:
         message = f"Password reset instructions dispatched to {email}. Token for local testing: {reset_token}"
+    else:
+        message = f"If an account with this email exists, password reset instructions have been dispatched to {email}."
 
     return StandardSuccessResponse(
         success=True,

@@ -13,6 +13,9 @@ jobs:
   backend-test:
     name: Backend Regression Suite
     runs-on: ubuntu-latest
+    # The full suite completes in ~2.5 min locally. A generous ceiling still
+    # fails fast instead of burning the default 6h when something hangs.
+    timeout-minutes: 20
     services:
       mongodb:
         image: mongo:7.0
@@ -50,6 +53,7 @@ jobs:
   frontend-build:
     name: Frontend TypeScript & Vite Build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout Repository
@@ -74,6 +78,7 @@ jobs:
     name: Playwright Browser E2E Tests
     needs: [backend-test, frontend-build]
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     services:
       mongodb:
         image: mongo:7.0

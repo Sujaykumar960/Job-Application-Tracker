@@ -319,6 +319,80 @@ async def test_recruiter_portal_jobs_and_applicants(client):
 
 
 @pytest.mark.asyncio
+async def test_recruiter_cannot_self_augment_tenant_scope(client):
+    """Self-editing profile.company must NOT grant foreign-tenant access.
+
+    Regression test: _resolve_recruiter_company used to fall back to the
+    self-editable profiles.company, so a recruiter could PATCH /users/me
+    with {"company": "Victim Inc"} and read another tenant's applicants.
+    Tenancy now comes from immutable users.company / companies.recruiterIds.
+    """
+    rec_id, rec_token = await register_user(client, "rec_hub_augment@phase6test.io", "Scope Augmenter", role="recruiter")
+    h_rec = {"Authorization": f"Bearer {rec_token}"}
+
+    # Recruiter creates their own job and an applicant applies to it.
+    own_job_res = await client.post("/api/jobs", json={
+        "title": "Boundary Core Engineer",
+        "company": "TestPhase6_Boundary",
+        "location": "Remote",
+        "description": "Boundary.",
+    }, headers=h_rec)
+    own_job_id = own_job_res.json()["id"]
+
+    _, seeker_token = await register_user(client, "seeker_boundary@phase6test.io", "Boundary Seeker", role="seeker")
+    h_seeker = {"Authorization": f"Bearer {seeker_token}"}
+    await client.post("/api/applications", json={
+        "jobId": own_job_id,
+        "company": "TestPhase6_Boundary",
+        "role": "Boundary Core Engineer",
+    }, headers=h_seeker)
+
+    # Attacker sets ONLY profiles.company to the foreign tenant name. The
+    # self-service profile endpoint is the exact vector that used to work.
+    res_edit = await client.patch("/api/users/me", json={"company": "TestPhase6_Boundary"}, headers=h_rec)
+    assert res_edit.status_code == 200
+
+    # The recruiter still has no users.company and no companies.recruiterIds
+    # membership, so their scope resolves from ownership only.
+    db = DatabaseManager.db
+    attacker = await db.users.find_one({"email": "rec_hub_augment@phase6test.io"})
+    assert attacker is not None
+    assert not attacker.get("company")
+
+    # Own job/applicant remain visible (ownership path)...
+    own_jobs = await client.get("/api/recruiter/jobs", headers=h_rec)
+    assert own_jobs.status_code == 200
+    assert any(j["id"] == own_job_id for j in own_jobs.json())
+
+    # ...but a DIFFERENT tenant's job is unreachable. Recruiter B posts a job
+    # for the foreign company and B's applicant applies to it. The attacker
+    # (who PATCHed company, i.e. wrote profiles.company) must get 403.
+    rec_b_id, rec_b_token = await register_user(client, "rec_hub_victim@phase6test.io", "Victim Recruiter", role="recruiter")
+    h_rec_b = {"Authorization": f"Bearer {rec_b_token}"}
+    victim_job_res = await client.post("/api/jobs", json={
+        "title": "Victim Core Engineer",
+        "company": "TestPhase6_Victim",
+        "location": "Remote",
+        "description": "Victim.",
+    }, headers=h_rec_b)
+    victim_job_id = victim_job_res.json()["id"]
+    _, victim_seeker_token = await register_user(client, "seeker_victim@phase6test.io", "Victim Seeker", role="seeker")
+    await client.post("/api/applications", json={
+        "jobId": victim_job_id,
+        "company": "TestPhase6_Victim",
+        "role": "Victim Core Engineer",
+    }, headers={"Authorization": f"Bearer {victim_seeker_token}"})
+
+    # Attacker now also sets profiles.company to the foreign tenant directly
+    # (belt and braces: the resolver must ignore it either way).
+    db = DatabaseManager.db
+    await db.profiles.update_one({"userId": rec_id}, {"$set": {"company": "TestPhase6_Victim"}}, upsert=True)
+
+    blocked = await client.get(f"/api/recruiter/jobs/{victim_job_id}/applications", headers=h_rec)
+    assert blocked.status_code == 403, f"Cross-tenant applicants access must be denied, got {blocked.status_code}"
+
+
+@pytest.mark.asyncio
 async def test_recruiter_update_application_status_pipeline(client):
     """Recruiter updates candidate application stage through the recruitment pipeline."""
     _, rec1_token = await register_user(client, "rec_pipeline1@phase6test.io", "Pipeline Rec 1", role="recruiter")

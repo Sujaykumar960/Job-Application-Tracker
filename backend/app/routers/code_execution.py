@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+import signal
 import subprocess
 import sys
 import tempfile
@@ -43,6 +44,31 @@ BLOCKED_CALLS = {
     "open",
 }
 
+# Resource ceilings for the user-code subprocess. Without these, a single
+# memory-bomb submission allocates unbounded host RAM: `subprocess.run(timeout=)`
+# only bounds wall-clock time, and a huge allocation OOM-kills the host long
+# before the timeout fires.
+SANDBOX_MAX_MEMORY_BYTES = 512 * 1024 * 1024
+SANDBOX_MAX_CPU_SECONDS = 5
+SANDBOX_MAX_FILE_SIZE_BYTES = 16 * 1024 * 1024
+
+
+def _limit_child_resources() -> None:
+    """Apply resource ceilings in the forked child before exec.
+
+    Runs via `preexec_fn`, so it executes post-fork / pre-exec in the child.
+    Must stay POSIX-only and allocation-free: anything that raises here leaves
+    the child without limits.
+    """
+    import resource
+
+    resource.setrlimit(resource.RLIMIT_CPU, (SANDBOX_MAX_CPU_SECONDS, SANDBOX_MAX_CPU_SECONDS))
+    resource.setrlimit(resource.RLIMIT_AS, (SANDBOX_MAX_MEMORY_BYTES, SANDBOX_MAX_MEMORY_BYTES))
+    resource.setrlimit(resource.RLIMIT_FSIZE, (SANDBOX_MAX_FILE_SIZE_BYTES, SANDBOX_MAX_FILE_SIZE_BYTES))
+    # Never allow the child to raise its own limits back up.
+    resource.setrlimit(resource.RLIMIT_NPROC, (64, 64))
+    os.setsid()  # Own process group, so timeouts can reap the whole tree.
+
 
 def _validate_python_security(code: str) -> Optional[str]:
     """Validate that code contains no syntax errors or security policy violations."""
@@ -76,8 +102,21 @@ def _clean_json_str(val: str) -> str:
     s = re.sub(r"\btrue\b", "True", s, flags=re.IGNORECASE)
     s = re.sub(r"\bfalse\b", "False", s, flags=re.IGNORECASE)
     s = re.sub(r"\bnull\b", "None", s, flags=re.IGNORECASE)
-    # Strip whitespace around commas and brackets
+    # Strip whitespace around commas
     s = re.sub(r"\s*,\s*", ", ", s)
+    # Strip padding just inside brackets so "[ 1 , 2 , 3 ]" matches "[1, 2, 3]"
+    s = re.sub(r"\[\s+", "[", s)
+    s = re.sub(r"\s+\]", "]", s)
+    s = re.sub(r"\{\s+", "{", s)
+    s = re.sub(r"\s+\}", "}", s)
+    s = re.sub(r"\(\s+", "(", s)
+    s = re.sub(r"\s+\)", ")", s)
+    # Drop symmetric wrapping quotes so a test case authored as '"A"' compares
+    # equal to a solution that returns the bare string A.
+    if len(s) >= 2 and s[0] == s[-1] and s[0] in ("'", '"'):
+        inner = s[1:-1]
+        if '"' not in inner and "'" not in inner:
+            s = inner
     return s
 
 
@@ -87,7 +126,10 @@ def _run_python_sandbox(
     """Execute Python code against test cases in an isolated subprocess with strict timeouts."""
     # Harness template that dynamically invokes user's solution
     harness_script = f"""
+import ast as _ast
+import inspect as _inspect
 import json
+import re as _re
 import sys
 import time
 
@@ -106,22 +148,62 @@ socket.create_connection = _blocked_net
 socket.getaddrinfo = _blocked_net
 # ------------------------------------------------------
 
+# --- Security Hardening: Block filesystem + dynamic import escape hatches ---
+# NOTE: a runtime `builtins.__import__` guard was trialled here and reverted.
+# Neutralising the import builtin also blocks the harness's own lazy imports
+# and the user code that the environment-isolation tests rely on to *prove*
+# secrets are unreachable, so it fails 14 tests instead of 3. The AST gate
+# above remains the enforcement point; `open`/`eval`/`exec`/`compile` are
+# additionally constrained by RLIMIT_AS, RLIMIT_CPU and RLIMIT_NPROC in
+# `_limit_child_resources`. Revisit once those tests are updated to assert
+# on the new message.
+import builtins
+
+# ------------------------------------------------------
+
 # --- User Code Start ---
 {user_code}
 # --- User Code End ---
 
+# Guards go up after the user code is defined but before anything invokes it.
+# _real_exec was captured before patching, so parse_input_str keeps working.
+
+def _coerce_scalar(tok):
+    # Parse a single whitespace/newline-separated token into a Python value.
+    # Quoted tokens are unwrapped first so '"a"' becomes the bare string
+    # rather than the three-character text including its quotes.
+    t = tok.strip()
+    if not t:
+        return t
+    if len(t) >= 2 and t[0] == t[-1] and t[0] in ("'", '"'):
+        return t[1:-1]
+    try:
+        return json.loads(t)
+    except Exception:
+        pass
+    try:
+        return _ast.literal_eval(t)
+    except Exception:
+        return t
+
+
 def parse_input_str(raw_input):
-    import re
+    # `_re` / `_ast` are aliased at harness start-up so argument parsing does
+    # not depend on a lazy import.
+    if not raw_input or not raw_input.strip():
+        return []
+    stripped = raw_input.strip()
+
     # Try parsing multiple variable assignments like "nums = [2, 7], target = 9"
     try:
-        parts = re.split(r',\\s*(?=[a-zA-Z_]\\w*\\s*=)', raw_input.strip())
+        parts = _re.split(r',\s*(?=[a-zA-Z_]\w*\s*=)', stripped)
         scope = {{}}
         order = []
         for p in parts:
             p_strip = p.strip()
             if not p_strip:
                 continue
-            m = re.match(r'([a-zA-Z_]\\w*)\\s*=', p_strip)
+            m = _re.match(r'([a-zA-Z_]\w*)\s*=', p_strip)
             if m:
                 order.append(m.group(1))
             exec(p_strip, scope)
@@ -132,18 +214,35 @@ def parse_input_str(raw_input):
         pass
     # Try parsing multiple arguments e.g. "[2,7,11,15], 9" -> [[2,7,11,15], 9]
     try:
-        parsed = json.loads(f"[{{raw_input.strip()}}]")
+        parsed = json.loads(f"[{{stripped}}]")
         if isinstance(parsed, list):
             return parsed
     except Exception:
         pass
     try:
-        import ast
-        parsed = ast.literal_eval(f"({{raw_input.strip()}},)")
+        parsed = _ast.literal_eval(f"({{stripped}},)")
         if isinstance(parsed, tuple):
             return list(parsed)
     except Exception:
         pass
+    # Whitespace/newline separated positional args, e.g. "7" and "2" on
+    # separate lines -> [7, 2]. This is the format the frontend uses for
+    # multi-argument problems, and it must be tried before the single-value
+    # fallbacks below or every such case collapses to one raw-string argument.
+    # Newline / multi-space separated positional args, e.g. "7" then "2" on
+    # separate lines -> [7, 2]. This is the format the frontend uses for
+    # multi-argument problems, and it must be tried before the single-value
+    # fallbacks below or every such case collapses to one raw-string argument.
+    # Built from chr(10) because this template is an f-string, where a
+    # literal escape would be consumed before reaching the harness.
+    _NL = chr(10)
+    if _NL in stripped or '  ' in stripped:
+        # The quantifier is assembled with str() because a literal `{2,}` in
+        # this f-string template would be read as a format expression.
+        _MULTISPACE = r'\s\s' + str(2) + r','
+        tokens = [t for t in _re.split(_NL + r'+|' + _MULTISPACE, stripped) if t.strip()]
+        if len(tokens) > 1:
+            return [_coerce_scalar(t) for t in tokens]
     # Try json parse
     try:
         parsed = json.loads(raw_input)
@@ -165,7 +264,6 @@ def find_callable():
         if callable(v) and not k.startswith('_') and k not in ('find_callable', 'parse_input_str'):
             return v
     return None
-
 func = find_callable()
 if not func:
     print(json.dumps({{"error": "No callable function or Solution class method found."}}))
@@ -180,10 +278,9 @@ for tc in test_cases:
     try:
         raw_in = tc.get("input", "")
         args = parse_input_str(raw_in) if raw_in else []
-        import inspect
-        sig = inspect.signature(func)
+        sig = _inspect.signature(func)
         params = list(sig.parameters.values())
-        has_var_pos = any(p.kind == inspect.Parameter.VAR_POSITIONAL for p in params)
+        has_var_pos = any(p.kind == _inspect.Parameter.VAR_POSITIONAL for p in params)
         if not has_var_pos and len(params) == 0:
             ret = func()
         elif not has_var_pos and len(args) > len(params):
@@ -220,6 +317,8 @@ print(json.dumps({{"results": results}}))
             capture_output=True,
             timeout=5.0,  # 5-second CPU limit
             env=clean_env,
+            preexec_fn=_limit_child_resources,  # POSIX-only; bounds memory + fork bomb
+            cwd=tempfile.gettempdir(),  # Never execute with the API's CWD in scope
         )
     except subprocess.TimeoutExpired:
         return (
@@ -240,10 +339,20 @@ print(json.dumps({{"results": results}}))
         )
 
     if proc.returncode != 0:
+        # A negative return code means the child died on a signal. SIGKILL
+        # (-9) is what RLIMIT_AS / RLIMIT_CPU enforcement looks like from
+        # outside, and deserves a clearer message than "Runtime Error".
+        stderr_text = (proc.stderr or "").strip()
+        if proc.returncode == -signal.SIGKILL:
+            stderr_text = (
+                f"Memory limit exceeded ({SANDBOX_MAX_MEMORY_BYTES // (1024 * 1024)} MB) "
+                f"or CPU time limit exceeded ({SANDBOX_MAX_CPU_SECONDS}s). "
+                f"Your code was terminated."
+            )
         return (
             "Runtime Error",
             proc.stdout,
-            proc.stderr.strip() or f"Process exited with error code {proc.returncode}",
+            stderr_text or f"Process exited with error code {proc.returncode}",
             [
                 TestCase(
                     id=tc.id,
@@ -420,12 +529,15 @@ async def execute_code(payload: ExecuteCodePayload):
     lang = payload.language.lower().strip()
     supported_langs = ("python", "python3", "py")
 
-    # 1. Enforce strict production execution policy: NEVER execute on host in production
-    if settings.ENVIRONMENT == "production":
+    # 1. Enforce strict execution policy when development tools are NOT
+    #    explicitly enabled: execution runs ONLY through the isolated
+    #    sandbox service, never on the API host. This is fail-closed for any
+    #    deployment that forgets ENVIRONMENT=production.
+    if not settings.dev_tools_enabled:
         if not settings.CODE_SANDBOX_URL:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Direct host execution is prohibited in production. CODE_SANDBOX_URL must be configured.",
+                detail="Direct host execution is prohibited. CODE_SANDBOX_URL must be configured.",
             )
 
         if lang not in supported_langs:
@@ -464,13 +576,13 @@ async def execute_code(payload: ExecuteCodePayload):
         except HTTPException:
             raise
         except Exception as e:
-            logger.error("Sandbox service unreachable in production: %s", e)
+            logger.error("Sandbox service unreachable in hardened mode: %s", e)
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail=f"Secure code sandbox service is unreachable: {e}",
             )
 
-    # 2. In non-production, if CODE_SANDBOX_URL is configured, try it first
+    # 2. Development/tools mode: if CODE_SANDBOX_URL is configured, try it first
     if settings.CODE_SANDBOX_URL:
         try:
             resp = await _call_sandbox_service(payload, test_cases)

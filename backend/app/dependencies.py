@@ -113,6 +113,10 @@ async def get_optional_user(
     try:
         payload = decode_token(credentials.credentials)
         if payload:
+            # Mirror get_current_user: only access tokens count as a session.
+            token_type = payload.get("token_type")
+            if token_type and token_type != "access":
+                return None
             revoked = await db.revoked_tokens.find_one({"token": credentials.credentials})
             if revoked:
                 return None
@@ -123,10 +127,31 @@ async def get_optional_user(
                 if user and user.get("lastLogoutAt") and payload.get("iat"):
                     if payload["iat"] < user["lastLogoutAt"]:
                         return None
+                if user and not user.get("isActive", True):
+                    return None
                 return user
     except Exception:
         pass
     return None
+
+
+async def get_write_user(
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+) -> Dict[str, Any]:
+    """Require a real authenticated session for write operations.
+
+    Several endpoints previously fell back to the synthetic 'usr_guest'
+    identity when no token was present, letting anonymous visitors create
+    posts, comments, likes and follows while sharing one collision-prone
+    identity. Writes must fail closed with 401 instead.
+    """
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required for this action. Please sign in.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return current_user
 
 
 def require_role(*allowed_roles: str) -> Callable:

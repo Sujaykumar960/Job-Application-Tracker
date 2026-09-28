@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, Query, Request, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.dependencies import get_current_active_user, get_db, get_optional_user
+from app.dependencies import get_current_active_user, get_db, get_optional_user, get_write_user
 from app.repositories.post_repository import PostRepository
 from app.repositories.user_repository import UserRepository
 from app.services.notification_service import NotificationService
@@ -87,7 +87,7 @@ async def get_posts_by_user(
 @router.post("", response_model=FeedPost, status_code=status.HTTP_201_CREATED)
 async def create_post(
     request: Request,
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(get_write_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Publish a new post to the community feed with text and media."""
@@ -98,12 +98,12 @@ async def create_post(
 @router.post("/{post_id}/like", response_model=LikeResponse)
 async def toggle_like_post(
     post_id: str,
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(get_write_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Like or unlike an engineering post."""
     repo = PostRepository(db)
-    uid = user["id"] if user else "usr_guest"
+    uid = user["id"]
     res = await repo.toggle_like(post_id, uid)
 
     if res.get("isLiked") and user:
@@ -128,14 +128,14 @@ async def toggle_like_post(
 async def add_comment(
     post_id: str,
     comment_data: CommentCreate,
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(get_write_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Add a comment to an engineering thread."""
     repo = PostRepository(db)
     user_repo = UserRepository(db)
 
-    author_id = user["id"] if user else "usr_guest"
+    author_id = user["id"]
     author_name = "CareerX Member"
     author_headline = "Software Engineer"
     author_avatar_url = None
@@ -189,12 +189,12 @@ async def add_comment(
 @router.delete("/{post_id}/comments/{comment_id}", response_model=StandardSuccessResponse)
 async def delete_comment(
     comment_id: str,
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(get_write_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Delete a comment (Comment Author or Post Author)."""
     repo = PostRepository(db)
-    user_id = user["id"] if user else "usr_guest"
+    user_id = user["id"]
     await repo.delete_comment(comment_id, user_id)
     return StandardSuccessResponse(success=True, message="Comment deleted successfully.")
 
@@ -203,12 +203,12 @@ async def delete_comment(
 @router.post("/{post_id}/comments/{comment_id}/like", response_model=LikeResponse)
 async def toggle_comment_like(
     comment_id: str,
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(get_write_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Toggle like status on a comment."""
     repo = PostRepository(db)
-    user_id = user["id"] if user else "usr_guest"
+    user_id = user["id"]
     res = await repo.toggle_comment_like(comment_id, user_id)
     return LikeResponse(**res)
 
@@ -216,12 +216,12 @@ async def toggle_comment_like(
 @router.post("/{post_id}/bookmark", response_model=BookmarkResponse)
 async def toggle_bookmark_post(
     post_id: str,
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(get_write_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Save or unsave a post to bookmarks."""
     repo = PostRepository(db)
-    uid = user["id"] if user else "usr_guest"
+    uid = user["id"]
     res = await repo.toggle_bookmark(post_id, uid)
     return BookmarkResponse(**res)
 
@@ -229,11 +229,11 @@ async def toggle_bookmark_post(
 @router.delete("/{post_id}", response_model=StandardSuccessResponse)
 async def delete_post(
     post_id: str,
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(get_write_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Delete a post (Author Only)."""
     repo = PostRepository(db)
-    user_id = user["id"] if user else "usr_guest"
+    user_id = user["id"]
     await repo.delete_post_by_author(post_id, user_id)
     return StandardSuccessResponse(success=True, message="Post deleted successfully.")

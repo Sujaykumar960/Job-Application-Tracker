@@ -4,6 +4,7 @@ Used for demo seekers, newly registered seekers, and recruiter candidate applica
 """
 from typing import Any, Dict, List, Optional
 import uuid
+import hashlib
 
 RAW_APPLICATIONS_50: List[Dict[str, Any]] = [
     # 1. Google (3 apps)

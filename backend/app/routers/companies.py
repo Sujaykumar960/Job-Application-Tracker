@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.dependencies import get_db, get_optional_user, require_role
+from app.dependencies import get_db, get_optional_user, get_write_user, require_role
 from app.repositories.base import BaseRepository
 from app.schemas.company import (
     CompanyCreate,
@@ -179,7 +179,7 @@ async def get_company_jobs(
 @router.post("/{company_id}/follow", response_model=CompanyFollowResponse)
 async def toggle_follow_company(
     company_id: str,
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(get_write_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Toggle follow/unfollow status for a company."""
@@ -187,7 +187,7 @@ async def toggle_follow_company(
     comp = await repo.get_by_id(company_id)
     followers = comp.get("followers", []) if comp else []
 
-    uid = user["id"] if user else "usr_guest"
+    uid = user["id"]
     if uid in followers:
         followers.remove(uid)
         is_following = False

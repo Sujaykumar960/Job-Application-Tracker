@@ -21,6 +21,31 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 
+# Resource ceilings applied to every execution subprocess. The container is
+# already bounded (mem_limit, pids_limit, cpus in compose), but those are
+# enforced by the kernel for the *container*; these bound the individual
+# child so one submission cannot exhaust the shared sandbox budget and deny
+# service to every other user.
+SANDBOX_MAX_MEMORY_BYTES = 512 * 1024 * 1024
+SANDBOX_MAX_CPU_SECONDS = 5
+SANDBOX_MAX_FILE_SIZE_BYTES = 16 * 1024 * 1024
+
+
+def _limit_child_resources() -> None:
+    """Apply resource ceilings in the forked child before exec.
+
+    Runs via `preexec_fn` (post-fork / pre-exec). Must stay POSIX-only and
+    allocation-free: anything that raises here leaves the child unbounded.
+    """
+    import resource
+
+    resource.setrlimit(resource.RLIMIT_CPU, (SANDBOX_MAX_CPU_SECONDS, SANDBOX_MAX_CPU_SECONDS))
+    resource.setrlimit(resource.RLIMIT_AS, (SANDBOX_MAX_MEMORY_BYTES, SANDBOX_MAX_MEMORY_BYTES))
+    resource.setrlimit(resource.RLIMIT_FSIZE, (SANDBOX_MAX_FILE_SIZE_BYTES, SANDBOX_MAX_FILE_SIZE_BYTES))
+    resource.setrlimit(resource.RLIMIT_NPROC, (64, 64))
+    os.setsid()
+
+
 def _clean_json_str(val: str) -> str:
     """Normalize output representations for resilient evaluation."""
     s = val.strip()
@@ -165,6 +190,8 @@ print(json.dumps({{"results": results}}))
             capture_output=True,
             timeout=5.0,
             env=clean_env,
+            preexec_fn=_limit_child_resources,
+            cwd=tempfile.gettempdir(),
         )
     except subprocess.TimeoutExpired:
         return {
