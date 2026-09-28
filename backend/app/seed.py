@@ -1201,7 +1201,10 @@ async def seed_database(reset: bool = False) -> Dict[str, int]:
     ]
     if app_ops:
         await db.applications.bulk_write(app_ops, ordered=False)
-    counts["applications"] = len(seed_apps)
+    # Count what actually landed rather than overwriting section 3's count.
+    # SEEDED_APPLICATIONS (8) and the 50 calibrated applications are both
+    # written above; reporting only one of them misleads callers and tests.
+    counts["applications"] = await db.applications.count_documents({})
 
     logger.info("=== Database Seeding Complete ===")
     for k, v in counts.items():

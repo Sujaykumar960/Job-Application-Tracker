@@ -24,6 +24,9 @@ async def lifespan(app: FastAPI):
     """Application lifecycle: connect to MongoDB and setup indexes on startup, disconnect on shutdown."""
     logger.info("Starting up %s (env=%s)...", settings.APP_NAME, settings.ENVIRONMENT)
 
+    # Fail fast if a production boot is carrying default/placeholder secrets.
+    settings.validate_production_secrets()
+
     # Redis distributed rate limiting (with graceful in-memory fallback unless explicitly required)
     if settings.REDIS_URL:
         from app.middleware.rate_limiter import get_redis_client
@@ -60,6 +63,13 @@ async def lifespan(app: FastAPI):
                 if ops:
                     await DatabaseManager.db.jobs.bulk_write(ops, ordered=False)
                     logger.info("Auto-seeded 100 jobs on platform startup.")
+            try:
+                from app.utils.tenancy import backfill_recruiter_company_membership
+                backfilled = await backfill_recruiter_company_membership(DatabaseManager.db)
+                if backfilled:
+                    logger.info("Backfilled immutable recruiter company membership for %d recruiter(s).", backfilled)
+            except Exception as mig_err:
+                logger.warning("Recruiter membership backfill skipped: %s", mig_err)
     except Exception as e:
         logger.error("Startup MongoDB connection failure: %s", e)
         # We don't exit hard so the server can still launch even if MongoDB starts shortly after

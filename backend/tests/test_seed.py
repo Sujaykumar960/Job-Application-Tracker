@@ -33,8 +33,8 @@ async def test_seed_idempotency_and_counts(client):
     # 1. First seed with reset
     counts_1 = await seed_database(reset=True)
     assert counts_1["users"] == 9
-    assert counts_1["jobs"] == 8
-    assert counts_1["applications"] == 8
+    assert counts_1["jobs"] == 100
+    assert counts_1["applications"] == 58
     assert counts_1["conversations"] == 2
     assert counts_1["messages"] == 5
     assert counts_1["connections"] == 2
@@ -49,8 +49,8 @@ async def test_seed_idempotency_and_counts(client):
 
     # Verify directly from MongoDB that no duplicate documents were created
     assert await db.users.count_documents({}) == 9
-    assert await db.jobs.count_documents({}) == 8
-    assert await db.applications.count_documents({}) == 8
+    assert await db.jobs.count_documents({}) == 100
+    assert await db.applications.count_documents({}) == 58
     assert await db.conversations.count_documents({}) == 2
     assert await db.messages.count_documents({}) == 5
     assert await db.connections.count_documents({}) == 2

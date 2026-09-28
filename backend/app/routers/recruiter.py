@@ -20,6 +20,7 @@ from app.schemas.recruiter import (
 from bson import ObjectId
 from app.storage import get_storage_backend
 from app.utils.helpers import utc_now_iso
+from app.utils.tenancy import resolve_recruiter_company as _resolve_recruiter_membership
 
 router = APIRouter(prefix="/recruiter", tags=["Recruiter Portal"])
 
@@ -34,17 +35,11 @@ def _build_mongo_id_query(id_val: Any) -> Dict[str, Any]:
 
 
 async def _resolve_recruiter_company(user: Dict[str, Any], db: AsyncIOMotorDatabase) -> Optional[str]:
-    company = user.get("company")
-    if company:
-        return company
-    recruiter_id = user.get("id") or str(user.get("_id"))
-    prof = await db.profiles.find_one({"userId": recruiter_id})
-    if prof and prof.get("company"):
-        return prof["company"]
-    u_doc = await db.users.find_one(_build_mongo_id_query(recruiter_id))
-    if u_doc and u_doc.get("company"):
-        return u_doc["company"]
-    return None
+    # Scoping is derived from immutable membership (users.company /
+    # companies.recruiterIds) only. The self-editable profiles.company is
+    # deliberately ignored so a recruiter cannot re-scope themselves into a
+    # foreign tenant by editing their own profile.
+    return await _resolve_recruiter_membership(db, user)
 
 
 def _can_recruiter_access_job(job: Dict[str, Any], user: Dict[str, Any], recruiter_company: Optional[str]) -> bool:
@@ -189,11 +184,7 @@ async def search_candidates(
     )
     repo = CandidateRepository(db)
     recruiter_id = user["id"]
-    recruiter_company = user.get("company")
-    if not recruiter_company:
-        prof = await db.profiles.find_one({"userId": recruiter_id})
-        if prof and prof.get("company"):
-            recruiter_company = prof["company"]
+    recruiter_company = await _resolve_recruiter_company(user, db)
 
     results = await repo.search_candidates(query, recruiter_id=recruiter_id, recruiter_company=recruiter_company)
     response.headers["X-Total-Count"] = str(len(results))
@@ -209,11 +200,7 @@ async def get_candidate_by_id(
     """Fetch candidate dossier by ID with strict employer cloaking and privacy rules (Recruiter Only)."""
     repo = CandidateRepository(db)
     recruiter_id = user["id"]
-    recruiter_company = user.get("company")
-    if not recruiter_company:
-        prof = await db.profiles.find_one({"userId": recruiter_id})
-        if prof and prof.get("company"):
-            recruiter_company = prof["company"]
+    recruiter_company = await _resolve_recruiter_company(user, db)
 
     doc = await repo.get_candidate_details(candidate_id, recruiter_id=recruiter_id, recruiter_company=recruiter_company)
     if not doc:

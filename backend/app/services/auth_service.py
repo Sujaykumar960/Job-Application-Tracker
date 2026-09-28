@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Dict, Optional
 from fastapi import status
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -20,6 +21,8 @@ from app.utils.security import (
     verify_password,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class AuthService:
     def __init__(self, db: AsyncIOMotorDatabase):
@@ -28,9 +31,9 @@ class AuthService:
 
     async def register(self, data: RegisterData) -> AuthResponse:
         email = data.email.strip().lower()
-        if data.role == "admin" and settings.ENVIRONMENT == "production":
+        if data.role == "admin" and not settings.dev_tools_enabled:
             raise AppException(
-                message="Administrator accounts cannot be self-registered in production.",
+                message="Administrator accounts cannot be self-registered. Provision admins server-side.",
                 status_code=status.HTTP_403_FORBIDDEN,
             )
 
@@ -188,6 +191,15 @@ class AuthService:
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
 
+        # A logout revokes the whole session: reject explicitly revoked
+        # tokens and any token minted before the user's last logout.
+        revoked = await self.db.revoked_tokens.find_one({"token": token_str})
+        if revoked:
+            raise AppException(
+                message="Session has been logged out. Please sign in again.",
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
+
         user_id = payload.get("sub") or payload.get("user_id")
         user_doc = await self.user_repo.get_by_id(user_id) if user_id else None
         if not user_doc or not user_doc.get("isActive", True):
@@ -195,6 +207,13 @@ class AuthService:
                 message="User account no longer active or valid.",
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
+
+        if user_doc.get("lastLogoutAt") and payload.get("iat"):
+            if payload["iat"] < user_doc["lastLogoutAt"]:
+                raise AppException(
+                    message="Session has expired due to logout. Please sign in again.",
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                )
 
         token_payload = {
             "sub": user_id,

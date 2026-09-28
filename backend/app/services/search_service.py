@@ -14,6 +14,7 @@ from app.schemas.search import (
     SearchResultsContainer,
     UnifiedSearchResponse,
 )
+from app.utils.tenancy import resolve_recruiter_company
 
 
 class SearchService:
@@ -192,11 +193,7 @@ class SearchService:
             return []
 
         recruiter_id = user["id"]
-        recruiter_company = user.get("company")
-        if not recruiter_company:
-            prof = await self.db.profiles.find_one({"userId": recruiter_id})
-            if prof and prof.get("company"):
-                recruiter_company = prof["company"]
+        recruiter_company = await resolve_recruiter_company(self.db, user)
 
         repo = CandidateRepository(self.db)
         query = CandidateFilterQuery(search=q, limit=limit)

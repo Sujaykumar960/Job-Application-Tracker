@@ -529,12 +529,15 @@ async def execute_code(payload: ExecuteCodePayload):
     lang = payload.language.lower().strip()
     supported_langs = ("python", "python3", "py")
 
-    # 1. Enforce strict production execution policy: NEVER execute on host in production
-    if settings.ENVIRONMENT == "production":
+    # 1. Enforce strict execution policy when development tools are NOT
+    #    explicitly enabled: execution runs ONLY through the isolated
+    #    sandbox service, never on the API host. This is fail-closed for any
+    #    deployment that forgets ENVIRONMENT=production.
+    if not settings.dev_tools_enabled:
         if not settings.CODE_SANDBOX_URL:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Direct host execution is prohibited in production. CODE_SANDBOX_URL must be configured.",
+                detail="Direct host execution is prohibited. CODE_SANDBOX_URL must be configured.",
             )
 
         if lang not in supported_langs:
@@ -573,13 +576,13 @@ async def execute_code(payload: ExecuteCodePayload):
         except HTTPException:
             raise
         except Exception as e:
-            logger.error("Sandbox service unreachable in production: %s", e)
+            logger.error("Sandbox service unreachable in hardened mode: %s", e)
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail=f"Secure code sandbox service is unreachable: {e}",
             )
 
-    # 2. In non-production, if CODE_SANDBOX_URL is configured, try it first
+    # 2. Development/tools mode: if CODE_SANDBOX_URL is configured, try it first
     if settings.CODE_SANDBOX_URL:
         try:
             resp = await _call_sandbox_service(payload, test_cases)

@@ -324,3 +324,29 @@ async def test_filtering_and_pagination(client):
     assert res_page.status_code == 200
     assert len(res_page.json()) == 1
     assert "X-Total-Count" in res_page.headers
+
+
+@pytest.mark.asyncio
+async def test_feed_writes_require_authentication(client):
+    """Anonymous requests to feed write endpoints must 401, never fall back to 'usr_guest'."""
+    writes = [
+        ("POST", "/api/feed/posts", {"content": "anon", "tags": ["TestFeed"]}),
+        ("POST", "/api/feed/posts/post_fake/like", None),
+        ("POST", "/api/feed/posts/post_fake/save", None),
+        ("POST", "/api/feed/posts/post_fake/comments", {"content": "anon"}),
+        ("PATCH", "/api/feed/posts/post_fake", {"content": "anon"}),
+        ("DELETE", "/api/feed/posts/post_fake", None),
+        ("PATCH", "/api/feed/comments/cm_fake", {"content": "anon"}),
+        ("DELETE", "/api/feed/comments/cm_fake", None),
+        ("POST", "/api/feed/comments/cm_fake/like", None),
+    ]
+    for method, path, body in writes:
+        res = await client.request(method, path, json=body)
+        assert res.status_code == 401, f"{method} {path} expected 401, got {res.status_code}"
+    # Authored path (existing /api/posts router) must also require auth.
+    res = await client.post("/api/posts", json={"content": "anon", "tags": ["TestFeed"]})
+    assert res.status_code == 401
+    res = await client.post("/api/posts/post_fake/bookmark")
+    assert res.status_code == 401
+    res = await client.post("/api/companies/comp_fake/follow")
+    assert res.status_code == 401

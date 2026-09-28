@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.dependencies import get_current_active_user, get_db, get_optional_user
+from app.dependencies import get_current_active_user, get_db, get_optional_user, get_write_user
 from app.repositories.post_repository import PostRepository
 from app.repositories.user_repository import UserRepository
 from app.services.notification_service import NotificationService
@@ -102,7 +102,7 @@ async def get_user_posts(
 @router.post("/posts", response_model=FeedPost, status_code=status.HTTP_201_CREATED)
 async def create_post(
     request: Request,
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(get_write_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Publish a new post to the community feed with text and media."""
@@ -114,12 +114,12 @@ async def create_post(
 async def update_post(
     post_id: str,
     post_data: PostUpdate,
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(get_write_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Update an existing post (Author Only)."""
     repo = PostRepository(db)
-    user_id = user["id"] if user else "usr_guest"
+    user_id = user["id"]
     updated = await repo.update_post_by_author(post_id, user_id, post_data.model_dump(exclude_unset=True))
     return updated
 
@@ -127,12 +127,12 @@ async def update_post(
 @router.delete("/posts/{post_id}", response_model=StandardSuccessResponse)
 async def delete_post(
     post_id: str,
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(get_write_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Delete a post (Author Only)."""
     repo = PostRepository(db)
-    user_id = user["id"] if user else "usr_guest"
+    user_id = user["id"]
     await repo.delete_post_by_author(post_id, user_id)
     return StandardSuccessResponse(success=True, message="Post deleted successfully.")
 
@@ -326,12 +326,12 @@ async def add_post_comment(
 async def update_comment(
     comment_id: str,
     comment_data: CommentUpdate,
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(get_write_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Edit comment content (Comment Author Only)."""
     repo = PostRepository(db)
-    user_id = user["id"] if user else "usr_guest"
+    user_id = user["id"]
     updated = await repo.update_comment(comment_id, user_id, comment_data.content)
     return FeedComment(**updated)
 
@@ -339,12 +339,12 @@ async def update_comment(
 @router.delete("/comments/{comment_id}", response_model=StandardSuccessResponse)
 async def delete_comment(
     comment_id: str,
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(get_write_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Delete a comment (Comment Author or Post Author)."""
     repo = PostRepository(db)
-    user_id = user["id"] if user else "usr_guest"
+    user_id = user["id"]
     await repo.delete_comment(comment_id, user_id)
     return StandardSuccessResponse(success=True, message="Comment deleted successfully.")
 
@@ -352,12 +352,12 @@ async def delete_comment(
 @router.post("/comments/{comment_id}/like", response_model=LikeResponse)
 async def toggle_feed_comment_like(
     comment_id: str,
-    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user: Dict[str, Any] = Depends(get_write_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Toggle like on a comment."""
     repo = PostRepository(db)
-    user_id = user["id"] if user else "usr_guest"
+    user_id = user["id"]
     res = await repo.toggle_comment_like(comment_id, user_id)
     return LikeResponse(**res)
 

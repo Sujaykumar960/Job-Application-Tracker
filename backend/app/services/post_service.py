@@ -31,8 +31,13 @@ class PostService:
         user: Optional[Dict[str, Any]],
     ) -> Dict[str, Any]:
         """Parse multipart form-data or JSON body to create feed post with media."""
-        author_id = user["id"] if user else "usr_guest"
-        profile_doc = await self.user_repo.get_profile(author_id) if user else None
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required to publish posts.",
+            )
+        author_id = user["id"]
+        profile_doc = await self.user_repo.get_profile(author_id)
 
         content_type = request.headers.get("content-type", "").lower()
 
