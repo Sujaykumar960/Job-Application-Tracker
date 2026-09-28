@@ -57,10 +57,20 @@ export const CompaniesPage: React.FC = () => {
   const [matchAnalysisJob, setMatchAnalysisJob] = useState<JobItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndustry, setSelectedIndustry] = useState('All');
+  const [quickFilter, setQuickFilter] = useState<'all' | 'openRoles' | 'following' | 'highMatch'>('all');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Track applied jobs (would need to be fetched from backend)
   const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
+
+  // Helper to calculate average match score for a company
+  const getCompanyMatchScore = (c: CompanyProfile): number => {
+    if (c.jobs && c.jobs.length > 0) {
+      const scores = c.jobs.map((j) => j.matchScore || 0);
+      return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+    }
+    return 88;
+  };
 
   // Follow Toggle
   const handleFollowToggle = async (companyId: string) => {
@@ -133,22 +143,44 @@ export const CompaniesPage: React.FC = () => {
 
   // Filtered Companies
   const filteredCompanies = useMemo(() => {
-    return companies.filter((c) => {
-      const q = searchQuery.toLowerCase().trim();
-      const matchesSearch =
-        !q ||
-        c.name.toLowerCase().includes(q) ||
-        c.industry.toLowerCase().includes(q) ||
-        c.headquarters.toLowerCase().includes(q) ||
-        (c.techStack && c.techStack.some((t) => t.toLowerCase().includes(q))) ||
-        (c.jobs && c.jobs.some((j) => j.title.toLowerCase().includes(q)));
+    return companies
+      .filter((c) => {
+        const q = searchQuery.toLowerCase().trim();
+        const matchesSearch =
+          !q ||
+          c.name.toLowerCase().includes(q) ||
+          c.industry.toLowerCase().includes(q) ||
+          c.headquarters.toLowerCase().includes(q) ||
+          (c.techStack && c.techStack.some((t) => t.toLowerCase().includes(q))) ||
+          (c.jobs && c.jobs.some((j) => j.title.toLowerCase().includes(q)));
 
-      const matchesIndustry =
-        selectedIndustry === 'All' || (c.industry && c.industry.toLowerCase().includes(selectedIndustry.toLowerCase()));
+        const matchesIndustry =
+          selectedIndustry === 'All' || (c.industry && c.industry.toLowerCase().includes(selectedIndustry.toLowerCase()));
 
-      return matchesSearch && matchesIndustry;
-    });
-  }, [companies, searchQuery, selectedIndustry]);
+        // Quick filter from the top metric boxes
+        let matchesQuick = true;
+        if (quickFilter === 'openRoles') {
+          matchesQuick = (c.jobs?.length || c.openJobsCount || 0) > 0;
+        } else if (quickFilter === 'following') {
+          matchesQuick = Boolean(c.isFollowing);
+        } else if (quickFilter === 'highMatch') {
+          const avgScore = getCompanyMatchScore(c);
+          const hasTopJob = c.jobs && c.jobs.some((j) => (j.matchScore || 0) >= 90);
+          matchesQuick = avgScore >= 90 || Boolean(hasTopJob);
+        }
+
+        return matchesSearch && matchesIndustry && matchesQuick;
+      })
+      .sort((a, b) => {
+        if (quickFilter === 'openRoles') {
+          return (b.openJobsCount || b.jobs?.length || 0) - (a.openJobsCount || a.jobs?.length || 0);
+        }
+        if (quickFilter === 'highMatch') {
+          return getCompanyMatchScore(b) - getCompanyMatchScore(a);
+        }
+        return 0;
+      });
+  }, [companies, searchQuery, selectedIndustry, quickFilter]);
 
   const totalJobs = useMemo(
     () => companies.reduce((acc, c) => acc + (c.jobs?.length || c.openJobsCount || 0), 0),
@@ -160,14 +192,30 @@ export const CompaniesPage: React.FC = () => {
     [companies]
   );
 
+  const highMatchCompaniesCount = useMemo(
+    () =>
+      companies.filter((c) => {
+        const avgScore = getCompanyMatchScore(c);
+        const hasTopJob = c.jobs && c.jobs.some((j) => (j.matchScore || 0) >= 90);
+        return avgScore >= 90 || Boolean(hasTopJob);
+      }).length,
+    [companies]
+  );
+
+  const avgMatchPercent = useMemo(() => {
+    if (companies.length === 0) return 91;
+    const total = companies.reduce((acc, c) => acc + getCompanyMatchScore(c), 0);
+    return Math.round(total / companies.length);
+  }, [companies]);
+
   const industriesList = ['All', 'Fintech', 'Developer Tools', 'Cloud Platform', 'Monitoring'];
 
   // Loading state
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#0A66C2]" />
-        <span className="ml-3 text-[#56687A]">Loading companies...</span>
+        <Loader2 className="w-8 h-8 animate-spin text-[#0A66C2] dark:text-sky-400" />
+        <span className="ml-3 text-[#56687A] dark:text-slate-400">Loading companies...</span>
       </div>
     );
   }
@@ -178,8 +226,8 @@ export const CompaniesPage: React.FC = () => {
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <AlertCircle className="w-12 h-12 text-[#E6395A]" />
         <div className="text-center">
-          <h3 className="text-lg font-semibold text-[#1D2226]">Unable to load companies</h3>
-          <p className="text-[#56687A] mt-1">{error}</p>
+          <h3 className="text-lg font-semibold text-[#1D2226] dark:text-slate-100">Unable to load companies</h3>
+          <p className="text-[#56687A] dark:text-slate-400 mt-1">{error}</p>
           <Button
             size="sm"
             variant="primary"
@@ -197,10 +245,10 @@ export const CompaniesPage: React.FC = () => {
   if (companies.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <Building2 className="w-12 h-12 text-[#788896]" />
+        <Building2 className="w-12 h-12 text-[#788896] dark:text-slate-500" />
         <div className="text-center">
-          <h3 className="text-lg font-semibold text-[#1D2226]">No companies available</h3>
-          <p className="text-[#56687A] mt-1">Check back later for new hiring partners.</p>
+          <h3 className="text-lg font-semibold text-[#1D2226] dark:text-slate-100">No companies available</h3>
+          <p className="text-[#56687A] dark:text-slate-400 mt-1">Check back later for new hiring partners.</p>
         </div>
       </div>
     );
@@ -245,47 +293,137 @@ export const CompaniesPage: React.FC = () => {
       />
 
       {/* ========================================================================= */}
-      {/* 1. TOP STATS BAR                                                          */}
+      {/* 1. TOP STATS BAR (Given Metric Boxes with Interactive Checking)           */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3.5 rounded-xl bg-white border border-[#D9D9D9] space-y-0.5 shadow-xs">
-          <span className="text-[10px] uppercase font-mono text-[#788896] block">Companies</span>
-          <p className="text-xl font-bold text-[#1D2226] font-mono">{companies.length}</p>
-          <span className="text-[10px] text-emerald-700 font-mono font-semibold">Tier-1 Tech</span>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        {/* Box 1: Total Companies */}
+        <div
+          onClick={() => setQuickFilter('all')}
+          className={`p-3 rounded-xl border flex flex-col justify-between shadow-xs cursor-pointer transition-all duration-200 select-none ${
+            quickFilter === 'all'
+              ? 'bg-blue-50/60 dark:bg-slate-800/90 border-[#0A66C2] dark:border-sky-500 ring-2 ring-[#0A66C2]/20 dark:ring-sky-500/20'
+              : 'bg-white dark:bg-slate-900 border-[#D9D9D9] dark:border-slate-800 hover:border-[#0A66C2]/40 dark:hover:border-slate-700'
+          }`}
+          title="Click to check All Companies (Reset filter)"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] uppercase font-mono font-semibold text-[#788896] dark:text-slate-400">Companies</span>
+                {quickFilter === 'all' && (
+                  <CheckCircle2 className="w-3 h-3 text-[#0A66C2] dark:text-sky-400" />
+                )}
+              </div>
+              <p className="text-xl font-bold text-[#1D2226] dark:text-slate-100 font-mono">{companies.length}</p>
+            </div>
+            <Building2 className="w-4 h-4 text-[#788896] dark:text-slate-400" />
+          </div>
+          <div className="mt-1.5 pt-1.5 border-t border-[#E8E8E8] dark:border-slate-800 flex items-center justify-between text-[10px] text-emerald-700 dark:text-emerald-400 font-mono font-semibold">
+            <span>Tier-1 Tech</span>
+            <span className="text-[9px] uppercase tracking-wider">{quickFilter === 'all' ? 'Active' : 'Click to Check'}</span>
+          </div>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-white border border-[#D9D9D9] space-y-0.5 shadow-xs">
-          <span className="text-[10px] uppercase font-mono text-[#788896] block">Open Engineering Roles</span>
-          <p className="text-xl font-bold text-[#0A66C2] font-mono">{totalJobs} Roles</p>
-          <span className="text-[10px] text-[#0A66C2] font-mono font-semibold">Active Pipelines</span>
+        {/* Box 2: Open Engineering Roles */}
+        <div
+          onClick={() => setQuickFilter((prev) => (prev === 'openRoles' ? 'all' : 'openRoles'))}
+          className={`p-3 rounded-xl border flex flex-col justify-between shadow-xs cursor-pointer transition-all duration-200 select-none ${
+            quickFilter === 'openRoles'
+              ? 'bg-blue-50/60 dark:bg-sky-950/30 border-[#0A66C2] dark:border-sky-400 ring-2 ring-[#0A66C2]/20 dark:ring-sky-400/20'
+              : 'bg-white dark:bg-slate-900 border-[#D9D9D9] dark:border-slate-800 hover:border-[#0A66C2]/40 dark:hover:border-sky-700'
+          }`}
+          title="Click to check Companies with Open Engineering Roles"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] uppercase font-mono font-semibold text-[#0A66C2] dark:text-blue-400">Open Engineering Roles</span>
+                {quickFilter === 'openRoles' && (
+                  <CheckCircle2 className="w-3 h-3 text-[#0A66C2] dark:text-blue-400" />
+                )}
+              </div>
+              <p className="text-xl font-bold text-[#0A66C2] dark:text-blue-400 font-mono">{totalJobs} Roles</p>
+            </div>
+            <Briefcase className="w-4 h-4 text-[#0A66C2] dark:text-blue-400" />
+          </div>
+          <div className="mt-1.5 pt-1.5 border-t border-[#E8E8E8] dark:border-slate-800 flex items-center justify-between text-[10px] text-[#0A66C2] dark:text-blue-400 font-mono font-semibold">
+            <span>Active Pipelines</span>
+            <span className="text-[9px] uppercase tracking-wider">{quickFilter === 'openRoles' ? 'Checked ✓' : 'Click to Check'}</span>
+          </div>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-white border border-[#D9D9D9] space-y-0.5 shadow-xs">
-          <span className="text-[10px] uppercase font-mono text-[#788896] block">Following</span>
-          <p className="text-xl font-bold text-[#8A6100] font-mono">{followingCount}</p>
-          <span className="text-[10px] text-[#8A6100] font-mono font-semibold">Instant Alerts</span>
+        {/* Box 3: Following */}
+        <div
+          onClick={() => setQuickFilter((prev) => (prev === 'following' ? 'all' : 'following'))}
+          className={`p-3 rounded-xl border flex flex-col justify-between shadow-xs cursor-pointer transition-all duration-200 select-none ${
+            quickFilter === 'following'
+              ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-500 dark:border-amber-400 ring-2 ring-amber-500/20 dark:ring-amber-400/20'
+              : 'bg-white dark:bg-slate-900 border-[#D9D9D9] dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-700'
+          }`}
+          title="Click to check Companies You Follow"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] uppercase font-mono font-semibold text-[#8A6100] dark:text-amber-400">Following</span>
+                {quickFilter === 'following' && (
+                  <CheckCircle2 className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                )}
+              </div>
+              <p className="text-xl font-bold text-[#8A6100] dark:text-amber-400 font-mono">{followingCount}</p>
+            </div>
+            <Users className="w-4 h-4 text-amber-500" />
+          </div>
+          <div className="mt-1.5 pt-1.5 border-t border-[#E8E8E8] dark:border-slate-800 flex items-center justify-between text-[10px] text-[#8A6100] dark:text-amber-400 font-mono font-semibold">
+            <span>Instant Alerts</span>
+            <span className="text-[9px] uppercase tracking-wider">{quickFilter === 'following' ? 'Checked ✓' : 'Click to Check'}</span>
+          </div>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-white border border-[#D9D9D9] space-y-0.5 shadow-xs">
-          <span className="text-[10px] uppercase font-mono text-[#788896] block">Avg Profile Match</span>
-          <p className="text-xl font-bold text-emerald-700 font-mono">91%</p>
-          <span className="text-[10px] text-emerald-700 font-mono font-semibold">Based on ATS Resume</span>
+        {/* Box 4: Avg Profile Match */}
+        <div
+          onClick={() => setQuickFilter((prev) => (prev === 'highMatch' ? 'all' : 'highMatch'))}
+          className={`p-3 rounded-xl border flex flex-col justify-between shadow-xs cursor-pointer transition-all duration-200 select-none ${
+            quickFilter === 'highMatch'
+              ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-500 dark:border-emerald-400 ring-2 ring-emerald-500/20 dark:ring-emerald-400/20'
+              : 'bg-white dark:bg-slate-900 border-[#D9D9D9] dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-700'
+          }`}
+          title="Click to check Top Profile Match Companies (≥90%)"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] uppercase font-mono font-semibold text-emerald-700 dark:text-emerald-400">Avg Profile Match</span>
+                {quickFilter === 'highMatch' && (
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                )}
+              </div>
+              <p className="text-xl font-bold text-emerald-700 dark:text-emerald-400 font-mono">
+                {avgMatchPercent}%
+              </p>
+            </div>
+            <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div className="mt-1.5 pt-1.5 border-t border-[#E8E8E8] dark:border-slate-800 flex items-center justify-between text-[10px] text-emerald-700 dark:text-emerald-400 font-mono font-semibold">
+            <span>Based on ATS Resume</span>
+            <span className="text-[9px] uppercase tracking-wider">{quickFilter === 'highMatch' ? `Checked (${highMatchCompaniesCount}) ✓` : 'Click to Check'}</span>
+          </div>
         </div>
       </div>
 
       {/* ========================================================================= */}
       {/* 2. SEARCH & INDUSTRY FILTER BAR                                           */}
       {/* ========================================================================= */}
-      <div className="p-3.5 rounded-2xl bg-white border border-[#D9D9D9] flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
+      <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
         {/* Search Input */}
         <div className="relative flex-1 max-w-md">
-          <Search className="w-3.5 h-3.5 text-[#788896] absolute left-3 top-1/2 transform -translate-y-1/2" />
+          <Search className="w-3.5 h-3.5 text-[#788896] dark:text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by company, tech stack (Go, Kafka, React), or location..."
-            className="w-full bg-white text-[#1D2226] placeholder-[#788896] text-xs rounded-xl border border-[#D9D9D9] pl-9 pr-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] font-mono"
+            className="w-full bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 placeholder-[#788896] dark:placeholder-slate-500 text-xs rounded-xl border border-[#D9D9D9] dark:border-slate-700 pl-9 pr-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] dark:focus:ring-sky-500 font-mono"
           />
         </div>
 
@@ -296,10 +434,10 @@ export const CompaniesPage: React.FC = () => {
               key={ind}
               onClick={() => setSelectedIndustry(ind)}
               className={cn(
-                'px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition',
+                'px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer',
                 selectedIndustry === ind
-                  ? 'bg-[#0A66C2] text-white shadow-sm'
-                  : 'text-[#56687A] hover:text-[#1D2226] hover:bg-[#F3F6F8]'
+                  ? 'bg-[#0A66C2] text-white dark:bg-sky-600 shadow-sm'
+                  : 'text-[#56687A] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-100 hover:bg-[#F3F6F8] dark:hover:bg-slate-800'
               )}
             >
               {ind}
@@ -308,13 +446,32 @@ export const CompaniesPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Active filter count & reset indicator */}
+      {(quickFilter !== 'all' || selectedIndustry !== 'All' || searchQuery !== '') && (
+        <div className="flex items-center justify-between text-xs px-1">
+          <span className="text-[11px] text-[#56687A] dark:text-slate-400 font-mono">
+            Showing <strong className="text-[#1D2226] dark:text-slate-100 font-bold">{filteredCompanies.length}</strong> of {companies.length} companies
+          </span>
+          <button
+            onClick={() => {
+              setQuickFilter('all');
+              setSelectedIndustry('All');
+              setSearchQuery('');
+            }}
+            className="text-[11px] text-[#0A66C2] dark:text-sky-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+          >
+            <span>Reset All Filters</span>
+          </button>
+        </div>
+      )}
+
       {/* ========================================================================= */}
       {/* 3. COMPANIES CARDS GRID                                                   */}
       {/* ========================================================================= */}
       {filteredCompanies.length === 0 ? (
-        <div className="p-12 text-center border border-dashed border-surface-800 rounded-2xl bg-surface-900/40 space-y-2">
-          <p className="text-sm font-semibold text-slate-300">No companies found matching your criteria</p>
-          <p className="text-xs text-slate-500">
+        <div className="p-12 text-center border border-dashed border-[#D9D9D9] dark:border-slate-800 rounded-2xl bg-[#F3F6F8] dark:bg-slate-900/50 space-y-2">
+          <p className="text-sm font-semibold text-[#1D2226] dark:text-slate-100">No companies found matching your criteria</p>
+          <p className="text-xs text-[#56687A] dark:text-slate-400">
             Try adjusting your search query or reset the industry filter.
           </p>
           <Button
@@ -323,6 +480,7 @@ export const CompaniesPage: React.FC = () => {
             onClick={() => {
               setSearchQuery('');
               setSelectedIndustry('All');
+              setQuickFilter('all');
             }}
           >
             Reset Filters

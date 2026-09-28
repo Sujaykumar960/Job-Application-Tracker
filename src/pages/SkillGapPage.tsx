@@ -29,8 +29,10 @@ import {
   Radar,
   Tooltip,
 } from 'recharts';
+import { useTheme } from '../context/ThemeContext';
 
 export const SkillGapPage: React.FC = () => {
+  const { theme } = useTheme();
   const [targetTrack, setTargetTrack] = useState<'backend' | 'fullstack' | 'distributed'>('distributed');
   const [data, setData] = useState<SkillGapAnalysisResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -267,11 +269,18 @@ export const SkillGapPage: React.FC = () => {
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#FFFFFF',
-                      borderColor: '#D9D9D9',
+                      backgroundColor: theme === 'dark' ? '#1E293B' : '#FFFFFF',
+                      borderColor: theme === 'dark' ? '#334155' : '#D9D9D9',
                       borderRadius: '8px',
                       fontSize: '11px',
-                      color: '#1D2226',
+                      color: theme === 'dark' ? '#F8FAFC' : '#1D2226',
+                      boxShadow: theme === 'dark' ? '0 4px 12px rgba(0, 0, 0, 0.4)' : '0 4px 12px rgba(0, 0, 0, 0.08)',
+                    }}
+                    itemStyle={{
+                      color: theme === 'dark' ? '#F8FAFC' : '#1D2226',
+                    }}
+                    labelStyle={{
+                      color: theme === 'dark' ? '#F8FAFC' : '#1D2226',
                     }}
                   />
                   <Radar

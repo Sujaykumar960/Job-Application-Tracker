@@ -68,15 +68,15 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col rounded-2xl bg-white border border-[#D9D9D9] overflow-hidden shadow-sm">
+    <div className="h-full flex flex-col rounded-2xl bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-700 overflow-hidden shadow-sm">
       {/* Editor Top Toolbar: Language Selector, AI Assistant Buttons & Actions */}
-      <div className="px-3.5 py-2 bg-[#F3F6F8] border-b border-[#E8E8E8] flex flex-wrap items-center justify-between gap-2">
+      <div className="px-3.5 py-2 bg-[#F3F6F8] dark:bg-slate-800/80 border-b border-[#E8E8E8] dark:border-slate-700 flex flex-wrap items-center justify-between gap-2">
         {/* Left: Language Selector & Reset */}
         <div className="flex items-center gap-2">
           <select
             value={language}
             onChange={(e) => onLanguageChange(e.target.value)}
-            className="bg-white text-[#1D2226] text-xs font-mono font-semibold rounded-lg border border-[#D9D9D9] px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
+            className="bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 text-xs font-mono font-semibold rounded-lg border border-[#D9D9D9] dark:border-slate-600 px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
           >
             {SUPPORTED_LANGUAGES.map((l) => (
               <option key={l.id} value={l.id}>
@@ -88,7 +88,7 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
           <button
             type="button"
             onClick={onReset}
-            className="p-1.5 rounded-lg text-[#788896] hover:text-[#1D2226] hover:bg-white transition"
+            className="p-1.5 rounded-lg text-[#788896] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-100 hover:bg-white dark:hover:bg-slate-700 transition"
             title="Reset code template"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -100,7 +100,7 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
           <Button
             size="xs"
             variant="ghost"
-            className="text-[11px] text-[#8A6100] hover:bg-[#FFF4CC] px-2"
+            className="text-[11px] text-[#8A6100] dark:text-amber-400 hover:bg-[#FFF4CC] dark:hover:bg-amber-900/30 px-2"
             disabled={isAiLoading}
             onClick={() => onAiAction('hint')}
             icon={<Lightbulb className="w-3 h-3 text-amber-500" />}
@@ -111,7 +111,7 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
           <Button
             size="xs"
             variant="ghost"
-            className="text-[11px] text-[#B3261E] hover:bg-[#FCE8E6] px-2"
+            className="text-[11px] text-[#B3261E] dark:text-rose-400 hover:bg-[#FCE8E6] dark:hover:bg-rose-900/30 px-2"
             disabled={isAiLoading}
             onClick={() => onAiAction('explain_error')}
             icon={<AlertTriangle className="w-3 h-3 text-rose-500" />}
@@ -122,7 +122,7 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
           <Button
             size="xs"
             variant="ghost"
-            className="text-[11px] text-[#0A66C2] hover:bg-[#E8F3FF] px-2"
+            className="text-[11px] text-[#0A66C2] dark:text-blue-400 hover:bg-[#E8F3FF] dark:hover:bg-blue-900/30 px-2"
             disabled={isAiLoading}
             onClick={() => onAiAction('explain_code')}
             icon={<FileQuestion className="w-3 h-3 text-[#0A66C2]" />}
@@ -133,7 +133,7 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
           <Button
             size="xs"
             variant="ghost"
-            className="text-[11px] text-[#137333] hover:bg-[#E6F4EA] px-2"
+            className="text-[11px] text-[#137333] dark:text-emerald-400 hover:bg-[#E6F4EA] dark:hover:bg-emerald-900/30 px-2"
             disabled={isAiLoading}
             onClick={() => onAiAction('optimize')}
             icon={<TrendingUp className="w-3 h-3 text-emerald-600" />}
@@ -144,7 +144,7 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
           <Button
             size="xs"
             variant="ghost"
-            className="text-[11px] text-[#0A66C2] hover:bg-[#E8F3FF] px-2"
+            className="text-[11px] text-[#0A66C2] dark:text-blue-400 hover:bg-[#E8F3FF] dark:hover:bg-blue-900/30 px-2"
             disabled={isAiLoading}
             onClick={() => onAiAction('generate_tests')}
             icon={<FlaskConical className="w-3 h-3 text-[#0A66C2]" />}

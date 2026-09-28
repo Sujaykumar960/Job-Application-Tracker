@@ -3,6 +3,7 @@ import { Card } from '../common/Card';
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
 import { CompanyProfile } from '../../types/company';
+import { CompanyLogo } from './CompanyLogo';
 import {
   Building2,
   MapPin,
@@ -28,29 +29,30 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
   onSelectCompany,
 }) => {
   return (
-    <Card className="p-5 bg-white border border-[#D9D9D9] flex flex-col justify-between space-y-4 shadow-sm hover:border-[#0A66C2]/40 transition group">
+    <Card className="p-5 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 flex flex-col justify-between space-y-4 shadow-sm hover:border-[#0A66C2]/40 dark:hover:border-sky-500/40 hover:shadow-md transition group">
       {/* Top Header: Logo + Name + Follow Toggle */}
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             {/* Company Logo Monogram */}
-            <div
-              className={cn(
-                'w-12 h-12 rounded-2xl bg-gradient-to-br flex items-center justify-center text-white font-extrabold text-sm shadow border border-surface-700/60 flex-shrink-0',
-                company.logoGradient
-              )}
-            >
-              {company.logoInitials}
-            </div>
+            <CompanyLogo
+              name={company.name}
+              initials={company.logoInitials}
+              gradient={company.logoGradient}
+              size="lg"
+            />
 
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <h3 className="text-sm font-bold text-[#1D2226] group-hover:text-[#0A66C2] transition truncate">
+                <h3
+                  onClick={() => onSelectCompany(company)}
+                  className="text-sm font-bold text-[#1D2226] dark:text-slate-100 group-hover:text-[#0A66C2] dark:group-hover:text-sky-400 transition truncate cursor-pointer"
+                >
                   {company.name}
                 </h3>
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
               </div>
-              <p className="text-[11px] text-[#56687A] font-mono truncate">{company.industry}</p>
+              <p className="text-[11px] text-[#56687A] dark:text-slate-400 font-mono truncate">{company.industry}</p>
             </div>
           </div>
 
@@ -61,11 +63,13 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
             onClick={() => onFollowToggle(company.id)}
             className={cn(
               "flex-shrink-0 text-[11px] px-2.5 font-semibold",
-              company.isFollowing ? "border-[#0A66C2]/40 text-[#0A66C2] bg-[#E8F3FF]" : ""
+              company.isFollowing
+                ? "border-[#0A66C2]/40 text-[#0A66C2] bg-[#E8F3FF] dark:border-sky-500/40 dark:text-sky-300 dark:bg-sky-950/40"
+                : "text-[#1D2226] dark:text-slate-200 bg-[#F3F6F8] dark:bg-slate-800 hover:bg-[#E8E8E8] dark:hover:bg-slate-700 border-[#D9D9D9] dark:border-slate-700"
             )}
             icon={
               company.isFollowing ? (
-                <Check className="w-3 h-3 text-[#0A66C2]" />
+                <Check className="w-3 h-3 text-[#0A66C2] dark:text-sky-300" />
               ) : (
                 <Plus className="w-3 h-3" />
               )
@@ -76,18 +80,18 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
         </div>
 
         {/* Tagline */}
-        <p className="text-xs text-[#38434F] leading-snug line-clamp-2">
+        <p className="text-xs text-[#38434F] dark:text-slate-300 leading-snug line-clamp-2">
           {company.tagline}
         </p>
 
         {/* Details Matrix: HQ & Headcount */}
-        <div className="flex items-center gap-3 text-[10px] font-mono text-[#788896] flex-wrap pt-0.5">
+        <div className="flex items-center gap-3 text-[10px] font-mono text-[#788896] dark:text-slate-400 flex-wrap pt-0.5">
           <span className="flex items-center gap-1">
-            <MapPin className="w-3 h-3 text-[#788896]" />
+            <MapPin className="w-3 h-3 text-[#788896] dark:text-slate-500" />
             {company.headquarters.split('&')[0].trim()}
           </span>
           <span className="flex items-center gap-1">
-            <Users className="w-3 h-3 text-[#788896]" />
+            <Users className="w-3 h-3 text-[#788896] dark:text-slate-500" />
             {company.size}
           </span>
         </div>
@@ -97,13 +101,13 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
           {company.techStack.slice(0, 5).map((tech) => (
             <span
               key={tech}
-              className="px-2 py-0.5 rounded-md bg-[#F3F6F8] text-[#56687A] border border-[#D9D9D9] text-[10px] font-mono"
+              className="px-2 py-0.5 rounded-md bg-[#F3F6F8] dark:bg-slate-800 text-[#56687A] dark:text-slate-300 border border-[#D9D9D9] dark:border-slate-700 text-[10px] font-mono"
             >
               {tech}
             </span>
           ))}
           {company.techStack.length > 5 && (
-            <span className="px-1.5 py-0.5 rounded-md bg-[#F3F6F8] text-[#788896] border border-[#E8E8E8] text-[9px] font-mono">
+            <span className="px-1.5 py-0.5 rounded-md bg-[#F3F6F8] dark:bg-slate-800 text-[#788896] dark:text-slate-400 border border-[#E8E8E8] dark:border-slate-700 text-[9px] font-mono">
               +{company.techStack.length - 5}
             </span>
           )}
@@ -111,11 +115,11 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
       </div>
 
       {/* Bottom Footer: Open Jobs Count & Inspect Button */}
-      <div className="pt-3 border-t border-[#E8E8E8] flex items-center justify-between gap-2">
+      <div className="pt-3 border-t border-[#E8E8E8] dark:border-slate-800 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-xs">
           <Briefcase className="w-3.5 h-3.5 text-amber-500" />
-          <span className="font-semibold text-[#1D2226]">{company.openJobsCount}</span>
-          <span className="text-[#56687A]">open positions</span>
+          <span className="font-semibold text-[#1D2226] dark:text-slate-100">{company.openJobsCount}</span>
+          <span className="text-[#56687A] dark:text-slate-400">open positions</span>
         </div>
 
         <Button
@@ -132,3 +136,4 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
 };
 
 export default CompanyCard;
+

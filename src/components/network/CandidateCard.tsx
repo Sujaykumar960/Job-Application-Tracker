@@ -120,7 +120,7 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
   })();
 
   return (
-    <Card className="p-4 bg-white border border-[#D9D9D9] flex flex-col justify-between space-y-3.5 shadow-sm hover:border-[#0A66C2]/40 transition group">
+    <Card className="p-4 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-700 flex flex-col justify-between space-y-3.5 shadow-sm hover:border-[#0A66C2]/40 dark:hover:border-blue-500/40 transition group">
       {/* Top Details */}
       <div className="space-y-3">
         {/* Avatar + Name + Headline */}
@@ -140,19 +140,19 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
             <div className="flex items-center gap-1.5 flex-wrap">
               <Link
                 to={`/profile/${user.id}`}
-                className="text-xs font-bold text-[#1D2226] hover:text-[#0A66C2] transition truncate"
+                className="text-xs font-bold text-[#1D2226] dark:text-slate-100 hover:text-[#0A66C2] dark:hover:text-blue-400 transition truncate"
               >
                 {user.name || 'Engineering Peer'}
               </Link>
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
             </div>
 
-            <p className="text-[11px] text-[#56687A] leading-snug line-clamp-2 mt-0.5">
+            <p className="text-[11px] text-[#56687A] dark:text-slate-400 leading-snug line-clamp-2 mt-0.5">
               {user.headline || 'Software Engineer'}
             </p>
 
-            <span className="text-[10px] text-[#788896] font-mono flex items-center gap-1 mt-1">
-              <MapPin className="w-2.5 h-2.5 text-[#788896]" />
+            <span className="text-[10px] text-[#788896] dark:text-slate-500 font-mono flex items-center gap-1 mt-1">
+              <MapPin className="w-2.5 h-2.5" />
               {user.location || 'Remote'}
             </span>
           </div>
@@ -163,13 +163,13 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
           {skillsList.slice(0, 4).map((s) => (
             <span
               key={s}
-              className="px-2 py-0.5 rounded-md bg-[#F3F6F8] text-[#56687A] border border-[#D9D9D9] text-[10px] font-mono"
+              className="px-2 py-0.5 rounded-md bg-[#F3F6F8] dark:bg-slate-800 text-[#56687A] dark:text-slate-300 border border-[#D9D9D9] dark:border-slate-700 text-[10px] font-mono"
             >
               {s}
             </span>
           ))}
           {skillsList.length > 4 && (
-            <span className="px-1.5 py-0.5 rounded-md bg-[#F3F6F8] text-[#788896] border border-[#D9D9D9] text-[9px] font-mono">
+            <span className="px-1.5 py-0.5 rounded-md bg-[#F3F6F8] dark:bg-slate-800 text-[#788896] dark:text-slate-400 border border-[#D9D9D9] dark:border-slate-700 text-[9px] font-mono">
               +{skillsList.length - 4}
             </span>
           )}
@@ -177,9 +177,9 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
       </div>
 
       {/* Bottom Area: Mutual Connections & Action Button */}
-      <div className="space-y-2.5 pt-2 border-t border-[#E8E8E8]">
+      <div className="space-y-2.5 pt-2 border-t border-[#E8E8E8] dark:border-slate-700">
         {/* Mutual Connections */}
-        <div className="flex items-center gap-1.5 text-[10px] text-[#788896] font-mono">
+        <div className="flex items-center gap-1.5 text-[10px] text-[#788896] dark:text-slate-500 font-mono">
           <Users className="w-3 h-3 text-[#0A66C2] flex-shrink-0" />
           <span className="truncate">
             {user.mutualCount ?? 0} mutual connections

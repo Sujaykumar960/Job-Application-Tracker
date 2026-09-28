@@ -98,6 +98,7 @@ export const JobsPage: React.FC = () => {
     jobType: 'All',
     workType: 'All',
     sortBy: 'match',
+    matchLevel: 'all',
   });
 
   // Derived filter options from dataset
@@ -113,6 +114,19 @@ export const JobsPage: React.FC = () => {
     const all = jobs.flatMap((j) => j.skills.map((s) => s.name));
     return Array.from(new Set(all)).sort();
   }, [jobs]);
+
+  // Metric counts for the given boxes
+  const highMatchCount = useMemo(() => jobs.filter((j) => j.matchScore >= 90).length, [jobs]);
+  const remoteCount = useMemo(() => jobs.filter((j) => j.workType === 'Remote').length, [jobs]);
+  const internshipsCount = useMemo(() => jobs.filter((j) => j.jobType === 'Internship').length, [jobs]);
+  const highMatchInternshipsCount = useMemo(
+    () => jobs.filter((j) => j.jobType === 'Internship' && j.matchScore >= 90).length,
+    [jobs]
+  );
+  const restInternshipsCount = useMemo(
+    () => jobs.filter((j) => j.jobType === 'Internship' && j.matchScore < 90).length,
+    [jobs]
+  );
 
   // Filtering & Sorting
   const filteredJobs = useMemo(() => {
@@ -148,6 +162,20 @@ export const JobsPage: React.FC = () => {
         // Work Type
         const matchesWorkType = filters.workType === 'All' || job.workType === filters.workType;
 
+        // Match Level Quick Filter (controlled from the given metric boxes)
+        let matchesLevel = true;
+        if (filters.matchLevel === 'highMatch') {
+          matchesLevel = job.matchScore >= 90;
+        } else if (filters.matchLevel === 'remote') {
+          matchesLevel = job.workType === 'Remote';
+        } else if (filters.matchLevel === 'internships') {
+          matchesLevel = job.jobType === 'Internship';
+        } else if (filters.matchLevel === 'highMatchInternships') {
+          matchesLevel = job.jobType === 'Internship' && job.matchScore >= 90;
+        } else if (filters.matchLevel === 'restInternships') {
+          matchesLevel = job.jobType === 'Internship' && job.matchScore < 90;
+        }
+
         return (
           matchesSearch &&
           matchesRole &&
@@ -155,7 +183,8 @@ export const JobsPage: React.FC = () => {
           matchesExperience &&
           matchesSkill &&
           matchesJobType &&
-          matchesWorkType
+          matchesWorkType &&
+          matchesLevel
         );
       })
       .sort((a, b) => {
@@ -252,6 +281,7 @@ export const JobsPage: React.FC = () => {
       jobType: 'All',
       workType: 'All',
       sortBy: 'match',
+      matchLevel: 'all',
     });
   };
 
@@ -295,44 +325,182 @@ export const JobsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Quick Marketplace Metrics */}
+      {/* Quick Marketplace Metrics (Given Boxes with Checkable Features) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        <div className="p-3 rounded-xl bg-white border border-[#D9D9D9] flex items-center justify-between shadow-xs">
-          <div>
-            <span className="text-[11px] text-[#788896]">Total Positions</span>
-            <p className="text-xl font-bold text-[#1D2226] font-mono">{jobs.length}</p>
+        {/* Box 1: Total Positions */}
+        <div
+          onClick={() => setFilters((prev) => ({ ...prev, matchLevel: 'all' }))}
+          className={`p-3 rounded-xl border flex flex-col justify-between shadow-xs cursor-pointer transition-all duration-200 select-none ${
+            filters.matchLevel === 'all'
+              ? 'bg-blue-50/60 dark:bg-slate-800/90 border-[#0A66C2] dark:border-sky-500 ring-2 ring-[#0A66C2]/20 dark:ring-sky-500/20'
+              : 'bg-white dark:bg-slate-900 border-[#D9D9D9] dark:border-slate-800 hover:border-[#0A66C2]/40 dark:hover:border-slate-700'
+          }`}
+          title="Click to check All Roles (Reset quick filter)"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-[#788896] dark:text-slate-400 font-semibold">Total Positions</span>
+                {filters.matchLevel === 'all' && (
+                  <CheckCircle2 className="w-3 h-3 text-[#0A66C2] dark:text-sky-400" />
+                )}
+              </div>
+              <p className="text-xl font-bold text-[#1D2226] dark:text-slate-100 font-mono">{jobs.length}</p>
+            </div>
+            <Building2 className="w-4 h-4 text-[#788896] dark:text-slate-400" />
           </div>
-          <Building2 className="w-4 h-4 text-[#788896]" />
+          <div className="mt-1.5 pt-1.5 border-t border-[#E8E8E8] dark:border-slate-800 flex items-center justify-between text-[10px] text-[#56687A] dark:text-slate-400">
+            <span>All Verified Roles</span>
+            <span className="font-mono text-[9px] uppercase tracking-wider">{filters.matchLevel === 'all' ? 'Active' : 'Click to Check'}</span>
+          </div>
         </div>
 
-        <div className="p-3 rounded-xl bg-white border border-[#D9D9D9] flex items-center justify-between shadow-xs">
-          <div>
-            <span className="text-[11px] text-emerald-700 font-semibold">High Match (&gt;90%)</span>
-            <p className="text-xl font-bold text-emerald-700 font-mono">
-              {jobs.filter((j) => j.matchScore >= 90).length} Roles
-            </p>
+        {/* Box 2: High Match (>90%) */}
+        <div
+          onClick={() =>
+            setFilters((prev) => ({
+              ...prev,
+              matchLevel: prev.matchLevel === 'highMatch' ? 'all' : 'highMatch',
+            }))
+          }
+          className={`p-3 rounded-xl border flex flex-col justify-between shadow-xs cursor-pointer transition-all duration-200 select-none ${
+            filters.matchLevel === 'highMatch'
+              ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-500 dark:border-emerald-400 ring-2 ring-emerald-500/20 dark:ring-emerald-400/20'
+              : 'bg-white dark:bg-slate-900 border-[#D9D9D9] dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-700'
+          }`}
+          title="Click to check High Match Roles (≥90%)"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">High Match (&gt;90%)</span>
+                {filters.matchLevel === 'highMatch' && (
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                )}
+              </div>
+              <p className="text-xl font-bold text-emerald-700 dark:text-emerald-400 font-mono">
+                {highMatchCount} Roles
+              </p>
+            </div>
+            <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <Sparkles className="w-4 h-4 text-emerald-600" />
+          <div className="mt-1.5 pt-1.5 border-t border-[#E8E8E8] dark:border-slate-800 flex items-center justify-between text-[10px] text-emerald-700 dark:text-emerald-400">
+            <span>Top Compatibility</span>
+            <span className="font-mono text-[9px] uppercase tracking-wider">{filters.matchLevel === 'highMatch' ? 'Checked ✓' : 'Click to Check'}</span>
+          </div>
         </div>
 
-        <div className="p-3 rounded-xl bg-white border border-[#D9D9D9] flex items-center justify-between shadow-xs">
-          <div>
-            <span className="text-[11px] text-[#0A66C2] font-semibold">Remote Available</span>
-            <p className="text-xl font-bold text-[#0A66C2] font-mono">
-              {jobs.filter((j) => j.workType === 'Remote').length}
-            </p>
+        {/* Box 3: Remote Available */}
+        <div
+          onClick={() =>
+            setFilters((prev) => ({
+              ...prev,
+              matchLevel: prev.matchLevel === 'remote' ? 'all' : 'remote',
+            }))
+          }
+          className={`p-3 rounded-xl border flex flex-col justify-between shadow-xs cursor-pointer transition-all duration-200 select-none ${
+            filters.matchLevel === 'remote'
+              ? 'bg-blue-50/60 dark:bg-sky-950/30 border-[#0A66C2] dark:border-sky-400 ring-2 ring-[#0A66C2]/20 dark:ring-sky-400/20'
+              : 'bg-white dark:bg-slate-900 border-[#D9D9D9] dark:border-slate-800 hover:border-[#0A66C2]/40 dark:hover:border-sky-700'
+          }`}
+          title="Click to check Remote Roles"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-[#0A66C2] dark:text-blue-400 font-semibold">Remote Available</span>
+                {filters.matchLevel === 'remote' && (
+                  <CheckCircle2 className="w-3 h-3 text-[#0A66C2] dark:text-blue-400" />
+                )}
+              </div>
+              <p className="text-xl font-bold text-[#0A66C2] dark:text-blue-400 font-mono">
+                {remoteCount}
+              </p>
+            </div>
+            <TrendingUp className="w-4 h-4 text-[#0A66C2] dark:text-blue-400" />
           </div>
-          <TrendingUp className="w-4 h-4 text-[#0A66C2]" />
+          <div className="mt-1.5 pt-1.5 border-t border-[#E8E8E8] dark:border-slate-800 flex items-center justify-between text-[10px] text-[#0A66C2] dark:text-blue-400">
+            <span>Work From Anywhere</span>
+            <span className="font-mono text-[9px] uppercase tracking-wider">{filters.matchLevel === 'remote' ? 'Checked ✓' : 'Click to Check'}</span>
+          </div>
         </div>
 
-        <div className="p-3 rounded-xl bg-white border border-[#D9D9D9] flex items-center justify-between shadow-xs">
-          <div>
-            <span className="text-[11px] text-[#8A6100] font-semibold">Internships</span>
-            <p className="text-xl font-bold text-[#8A6100] font-mono">
-              {jobs.filter((j) => j.jobType === 'Internship').length}
-            </p>
+        {/* Box 4: Internships (with features on the given box to check High Match & Rest) */}
+        <div
+          onClick={() =>
+            setFilters((prev) => ({
+              ...prev,
+              matchLevel: prev.matchLevel === 'internships' ? 'all' : 'internships',
+            }))
+          }
+          className={`p-3 rounded-xl border flex flex-col justify-between shadow-xs cursor-pointer transition-all duration-200 select-none ${
+            filters.matchLevel === 'internships' ||
+            filters.matchLevel === 'highMatchInternships' ||
+            filters.matchLevel === 'restInternships'
+              ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-500 dark:border-amber-400 ring-2 ring-amber-500/20 dark:ring-amber-400/20'
+              : 'bg-white dark:bg-slate-900 border-[#D9D9D9] dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-700'
+          }`}
+          title="Click to check All Internships"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-[#8A6100] dark:text-amber-400 font-semibold">Internships</span>
+                {(filters.matchLevel === 'internships' ||
+                  filters.matchLevel === 'highMatchInternships' ||
+                  filters.matchLevel === 'restInternships') && (
+                  <CheckCircle2 className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                )}
+              </div>
+              <p className="text-xl font-bold text-[#8A6100] dark:text-amber-400 font-mono">
+                {internshipsCount}
+              </p>
+            </div>
+            <Briefcase className="w-4 h-4 text-amber-500" />
           </div>
-          <Briefcase className="w-4 h-4 text-amber-500" />
+
+          {/* Quick checks directly on the given box: High Match & Rest */}
+          <div className="mt-1.5 pt-1.5 border-t border-[#E8E8E8] dark:border-slate-800 flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setFilters((prev) => ({
+                  ...prev,
+                  matchLevel: prev.matchLevel === 'highMatchInternships' ? 'all' : 'highMatchInternships',
+                }));
+              }}
+              className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold flex items-center gap-1 transition cursor-pointer ${
+                filters.matchLevel === 'highMatchInternships'
+                  ? 'bg-amber-600 text-white dark:bg-amber-500 shadow-xs ring-1 ring-amber-600 dark:ring-amber-400'
+                  : 'bg-amber-100/90 text-amber-900 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-300'
+              }`}
+              title="Click to check High Match Internships (≥90%)"
+            >
+              <span>★ High Match</span>
+              <span className="font-bold">({highMatchInternshipsCount})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setFilters((prev) => ({
+                  ...prev,
+                  matchLevel: prev.matchLevel === 'restInternships' ? 'all' : 'restInternships',
+                }));
+              }}
+              className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold flex items-center gap-1 transition cursor-pointer ${
+                filters.matchLevel === 'restInternships'
+                  ? 'bg-amber-600 text-white dark:bg-amber-500 shadow-xs ring-1 ring-amber-600 dark:ring-amber-400'
+                  : 'bg-[#F3F6F8] text-[#56687A] hover:bg-[#E8E8E8] dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+              }`}
+              title="Click to check Rest of Internships (<90%)"
+            >
+              <span>Rest</span>
+              <span className="font-bold">({restInternshipsCount})</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -349,9 +517,9 @@ export const JobsPage: React.FC = () => {
 
       {/* Job Cards Grid (Laptop optimized 1366px+) */}
       {filteredJobs.length === 0 ? (
-        <div className="p-12 text-center border border-dashed border-[#D9D9D9] rounded-2xl bg-[#F3F6F8] space-y-2">
-          <p className="text-sm font-semibold text-[#1D2226]">No jobs match your filter criteria</p>
-          <p className="text-xs text-[#56687A]">Try adjusting your skill, location, or workplace filters</p>
+        <div className="p-12 text-center border border-dashed border-[#D9D9D9] dark:border-slate-800 rounded-2xl bg-[#F3F6F8] dark:bg-slate-900/50 space-y-2">
+          <p className="text-sm font-semibold text-[#1D2226] dark:text-slate-100">No jobs match your filter criteria</p>
+          <p className="text-xs text-[#56687A] dark:text-slate-400">Try adjusting your skill, location, or workplace filters</p>
           <Button size="xs" variant="outline" onClick={resetFilters}>
             Clear All Filters
           </Button>

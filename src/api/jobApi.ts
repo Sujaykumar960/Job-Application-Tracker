@@ -6,7 +6,9 @@ export const jobApi = {
    * Fetch job listings with optional multi-facet filters
    */
   getJobs: async (filters?: Partial<JobFilterState>): Promise<JobItem[]> => {
-    const response = await apiClient.get<JobItem[]>('/jobs', { params: filters });
+    const response = await apiClient.get<JobItem[]>('/jobs', {
+      params: { limit: 100, ...filters },
+    });
     return response.data;
   },
 

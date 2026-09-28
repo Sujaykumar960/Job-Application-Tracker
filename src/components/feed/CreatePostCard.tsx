@@ -165,7 +165,7 @@ export const CreatePostCard: React.FC<CreatePostCardProps> = ({ onPublish }) => 
   const authorInitials = user?.name ? user.name.slice(0, 2).toUpperCase() : 'CX';
 
   return (
-    <Card className="p-4 bg-white border border-[#D9D9D9] space-y-3.5 shadow-sm">
+    <Card className="p-4 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-700 space-y-3.5 shadow-sm">
       <form onSubmit={handlePublish} className="space-y-3">
         {/* Author Avatar + Textarea */}
         <div className="flex items-start gap-3">
@@ -186,14 +186,14 @@ export const CreatePostCard: React.FC<CreatePostCardProps> = ({ onPublish }) => 
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Share an achievement, architectural finding, photo, video, or technical question..."
-              className="w-full bg-white text-[#1D2226] placeholder-[#788896] text-xs rounded-xl border border-[#D9D9D9] p-3 focus:outline-none focus:ring-2 focus:ring-[#E8F3FF] focus:border-[#0A66C2] leading-relaxed resize-none transition"
+              className="w-full bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 placeholder-[#788896] dark:placeholder-slate-500 text-xs rounded-xl border border-[#D9D9D9] dark:border-slate-600 p-3 focus:outline-none focus:ring-2 focus:ring-[#E8F3FF] dark:focus:ring-blue-900/40 focus:border-[#0A66C2] leading-relaxed resize-none transition"
             />
           </div>
         </div>
 
         {/* Validation Error Banner */}
         {validationError && (
-          <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+          <div className="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-700/50 text-rose-700 dark:text-rose-400 text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{validationError}</span>
           </div>
@@ -247,15 +247,15 @@ export const CreatePostCard: React.FC<CreatePostCardProps> = ({ onPublish }) => 
 
         {/* Optional Code Snippet Input */}
         {showCodeInput && (
-          <div className="p-3 rounded-xl bg-[#F3F6F8] border border-[#D9E2EC] space-y-1.5 animate-in fade-in duration-150">
-            <div className="flex items-center justify-between text-[11px] text-[#56687A] font-mono">
+          <div className="p-3 rounded-xl bg-[#F3F6F8] dark:bg-slate-800 border border-[#D9E2EC] dark:border-slate-700 space-y-1.5 animate-in fade-in duration-150">
+            <div className="flex items-center justify-between text-[11px] text-[#56687A] dark:text-slate-400 font-mono">
               <span className="flex items-center gap-1">
                 <Code2 className="w-3.5 h-3.5 text-[#0A66C2]" /> Code Snippet / Architecture Schema
               </span>
               <button
                 type="button"
                 onClick={() => setShowCodeInput(false)}
-                className="text-[#788896] hover:text-[#1D2226]"
+                className="text-[#788896] dark:text-slate-500 hover:text-[#1D2226] dark:hover:text-slate-100"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -265,14 +265,14 @@ export const CreatePostCard: React.FC<CreatePostCardProps> = ({ onPublish }) => 
               value={codeSnippet}
               onChange={(e) => setCodeSnippet(e.target.value)}
               placeholder="// Paste benchmark, Go concurrency routine, or Redis Lua script..."
-              className="w-full bg-white text-[#1D6F42] font-mono text-[11px] rounded-lg border border-[#D9E2EC] p-2.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] leading-relaxed"
+              className="w-full bg-white dark:bg-slate-900 text-[#1D6F42] dark:text-emerald-400 font-mono text-[11px] rounded-lg border border-[#D9E2EC] dark:border-slate-600 p-2.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] leading-relaxed"
             />
           </div>
         )}
 
         {/* Post Type Selector Pills */}
         <div className="space-y-1">
-          <span className="text-[10px] font-mono uppercase text-[#56687A] font-semibold block">
+          <span className="text-[10px] font-mono uppercase text-[#56687A] dark:text-slate-400 font-semibold block">
             Post Category
           </span>
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -286,7 +286,7 @@ export const CreatePostCard: React.FC<CreatePostCardProps> = ({ onPublish }) => 
                   className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition flex items-center gap-1 border ${
                     selectedType === pt.type
                       ? 'bg-[#0A66C2] text-white border-[#0A66C2] shadow-sm'
-                      : 'bg-[#F3F6F8] text-[#56687A] hover:text-[#1D2226] hover:bg-[#E8E8E8] border-[#D9D9D9]'
+                      : 'bg-[#F3F6F8] dark:bg-slate-800 text-[#56687A] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-100 hover:bg-[#E8E8E8] dark:hover:bg-slate-700 border-[#D9D9D9] dark:border-slate-600'
                   }`}
                 >
                   <Icon className="w-3 h-3" />
@@ -298,15 +298,15 @@ export const CreatePostCard: React.FC<CreatePostCardProps> = ({ onPublish }) => 
         </div>
 
         {/* Footer: Tags, Media buttons, Code toggle & Publish */}
-        <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#E8E8E8] flex-wrap">
+        <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#E8E8E8] dark:border-slate-700 flex-wrap">
           <div className="flex items-center gap-2 flex-1 max-w-sm">
-            <Tag className="w-3.5 h-3.5 text-[#788896] flex-shrink-0" />
+            <Tag className="w-3.5 h-3.5 text-[#788896] dark:text-slate-400 flex-shrink-0" />
             <input
               type="text"
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
               placeholder="Tags: #Kafka, #Go, #SystemDesign"
-              className="w-full bg-white text-[#1D2226] placeholder-[#788896] text-[11px] rounded-lg border border-[#D9D9D9] px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] font-mono"
+              className="w-full bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 placeholder-[#788896] dark:placeholder-slate-500 text-[11px] rounded-lg border border-[#D9D9D9] dark:border-slate-600 px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] font-mono"
             />
           </div>
 
@@ -333,7 +333,7 @@ export const CreatePostCard: React.FC<CreatePostCardProps> = ({ onPublish }) => 
             <button
               type="button"
               onClick={() => imageInputRef.current?.click()}
-              className="px-2 py-1 rounded-lg bg-[#F3F6F8] text-[#56687A] hover:text-[#0A66C2] hover:bg-[#E8F3FF] border border-[#D9D9D9] text-[11px] font-medium flex items-center gap-1 transition"
+              className="px-2 py-1 rounded-lg bg-[#F3F6F8] dark:bg-slate-800 text-[#56687A] dark:text-slate-400 hover:text-[#0A66C2] dark:hover:text-blue-400 hover:bg-[#E8F3FF] dark:hover:bg-blue-900/30 border border-[#D9D9D9] dark:border-slate-600 text-[11px] font-medium flex items-center gap-1 transition"
               title="Add photos (PNG, JPEG, WebP up to 10MB)"
             >
               <ImageIcon className="w-3.5 h-3.5 text-emerald-600" />
@@ -344,7 +344,7 @@ export const CreatePostCard: React.FC<CreatePostCardProps> = ({ onPublish }) => 
             <button
               type="button"
               onClick={() => videoInputRef.current?.click()}
-              className="px-2 py-1 rounded-lg bg-[#F3F6F8] text-[#56687A] hover:text-[#0A66C2] hover:bg-[#E8F3FF] border border-[#D9D9D9] text-[11px] font-medium flex items-center gap-1 transition"
+              className="px-2 py-1 rounded-lg bg-[#F3F6F8] dark:bg-slate-800 text-[#56687A] dark:text-slate-400 hover:text-[#0A66C2] dark:hover:text-blue-400 hover:bg-[#E8F3FF] dark:hover:bg-blue-900/30 border border-[#D9D9D9] dark:border-slate-600 text-[11px] font-medium flex items-center gap-1 transition"
               title="Add videos (MP4, WebM, MOV up to 50MB)"
             >
               <VideoIcon className="w-3.5 h-3.5 text-sky-600" />
@@ -356,7 +356,7 @@ export const CreatePostCard: React.FC<CreatePostCardProps> = ({ onPublish }) => 
               <button
                 type="button"
                 onClick={() => setShowCodeInput(true)}
-                className="px-2 py-1 rounded-lg bg-[#F3F6F8] text-[#56687A] hover:text-[#1D2226] hover:bg-[#E8E8E8] border border-[#D9D9D9] text-[11px] font-mono flex items-center gap-1 transition"
+                className="px-2 py-1 rounded-lg bg-[#F3F6F8] dark:bg-slate-800 text-[#56687A] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-100 hover:bg-[#E8E8E8] dark:hover:bg-slate-700 border border-[#D9D9D9] dark:border-slate-600 text-[11px] font-mono flex items-center gap-1 transition"
                 title="Attach code snippet"
               >
                 <Code2 className="w-3 h-3 text-[#0A66C2]" />

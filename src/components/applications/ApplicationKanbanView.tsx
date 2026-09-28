@@ -30,10 +30,10 @@ const KANBAN_STAGES: Array<{
   color: string;
   headerBg: string;
 }> = [
-  { status: 'Applied', label: 'Applied', color: '#0A66C2', headerBg: 'bg-[#E8F3FF] text-[#0A66C2] border-[#d0e6fc]' },
-  { status: 'Interview', label: 'Interview', color: '#7C83FD', headerBg: 'bg-[#F0F2FF] text-[#555BD9] border-[#d6d9fd]' },
-  { status: 'Offer', label: 'Offer', color: '#12B886', headerBg: 'bg-[#E6F4EA] text-[#137333] border-[#c6ecd2]' },
-  { status: 'Rejected', label: 'Rejected', color: '#E6395A', headerBg: 'bg-[#FCE8E6] text-[#B3261E] border-[#f8cbc7]' },
+  { status: 'Applied', label: 'Applied', color: '#0A66C2', headerBg: 'bg-[#E8F3FF] text-[#0A66C2] border-[#d0e6fc] dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800' },
+  { status: 'Interview', label: 'Interview', color: '#7C83FD', headerBg: 'bg-[#F0F2FF] text-[#555BD9] border-[#d6d9fd] dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800' },
+  { status: 'Offer', label: 'Offer', color: '#12B886', headerBg: 'bg-[#E6F4EA] text-[#137333] border-[#c6ecd2] dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800' },
+  { status: 'Rejected', label: 'Rejected', color: '#E6395A', headerBg: 'bg-[#FCE8E6] text-[#B3261E] border-[#f8cbc7] dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800' },
 ];
 
 export const ApplicationKanbanView: React.FC<ApplicationKanbanViewProps> = ({
@@ -73,11 +73,11 @@ export const ApplicationKanbanView: React.FC<ApplicationKanbanViewProps> = ({
         return (
           <div
             key={stage.status}
-            className="flex flex-col rounded-2xl bg-[#F3F6F8]/60 border border-[#D9D9D9] overflow-hidden shadow-sm"
+            className="flex flex-col rounded-2xl bg-[#F3F6F8]/60 dark:bg-slate-900/60 border border-[#D9D9D9] dark:border-slate-800 overflow-hidden shadow-sm"
           >
             {/* Column Header */}
             <div
-              className={`px-3.5 py-2.5 border-b border-[#D9D9D9] flex items-center justify-between ${stage.headerBg}`}
+              className={`px-3.5 py-2.5 border-b border-[#D9D9D9] dark:border-slate-800 flex items-center justify-between ${stage.headerBg}`}
             >
               <div className="flex items-center gap-2">
                 <span
@@ -88,7 +88,7 @@ export const ApplicationKanbanView: React.FC<ApplicationKanbanViewProps> = ({
                   {stage.label}
                 </h3>
               </div>
-              <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-full bg-white text-[#1D2226] border border-[#D9D9D9]">
+              <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 border border-[#D9D9D9] dark:border-slate-700">
                 {stageApps.length}
               </span>
             </div>
@@ -96,8 +96,8 @@ export const ApplicationKanbanView: React.FC<ApplicationKanbanViewProps> = ({
             {/* Cards Container with smooth scrolling */}
             <div className="p-2.5 space-y-2.5 min-h-[420px] max-h-[calc(100vh-280px)] overflow-y-auto">
               {stageApps.length === 0 ? (
-                <div className="h-28 flex flex-col items-center justify-center text-center p-3 border border-dashed border-[#D9D9D9] rounded-xl">
-                  <span className="text-xs text-[#788896] italic">No applications</span>
+                <div className="h-28 flex flex-col items-center justify-center text-center p-3 border border-dashed border-[#D9D9D9] dark:border-slate-800 rounded-xl">
+                  <span className="text-xs text-[#788896] dark:text-slate-400 italic">No applications</span>
                 </div>
               ) : (
                 stageApps.map((app) => {
@@ -107,38 +107,38 @@ export const ApplicationKanbanView: React.FC<ApplicationKanbanViewProps> = ({
                   return (
                     <div
                       key={app.id}
-                      className="p-3 rounded-xl bg-white border border-[#D9D9D9] hover:border-[#0A66C2] hover:shadow-md transition-all duration-150 space-y-2.5 group"
+                      className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 hover:border-[#0A66C2] dark:hover:border-[#0A66C2] hover:shadow-md transition-all duration-150 space-y-2.5 group"
                     >
                       {/* Top row: Company, Priority, Actions */}
                       <div className="flex items-start justify-between gap-1">
                         <div className="min-w-0">
                           <h4
                             onClick={() => onView(app)}
-                            className="text-xs font-bold text-[#1D2226] hover:text-[#0A66C2] transition cursor-pointer truncate"
+                            className="text-xs font-bold text-[#1D2226] dark:text-slate-100 hover:text-[#0A66C2] dark:hover:text-[#0A66C2] transition cursor-pointer truncate"
                           >
                             {app.company}
                           </h4>
-                          <p className="text-[11px] text-[#56687A] truncate">{app.role}</p>
+                          <p className="text-[11px] text-[#56687A] dark:text-slate-400 truncate">{app.role}</p>
                         </div>
 
                         <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition flex-shrink-0">
                           <button
                             onClick={() => onView(app)}
-                            className="p-1 rounded text-[#788896] hover:text-[#1D2226]"
+                            className="p-1 rounded text-[#788896] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-100"
                             title="View"
                           >
                             <Eye className="w-3 h-3" />
                           </button>
                           <button
                             onClick={() => onEdit(app)}
-                            className="p-1 rounded text-[#788896] hover:text-[#0A66C2]"
+                            className="p-1 rounded text-[#788896] dark:text-slate-400 hover:text-[#0A66C2]"
                             title="Edit"
                           >
                             <Edit2 className="w-3 h-3" />
                           </button>
                           <button
                             onClick={() => onDelete(app.id)}
-                            className="p-1 rounded text-[#788896] hover:text-rose-600"
+                            className="p-1 rounded text-[#788896] dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400"
                             title="Delete"
                           >
                             <Trash2 className="w-3 h-3" />
@@ -147,12 +147,12 @@ export const ApplicationKanbanView: React.FC<ApplicationKanbanViewProps> = ({
                       </div>
 
                       {/* Location & Match Score */}
-                      <div className="flex items-center justify-between text-[10px] text-[#56687A]">
+                      <div className="flex items-center justify-between text-[10px] text-[#56687A] dark:text-slate-400">
                         <span className="flex items-center gap-1 truncate max-w-[120px]">
-                          <MapPin className="w-2.5 h-2.5 text-[#788896]" />
+                          <MapPin className="w-2.5 h-2.5 text-[#788896] dark:text-slate-400" />
                           {app.location}
                         </span>
-                        <span className="flex items-center gap-0.5 text-emerald-600 font-mono font-bold">
+                        <span className="flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-mono font-bold">
                           <Sparkles className="w-2.5 h-2.5" />
                           {app.matchScore}%
                         </span>
@@ -163,7 +163,7 @@ export const ApplicationKanbanView: React.FC<ApplicationKanbanViewProps> = ({
                         <DeadlineBadge deadline={app.deadline} />
 
                         {app.interviewDate && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#E8F3FF] text-[#0A66C2] border border-[#d0e6fc] truncate">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#E8F3FF] dark:bg-sky-950/40 text-[#0A66C2] dark:text-sky-300 border border-[#d0e6fc] dark:border-sky-800 truncate">
                             <Calendar className="w-2.5 h-2.5" />
                             {app.interviewDate.split(' ')[0]}
                           </span>
@@ -171,12 +171,12 @@ export const ApplicationKanbanView: React.FC<ApplicationKanbanViewProps> = ({
                       </div>
 
                       {/* Card Footer: Quick Stage Shifter Buttons */}
-                      <div className="pt-2 border-t border-[#E8E8E8] flex items-center justify-between text-[10px]">
+                      <div className="pt-2 border-t border-[#E8E8E8] dark:border-slate-800 flex items-center justify-between text-[10px]">
                         <div className="flex items-center gap-1">
                           {prevStage && (
                             <button
                               onClick={() => onStatusChange(app.id, prevStage)}
-                              className="px-1.5 py-0.5 rounded bg-[#F8FAFC] hover:bg-slate-100 border border-[#D9D9D9] text-[#56687A] hover:text-[#1D2226] flex items-center gap-0.5 transition"
+                              className="px-1.5 py-0.5 rounded bg-[#F8FAFC] dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-[#D9D9D9] dark:border-slate-700 text-[#56687A] dark:text-slate-300 hover:text-[#1D2226] dark:hover:text-slate-100 flex items-center gap-0.5 transition"
                               title={`Move back to ${prevStage}`}
                             >
                               <ArrowLeft className="w-2.5 h-2.5" />
@@ -186,7 +186,7 @@ export const ApplicationKanbanView: React.FC<ApplicationKanbanViewProps> = ({
                           {app.status !== 'Rejected' && (
                             <button
                               onClick={() => onStatusChange(app.id, 'Rejected')}
-                              className="px-1.5 py-0.5 rounded bg-[#F8FAFC] hover:bg-rose-50 border border-[#D9D9D9] text-[#788896] hover:text-rose-600 hover:border-rose-200 transition"
+                              className="px-1.5 py-0.5 rounded bg-[#F8FAFC] dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-[#D9D9D9] dark:border-slate-700 text-[#788896] dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-200 dark:hover:border-rose-800 transition"
                               title="Mark as Rejected"
                             >
                               Reject

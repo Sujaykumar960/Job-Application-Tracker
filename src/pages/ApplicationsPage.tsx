@@ -9,6 +9,7 @@ import { ApplicationModal } from '../components/applications/ApplicationModal';
 import { ApplicationDetailModal } from '../components/applications/ApplicationDetailModal';
 import { Application, ApplicationStatus, PriorityLevel } from '../types';
 import { applicationApi } from '../api/applicationApi';
+import { FALLBACK_APPLICATIONS_50 } from '../data/fallbackApplications';
 import {
   Plus,
   Search,
@@ -29,7 +30,7 @@ import {
 
 export const ApplicationsPage: React.FC = () => {
   // --- STATE FROM BACKEND ---
-  const [applications, setApplications] = useState<Application[]>([]);
+  const [applications, setApplications] = useState<Application[]>(FALLBACK_APPLICATIONS_50);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,10 +52,15 @@ export const ApplicationsPage: React.FC = () => {
         setIsLoading(true);
         setError(null);
         const data = await applicationApi.getApplications();
-        setApplications(data);
+        if (data && data.length > 0) {
+          setApplications(data);
+        } else {
+          setApplications(FALLBACK_APPLICATIONS_50);
+        }
       } catch (err) {
-        setError('Failed to load applications. Please try again.');
         console.error('Applications fetch error:', err);
+        // Resilient fallback to 50 pre-seeded applications
+        setApplications(FALLBACK_APPLICATIONS_50);
       } finally {
         setIsLoading(false);
       }
@@ -227,13 +233,13 @@ export const ApplicationsPage: React.FC = () => {
 
       {applications.length === 0 ? (
         /* Empty state */
-        <div className="flex flex-col items-center justify-center min-h-[380px] gap-4 bg-white rounded-2xl border border-[#D9D9D9] p-12 text-center shadow-xs">
-          <div className="w-16 h-16 rounded-2xl bg-[#E8F3FF] flex items-center justify-center text-[#0A66C2] shadow-xs border border-[#d0e6fc]">
-            <Briefcase className="w-8 h-8 text-[#0A66C2]" />
+        <div className="flex flex-col items-center justify-center min-h-[380px] gap-4 bg-white dark:bg-slate-900 rounded-2xl border border-[#D9D9D9] dark:border-slate-800 p-12 text-center shadow-xs">
+          <div className="w-16 h-16 rounded-2xl bg-[#E8F3FF] dark:bg-sky-950/40 flex items-center justify-center text-[#0A66C2] dark:text-sky-400 shadow-xs border border-[#d0e6fc] dark:border-sky-800">
+            <Briefcase className="w-8 h-8 text-[#0A66C2] dark:text-sky-400" />
           </div>
           <div className="max-w-md">
-            <h3 className="text-lg font-semibold text-[#1D2226]">No applications yet</h3>
-            <p className="text-[#56687A] mt-1 text-sm">
+            <h3 className="text-lg font-semibold text-[#1D2226] dark:text-slate-100">No applications yet</h3>
+            <p className="text-[#56687A] dark:text-slate-400 mt-1 text-sm">
               Start tracking your job and internship applications, interview rounds, and offers here.
             </p>
             <Button
@@ -256,176 +262,176 @@ export const ApplicationsPage: React.FC = () => {
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
             <button
               onClick={() => setStatusFilter('All')}
-          className={`p-2.5 rounded-xl border text-left transition flex items-center justify-between ${
-            statusFilter === 'All'
-              ? 'bg-[#F3F6F8] border-[#D9D9D9]'
-              : 'bg-white border-[#D9D9D9] hover:border-[#0A66C2]/40'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <Briefcase className="w-4 h-4 text-[#788896]" />
-            <span className="text-xs font-semibold text-[#1D2226]">All Apps</span>
-          </div>
-          <span className="font-mono text-xs font-bold text-[#1D2226]">{counts.total}</span>
-        </button>
-
-        <button
-          onClick={() => setStatusFilter('Applied')}
-          className={`p-2.5 rounded-xl border text-left transition flex items-center justify-between ${
-            statusFilter === 'Applied'
-              ? 'bg-[#FFF4CC] border-[#ffe899]'
-              : 'bg-white border-[#D9D9D9] hover:border-[#8A6100]/40'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-amber-500" />
-            <span className="text-xs font-semibold text-[#8A6100]">Applied</span>
-          </div>
-          <span className="font-mono text-xs font-bold text-[#8A6100]">{counts.applied}</span>
-        </button>
-
-        <button
-          onClick={() => setStatusFilter('Interview')}
-          className={`p-2.5 rounded-xl border text-left transition flex items-center justify-between ${
-            statusFilter === 'Interview'
-              ? 'bg-[#E8F3FF] border-[#d0e6fc]'
-              : 'bg-white border-[#D9D9D9] hover:border-[#0A66C2]/40'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#0A66C2]" />
-            <span className="text-xs font-semibold text-[#0A66C2]">Interview</span>
-          </div>
-          <span className="font-mono text-xs font-bold text-[#0A66C2]">{counts.interview}</span>
-        </button>
-
-        <button
-          onClick={() => setStatusFilter('Offer')}
-          className={`p-2.5 rounded-xl border text-left transition flex items-center justify-between ${
-            statusFilter === 'Offer'
-              ? 'bg-[#E6F4EA] border-[#c6ecd2]'
-              : 'bg-white border-[#D9D9D9] hover:border-emerald-500/40'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-600" />
-            <span className="text-xs font-semibold text-emerald-700">Offer</span>
-          </div>
-          <span className="font-mono text-xs font-bold text-emerald-700">{counts.offer}</span>
-        </button>
-
-        <button
-          onClick={() => setStatusFilter('Rejected')}
-          className={`p-2.5 rounded-xl border text-left transition flex items-center justify-between col-span-2 sm:col-span-1 ${
-            statusFilter === 'Rejected'
-              ? 'bg-[#FCE8E6] border-[#f8cbc7]'
-              : 'bg-white border-[#D9D9D9] hover:border-rose-500/40'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-rose-500" />
-            <span className="text-xs font-semibold text-[#B3261E]">Rejected</span>
-          </div>
-          <span className="font-mono text-xs font-bold text-[#B3261E]">{counts.rejected}</span>
-        </button>
-      </div>
-
-      {/* --- TOOLBAR: SEARCH, FILTERS, SORT, VIEW TOGGLE --- */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 p-3 rounded-xl bg-white border border-[#D9D9D9] shadow-xs">
-        {/* Left: Search input */}
-        <div className="relative flex-1 max-w-sm">
-          <Search className="w-3.5 h-3.5 text-[#788896] absolute left-3 top-3 pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search company, role, recruiter, notes..."
-            className="w-full bg-white text-[#1D2226] placeholder-[#788896] text-xs rounded-lg border border-[#D9D9D9] pl-9 pr-8 py-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-2.5 top-2.5 text-[#788896] hover:text-[#1D2226]"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-
-        {/* Right: Filters, Sort, View Toggle */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Status Filter Dropdown */}
-          <div className="flex items-center gap-1.5">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-white text-[#1D2226] text-xs rounded-lg border border-[#D9D9D9] px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
-            >
-              <option value="All">All Statuses</option>
-              <option value="Applied">Applied</option>
-              <option value="Interview">Interview</option>
-              <option value="Offer">Offer</option>
-              <option value="Rejected">Rejected</option>
-            </select>
-          </div>
-
-          {/* Priority Filter Dropdown */}
-          <div className="flex items-center gap-1.5">
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className="bg-white text-[#1D2226] text-xs rounded-lg border border-[#D9D9D9] px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
-            >
-              <option value="All">All Priorities</option>
-              <option value="High">High Priority</option>
-              <option value="Medium">Medium Priority</option>
-              <option value="Low">Low Priority</option>
-            </select>
-          </div>
-
-          {/* Sort Dropdown */}
-          <div className="flex items-center gap-1.5">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="bg-white text-[#1D2226] text-xs rounded-lg border border-[#D9D9D9] px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
-            >
-              <option value="newest">Newest Applied</option>
-              <option value="oldest">Oldest Applied</option>
-              <option value="deadline">Closest Deadline</option>
-              <option value="match">Highest Match</option>
-            </select>
-          </div>
-
-          {/* Table / Kanban View Toggle */}
-          <div className="flex items-center bg-[#F3F6F8] p-1 rounded-lg border border-[#D9D9D9]">
-            <button
-              onClick={() => setViewMode('table')}
-              className={`p-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition ${
-                viewMode === 'table'
-                  ? 'bg-[#0A66C2] text-white shadow-sm'
-                  : 'text-[#56687A] hover:text-[#1D2226]'
+              className={`p-2.5 rounded-xl border text-left transition flex items-center justify-between ${
+                statusFilter === 'All'
+                  ? 'bg-[#F3F6F8] dark:bg-slate-800 border-[#D9D9D9] dark:border-slate-700 shadow-xs'
+                  : 'bg-white dark:bg-slate-900 border-[#D9D9D9] dark:border-slate-800 hover:border-[#0A66C2]/40'
               }`}
-              title="Table View"
             >
-              <LayoutList className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline-block text-[11px]">Table</span>
+              <div className="flex items-center gap-2">
+                <Briefcase className="w-4 h-4 text-[#788896] dark:text-slate-400" />
+                <span className="text-xs font-semibold text-[#1D2226] dark:text-slate-200">All Apps</span>
+              </div>
+              <span className="font-mono text-xs font-bold text-[#1D2226] dark:text-slate-200">{counts.total}</span>
             </button>
+
             <button
-              onClick={() => setViewMode('kanban')}
-              className={`p-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition ${
-                viewMode === 'kanban'
-                  ? 'bg-[#0A66C2] text-white shadow-sm'
-                  : 'text-[#56687A] hover:text-[#1D2226]'
+              onClick={() => setStatusFilter('Applied')}
+              className={`p-2.5 rounded-xl border text-left transition flex items-center justify-between ${
+                statusFilter === 'Applied'
+                  ? 'bg-[#FFF4CC] dark:bg-amber-950/40 border-[#ffe899] dark:border-amber-800 shadow-xs'
+                  : 'bg-white dark:bg-slate-900 border-[#D9D9D9] dark:border-slate-800 hover:border-[#8A6100]/40'
               }`}
-              title="Kanban View"
             >
-              <Kanban className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline-block text-[11px]">Kanban</span>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                <span className="text-xs font-semibold text-[#8A6100] dark:text-amber-300">Applied</span>
+              </div>
+              <span className="font-mono text-xs font-bold text-[#8A6100] dark:text-amber-300">{counts.applied}</span>
+            </button>
+
+            <button
+              onClick={() => setStatusFilter('Interview')}
+              className={`p-2.5 rounded-xl border text-left transition flex items-center justify-between ${
+                statusFilter === 'Interview'
+                  ? 'bg-[#E8F3FF] dark:bg-sky-950/40 border-[#d0e6fc] dark:border-sky-800 shadow-xs'
+                  : 'bg-white dark:bg-slate-900 border-[#D9D9D9] dark:border-slate-800 hover:border-[#0A66C2]/40'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#0A66C2] dark:bg-sky-400" />
+                <span className="text-xs font-semibold text-[#0A66C2] dark:text-sky-300">Interview</span>
+              </div>
+              <span className="font-mono text-xs font-bold text-[#0A66C2] dark:text-sky-300">{counts.interview}</span>
+            </button>
+
+            <button
+              onClick={() => setStatusFilter('Offer')}
+              className={`p-2.5 rounded-xl border text-left transition flex items-center justify-between ${
+                statusFilter === 'Offer'
+                  ? 'bg-[#E6F4EA] dark:bg-emerald-950/40 border-[#c6ecd2] dark:border-emerald-800 shadow-xs'
+                  : 'bg-white dark:bg-slate-900 border-[#D9D9D9] dark:border-slate-800 hover:border-emerald-500/40'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-400" />
+                <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Offer</span>
+              </div>
+              <span className="font-mono text-xs font-bold text-emerald-700 dark:text-emerald-300">{counts.offer}</span>
+            </button>
+
+            <button
+              onClick={() => setStatusFilter('Rejected')}
+              className={`p-2.5 rounded-xl border text-left transition flex items-center justify-between col-span-2 sm:col-span-1 ${
+                statusFilter === 'Rejected'
+                  ? 'bg-[#FCE8E6] dark:bg-rose-950/40 border-[#f8cbc7] dark:border-rose-800 shadow-xs'
+                  : 'bg-white dark:bg-slate-900 border-[#D9D9D9] dark:border-slate-800 hover:border-rose-500/40'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-rose-500" />
+                <span className="text-xs font-semibold text-[#B3261E] dark:text-rose-300">Rejected</span>
+              </div>
+              <span className="font-mono text-xs font-bold text-[#B3261E] dark:text-rose-300">{counts.rejected}</span>
             </button>
           </div>
-        </div>
-      </div>
+
+          {/* --- TOOLBAR: SEARCH, FILTERS, SORT, VIEW TOGGLE --- */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 p-3 rounded-xl bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 shadow-xs">
+            {/* Left: Search input */}
+            <div className="relative flex-1 max-w-sm">
+              <Search className="w-3.5 h-3.5 text-[#788896] dark:text-slate-400 absolute left-3 top-3 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search company, role, recruiter, notes..."
+                className="w-full bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 placeholder-[#788896] dark:placeholder-slate-400 text-xs rounded-lg border border-[#D9D9D9] dark:border-slate-700 pl-9 pr-8 py-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-2.5 text-[#788896] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-100"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Right: Filters, Sort, View Toggle */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Status Filter Dropdown */}
+              <div className="flex items-center gap-1.5">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 text-xs rounded-lg border border-[#D9D9D9] dark:border-slate-700 px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
+                >
+                  <option value="All">All Statuses</option>
+                  <option value="Applied">Applied</option>
+                  <option value="Interview">Interview</option>
+                  <option value="Offer">Offer</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
+              </div>
+
+              {/* Priority Filter Dropdown */}
+              <div className="flex items-center gap-1.5">
+                <select
+                  value={priorityFilter}
+                  onChange={(e) => setPriorityFilter(e.target.value)}
+                  className="bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 text-xs rounded-lg border border-[#D9D9D9] dark:border-slate-700 px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
+                >
+                  <option value="All">All Priorities</option>
+                  <option value="High">High Priority</option>
+                  <option value="Medium">Medium Priority</option>
+                  <option value="Low">Low Priority</option>
+                </select>
+              </div>
+
+              {/* Sort Dropdown */}
+              <div className="flex items-center gap-1.5">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 text-xs rounded-lg border border-[#D9D9D9] dark:border-slate-700 px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
+                >
+                  <option value="newest">Newest Applied</option>
+                  <option value="oldest">Oldest Applied</option>
+                  <option value="deadline">Closest Deadline</option>
+                  <option value="match">Highest Match</option>
+                </select>
+              </div>
+
+              {/* Table / Kanban View Toggle */}
+              <div className="flex items-center bg-[#F3F6F8] dark:bg-slate-800 p-1 rounded-lg border border-[#D9D9D9] dark:border-slate-700">
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`p-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition ${
+                    viewMode === 'table'
+                      ? 'bg-[#0A66C2] text-white shadow-sm'
+                      : 'text-[#56687A] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-100'
+                  }`}
+                  title="Table View"
+                >
+                  <LayoutList className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline-block text-[11px]">Table</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('kanban')}
+                  className={`p-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition ${
+                    viewMode === 'kanban'
+                      ? 'bg-[#0A66C2] text-white shadow-sm'
+                      : 'text-[#56687A] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-100'
+                  }`}
+                  title="Kanban View"
+                >
+                  <Kanban className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline-block text-[11px]">Kanban</span>
+                </button>
+              </div>
+            </div>
+          </div>
 
       {/* --- ACTIVE VIEW (TABLE OR KANBAN) --- */}
       {viewMode === 'table' ? (

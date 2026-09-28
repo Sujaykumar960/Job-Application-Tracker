@@ -70,7 +70,7 @@ export const PostMediaSlider: React.FC<PostMediaSliderProps> = ({ media }) => {
     const isVideo = single.type === 'video';
 
     return (
-      <div className="relative rounded-2xl overflow-hidden border border-slate-200/80 bg-slate-50 flex items-center justify-center my-2 group">
+      <div className="relative rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 flex items-center justify-center my-2 group">
         {isVideo ? (
           <video
             src={resolveMediaUrl(single.url)}
@@ -134,7 +134,7 @@ export const PostMediaSlider: React.FC<PostMediaSliderProps> = ({ media }) => {
 
   // Multi-media Slider / Carousel with tight auto-height (no gap)
   return (
-    <div className="relative rounded-2xl overflow-hidden border border-slate-200/80 bg-slate-50 my-2 select-none group">
+    <div className="relative rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 my-2 select-none group">
       {/* Top Counter Badge */}
       <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white font-mono text-[11px] font-semibold shadow-md pointer-events-none">
         {currentItem.type === 'video' ? (

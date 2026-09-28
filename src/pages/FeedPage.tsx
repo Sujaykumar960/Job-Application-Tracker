@@ -242,9 +242,9 @@ export const FeedPage: React.FC = () => {
 
           {/* Active Filter Indicator if not All */}
           {selectedType !== 'All' && (
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-[#D9D9D9] text-xs shadow-sm">
-              <span className="text-[#56687A]">
-                Filtered by: <strong className="text-[#0A66C2]">{selectedType}</strong> ({filteredPosts.length} posts)
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-700 text-xs shadow-sm">
+              <span className="text-[#56687A] dark:text-slate-400">
+                Filtered by: <strong className="text-[#0A66C2] dark:text-blue-400">{selectedType}</strong> ({filteredPosts.length} posts)
               </span>
               <button
                 onClick={() => setSelectedType('All')}
@@ -257,16 +257,16 @@ export const FeedPage: React.FC = () => {
 
           {/* Feed Posts List */}
           {posts.length === 0 ? (
-            <div className="p-12 text-center border border-dashed border-[#D9D9D9] rounded-2xl bg-[#F3F6F8] space-y-2">
-              <p className="text-sm font-semibold text-[#1D2226]">No posts yet.</p>
-              <p className="text-xs text-[#56687A]">
+            <div className="p-12 text-center border border-dashed border-[#D9D9D9] dark:border-slate-600 rounded-2xl bg-[#F3F6F8] dark:bg-slate-900/50 space-y-2">
+              <p className="text-sm font-semibold text-[#1D2226] dark:text-slate-100">No posts yet.</p>
+              <p className="text-xs text-[#56687A] dark:text-slate-400">
                 Be the first to publish a discussion or learning update.
               </p>
             </div>
           ) : filteredPosts.length === 0 ? (
-            <div className="p-12 text-center border border-dashed border-[#D9D9D9] rounded-2xl bg-[#F3F6F8] space-y-2">
-              <p className="text-sm font-semibold text-[#1D2226]">No posts found in this category</p>
-              <p className="text-xs text-[#56687A]">
+            <div className="p-12 text-center border border-dashed border-[#D9D9D9] dark:border-slate-600 rounded-2xl bg-[#F3F6F8] dark:bg-slate-900/50 space-y-2">
+              <p className="text-sm font-semibold text-[#1D2226] dark:text-slate-100">No posts found in this category</p>
+              <p className="text-xs text-[#56687A] dark:text-slate-400">
                 {selectedType === 'Saved'
                   ? 'You have not saved any posts yet.'
                   : 'Try selecting a different topic filter.'}

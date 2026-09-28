@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Lock,
   Eye,
+  EyeOff,
   Briefcase,
   Bell,
   Key,
@@ -114,6 +115,9 @@ export const SettingsPage: React.FC = () => {
     newPassword: '',
     confirmPassword: '',
   });
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const showSaveNotice = (msg = 'Settings updated successfully') => {
     setSaveSuccessMessage(msg);
@@ -763,43 +767,73 @@ export const SettingsPage: React.FC = () => {
                   </div>
                 )}
                 <div className="space-y-1">
-                  <label className="text-[#38434F] font-semibold block">Current Password</label>
-                  <input
-                    type="password"
-                    required
-                    value={passwordState.currentPassword}
-                    onChange={(e) =>
-                      setPasswordState({ ...passwordState, currentPassword: e.target.value })
-                    }
-                    className="w-full bg-white text-[#1D2226] text-xs rounded-lg border border-[#D9D9D9] p-2.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] font-mono"
-                  />
+                  <label className="text-[#38434F] dark:text-slate-300 font-semibold block">Current Password</label>
+                  <div className="relative">
+                    <input
+                      type={showCurrentPassword ? 'text' : 'password'}
+                      required
+                      value={passwordState.currentPassword}
+                      onChange={(e) =>
+                        setPasswordState({ ...passwordState, currentPassword: e.target.value })
+                      }
+                      className="w-full bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 text-xs rounded-lg border border-[#D9D9D9] dark:border-slate-700 p-2.5 pr-10 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] dark:focus:ring-sky-500 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#788896] hover:text-[#1D2226] dark:hover:text-slate-100 cursor-pointer"
+                      aria-label={showCurrentPassword ? 'Hide current password' : 'Show current password'}
+                    >
+                      {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[#38434F] font-semibold block">New Password</label>
-                  <input
-                    type="password"
-                    required
-                    value={passwordState.newPassword}
-                    onChange={(e) =>
-                      setPasswordState({ ...passwordState, newPassword: e.target.value })
-                    }
-                    className="w-full bg-white text-[#1D2226] text-xs rounded-lg border border-[#D9D9D9] p-2.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] font-mono"
-                  />
-                  <p className="text-[10px] text-[#788896]">Minimum 8 characters with numbers and symbols</p>
+                  <label className="text-[#38434F] dark:text-slate-300 font-semibold block">New Password</label>
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      required
+                      value={passwordState.newPassword}
+                      onChange={(e) =>
+                        setPasswordState({ ...passwordState, newPassword: e.target.value })
+                      }
+                      className="w-full bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 text-xs rounded-lg border border-[#D9D9D9] dark:border-slate-700 p-2.5 pr-10 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] dark:focus:ring-sky-500 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#788896] hover:text-[#1D2226] dark:hover:text-slate-100 cursor-pointer"
+                      aria-label={showNewPassword ? 'Hide new password' : 'Show new password'}
+                    >
+                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-[#788896] dark:text-slate-400">Minimum 8 characters with numbers and symbols</p>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[#38434F] font-semibold block">Confirm New Password</label>
-                  <input
-                    type="password"
-                    required
-                    value={passwordState.confirmPassword}
-                    onChange={(e) =>
-                      setPasswordState({ ...passwordState, confirmPassword: e.target.value })
-                    }
-                    className="w-full bg-white text-[#1D2226] text-xs rounded-lg border border-[#D9D9D9] p-2.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] font-mono"
-                  />
+                  <label className="text-[#38434F] dark:text-slate-300 font-semibold block">Confirm New Password</label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      required
+                      value={passwordState.confirmPassword}
+                      onChange={(e) =>
+                        setPasswordState({ ...passwordState, confirmPassword: e.target.value })
+                      }
+                      className="w-full bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 text-xs rounded-lg border border-[#D9D9D9] dark:border-slate-700 p-2.5 pr-10 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] dark:focus:ring-sky-500 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#788896] hover:text-[#1D2226] dark:hover:text-slate-100 cursor-pointer"
+                      aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="pt-2">

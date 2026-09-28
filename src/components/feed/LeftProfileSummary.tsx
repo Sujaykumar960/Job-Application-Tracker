@@ -54,22 +54,22 @@ export const LeftProfileSummary: React.FC<LeftProfileSummaryProps> = ({
   return (
     <div className="space-y-4">
       {/* Mini Profile Card */}
-      <Card className="p-4 bg-white border border-[#D9D9D9] space-y-3.5 shadow-sm">
+      <Card className="p-4 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-700 space-y-3.5 shadow-sm">
         <div className="flex items-start gap-3">
           <div className="w-12 h-12 rounded-xl bg-[#0A66C2] border border-[#004182] flex items-center justify-center text-white font-extrabold text-sm flex-shrink-0 shadow-sm">
             {initials}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <h3 className="text-sm font-bold text-[#1D2226] truncate">{user?.name || 'Engineer'}</h3>
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+              <h3 className="text-sm font-bold text-[#1D2226] dark:text-slate-100 truncate">{user?.name || 'Engineer'}</h3>
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
             </div>
-            <p className="text-[11px] text-[#56687A] truncate font-medium">
+            <p className="text-[11px] text-[#56687A] dark:text-slate-400 truncate font-medium">
               {user?.headline || (user?.role === 'recruiter' ? 'Technical Recruiter' : 'Software Engineer')}
             </p>
             {user?.location && (
-              <p className="text-[10px] text-[#788896] flex items-center gap-1 mt-0.5 font-mono">
-                <MapPin className="w-2.5 h-2.5 text-[#788896]" />
+              <p className="text-[10px] text-[#788896] dark:text-slate-500 flex items-center gap-1 mt-0.5 font-mono">
+                <MapPin className="w-2.5 h-2.5" />
                 {user.location}
               </p>
             )}
@@ -77,38 +77,38 @@ export const LeftProfileSummary: React.FC<LeftProfileSummaryProps> = ({
         </div>
 
         {/* Quick Stats Grid */}
-        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#E8E8E8] text-[11px] font-mono">
-          <div className="p-2 rounded-lg bg-[#F3F6F8] border border-[#E8E8E8]">
-            <span className="text-[9px] uppercase text-[#788896] block">Streak</span>
-            <span className="font-bold text-[#8A6100] flex items-center gap-1">
+        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#E8E8E8] dark:border-slate-700 text-[11px] font-mono">
+          <div className="p-2 rounded-lg bg-[#F3F6F8] dark:bg-slate-800 border border-[#E8E8E8] dark:border-slate-700">
+            <span className="text-[9px] uppercase text-[#788896] dark:text-slate-500 block">Streak</span>
+            <span className="font-bold text-[#8A6100] dark:text-amber-400 flex items-center gap-1">
               <Flame className="w-3 h-3 text-amber-500" /> 14 Days
             </span>
           </div>
 
-          <div className="p-2 rounded-lg bg-[#F3F6F8] border border-[#E8E8E8]">
-            <span className="text-[9px] uppercase text-[#788896] block">ATS Score</span>
-            <span className="font-bold text-[#137333]">
+          <div className="p-2 rounded-lg bg-[#F3F6F8] dark:bg-slate-800 border border-[#E8E8E8] dark:border-slate-700">
+            <span className="text-[9px] uppercase text-[#788896] dark:text-slate-500 block">ATS Score</span>
+            <span className="font-bold text-[#137333] dark:text-emerald-400">
               {user?.atsScore != null ? `${user.atsScore}% Ready` : 'Not analyzed'}
             </span>
           </div>
 
-          <div className="p-2 rounded-lg bg-[#F3F6F8] border border-[#E8E8E8] col-span-2 flex items-center justify-between">
-            <span className="text-[#56687A]">DSA Solved:</span>
-            <span className="font-bold text-[#1D2226]">142 / 150</span>
+          <div className="p-2 rounded-lg bg-[#F3F6F8] dark:bg-slate-800 border border-[#E8E8E8] dark:border-slate-700 col-span-2 flex items-center justify-between">
+            <span className="text-[#56687A] dark:text-slate-400">DSA Solved:</span>
+            <span className="font-bold text-[#1D2226] dark:text-slate-100">142 / 150</span>
           </div>
         </div>
 
         <Link to="/profile" className="block pt-1">
-          <button className="w-full py-1.5 rounded-lg bg-[#F3F6F8] hover:bg-white border border-[#D9D9D9] text-xs font-semibold text-[#1D2226] hover:text-[#0A66C2] transition flex items-center justify-center gap-1 shadow-sm">
+          <button className="w-full py-1.5 rounded-lg bg-[#F3F6F8] dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border border-[#D9D9D9] dark:border-slate-600 text-xs font-semibold text-[#1D2226] dark:text-slate-100 hover:text-[#0A66C2] dark:hover:text-blue-400 transition flex items-center justify-center gap-1 shadow-sm">
             <span>View Full Profile</span>
-            <ExternalLink className="w-3 h-3 text-[#788896]" />
+            <ExternalLink className="w-3 h-3 text-[#788896] dark:text-slate-400" />
           </button>
         </Link>
       </Card>
 
       {/* Feed Filters & Bookmarks Menu */}
-      <Card className="p-3 bg-white border border-[#D9D9D9] space-y-1 text-xs">
-        <span className="text-[10px] uppercase font-mono font-bold text-[#788896] px-2 py-1 block">
+      <Card className="p-3 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-700 space-y-1 text-xs">
+        <span className="text-[10px] uppercase font-mono font-bold text-[#788896] dark:text-slate-400 px-2 py-1 block">
           Filter Feed by Topic
         </span>
 
@@ -120,8 +120,8 @@ export const LeftProfileSummary: React.FC<LeftProfileSummaryProps> = ({
               className={cn(
                 'w-full text-left px-2.5 py-1.5 rounded-lg font-medium transition text-xs flex items-center justify-between',
                 selectedType === item.value
-                  ? 'bg-[#E8F3FF] text-[#0A66C2] font-semibold'
-                  : 'text-[#56687A] hover:text-[#1D2226] hover:bg-[#F3F6F8]'
+                  ? 'bg-[#E8F3FF] dark:bg-blue-900/40 text-[#0A66C2] dark:text-blue-300 font-semibold'
+                  : 'text-[#56687A] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-100 hover:bg-[#F3F6F8] dark:hover:bg-slate-800'
               )}
             >
               <span className="truncate">{item.label}</span>
@@ -131,17 +131,17 @@ export const LeftProfileSummary: React.FC<LeftProfileSummaryProps> = ({
           <button
             onClick={() => onSelectType('Saved')}
             className={cn(
-              'w-full text-left px-2.5 py-1.5 rounded-lg font-medium transition text-xs flex items-center justify-between pt-1.5 border-t border-[#E8E8E8] mt-1',
+              'w-full text-left px-2.5 py-1.5 rounded-lg font-medium transition text-xs flex items-center justify-between pt-1.5 border-t border-[#E8E8E8] dark:border-slate-700 mt-1',
               selectedType === 'Saved'
-                ? 'bg-[#E8F3FF] text-[#0A66C2] font-semibold'
-                : 'text-[#56687A] hover:text-[#1D2226] hover:bg-[#F3F6F8]'
+                ? 'bg-[#E8F3FF] dark:bg-blue-900/40 text-[#0A66C2] dark:text-blue-300 font-semibold'
+                : 'text-[#56687A] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-100 hover:bg-[#F3F6F8] dark:hover:bg-slate-800'
             )}
           >
             <span className="flex items-center gap-1.5">
               <Bookmark className="w-3.5 h-3.5 text-amber-500" />
               <span>Saved Posts</span>
             </span>
-            <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-[#F3F6F8] border border-[#D9D9D9] text-[#56687A]">
+            <span className="font-mono text-[10px] px-1.5 rounded bg-[#F3F6F8] dark:bg-slate-800 border border-[#D9D9D9] dark:border-slate-600 text-[#56687A] dark:text-slate-400">
               {savedCount}
             </span>
           </button>

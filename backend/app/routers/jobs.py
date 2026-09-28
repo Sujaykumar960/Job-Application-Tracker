@@ -1,4 +1,5 @@
 from typing import Any, Dict, List, Optional
+from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -38,7 +39,7 @@ async def get_jobs(
     minSalary: Optional[int] = Query(None, description="Filter minimum salary"),
     maxSalary: Optional[int] = Query(None, description="Filter maximum salary"),
     sortBy: Optional[str] = Query("newest", description="Sort by newest, salary, or match"),
-    limit: int = Query(50, ge=1, le=100, description="Items per page"),
+    limit: int = Query(100, ge=1, le=200, description="Items per page"),
     skip: int = Query(0, ge=0, description="Items to skip"),
     page: Optional[int] = Query(None, ge=1, description="Page number (1-indexed)"),
     user: Optional[Dict[str, Any]] = Depends(get_optional_user),
@@ -96,6 +97,31 @@ async def get_recommended_job_matches(
     docs = await repo.search_jobs(filter_q, candidate_skills=list(cand_set))
     docs.sort(key=lambda j: j.get("matchScore", 0), reverse=True)
     return docs[:limit]
+
+
+@router.get("/saved", response_model=List[JobResponse])
+async def get_saved_jobs(
+    user: Dict[str, Any] = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Retrieve jobs bookmarked/saved by authenticated user."""
+    saved_records = await db.saved_jobs.find({"userId": user["id"]}).sort("savedAt", -1).to_list(100)
+    job_ids = [r["jobId"] for r in saved_records if "jobId" in r]
+    if not job_ids:
+        # Fallback to top 8 jobs if none yet
+        top_jobs = await db.jobs.find({}).limit(8).to_list(8)
+        job_ids = [j.get("id") or str(j.get("_id")) for j in top_jobs if (j.get("id") or j.get("_id"))]
+    
+    repo = JobRepository(db)
+    cand_set, _, _, _ = await get_candidate_skills(db, user["id"])
+    id_filters = [{"id": {"$in": job_ids}}]
+    valid_oids = [ObjectId(jid) for jid in job_ids if ObjectId.is_valid(jid)]
+    if valid_oids:
+        id_filters.append({"_id": {"$in": valid_oids}})
+    docs = await repo.find_many({"$or": id_filters})
+    for doc in docs:
+        doc["isSaved"] = True
+    return docs
 
 
 @router.get("/{job_id}", response_model=JobResponse)
@@ -253,4 +279,31 @@ async def analyze_job_match(
     )
 
     return match_result
+
+
+@router.post("/{job_id}/save", response_model=StandardSuccessResponse)
+async def save_job(
+    job_id: str,
+    user: Dict[str, Any] = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Bookmark/save a job listing for current user."""
+    from app.utils.helpers import utc_now_iso
+    await db.saved_jobs.update_one(
+        {"userId": user["id"], "jobId": job_id},
+        {"$set": {"userId": user["id"], "jobId": job_id, "savedAt": utc_now_iso()}},
+        upsert=True,
+    )
+    return StandardSuccessResponse(success=True, message="Job saved successfully.")
+
+
+@router.delete("/{job_id}/save", response_model=StandardSuccessResponse)
+async def unsave_job(
+    job_id: str,
+    user: Dict[str, Any] = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Remove a bookmarked/saved job for current user."""
+    await db.saved_jobs.delete_one({"userId": user["id"], "jobId": job_id})
+    return StandardSuccessResponse(success=True, message="Job removed from saved listings.")
 

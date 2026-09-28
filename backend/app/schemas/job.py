@@ -122,7 +122,7 @@ class JobFilterQuery(BaseModel):
     minSalary: Optional[int] = None
     maxSalary: Optional[int] = None
     sortBy: Optional[Literal["match", "newest", "salary"]] = "newest"
-    limit: int = 50
+    limit: int = 100
     skip: int = 0
     page: Optional[int] = None
 

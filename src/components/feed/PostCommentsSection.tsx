@@ -108,7 +108,7 @@ export const PostCommentsSection: React.FC<PostCommentsSectionProps> = ({
   const currentUserInitials = getAvatarInitials(currentUserName);
 
   return (
-    <div className="pt-3 border-t border-[#E8E8E8] space-y-3.5 animate-in fade-in duration-200">
+    <div className="pt-3 border-t border-[#E8E8E8] dark:border-slate-700 space-y-3.5 animate-in fade-in duration-200">
       {/* Add Comment Input Composer */}
       <form onSubmit={handleSubmit} className="flex items-center gap-2.5">
         {/* Current user profile photo / initials */}
@@ -143,7 +143,7 @@ export const PostCommentsSection: React.FC<PostCommentsSectionProps> = ({
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="Add your thoughts or technical feedback..."
-            className="w-full bg-[#F3F6F8] hover:bg-slate-100/90 focus:bg-white text-[#1D2226] placeholder-[#788896] text-xs rounded-xl border border-[#D9D9D9] focus:border-[#0A66C2] px-3.5 py-2 pr-10 transition focus:outline-none focus:ring-1 focus:ring-[#0A66C2] shadow-inner"
+            className="w-full bg-[#F3F6F8] dark:bg-slate-800 hover:bg-slate-100/90 dark:hover:bg-slate-700 focus:bg-white dark:focus:bg-slate-800 text-[#1D2226] dark:text-slate-100 placeholder-[#788896] dark:placeholder-slate-500 text-xs rounded-xl border border-[#D9D9D9] dark:border-slate-600 focus:border-[#0A66C2] px-3.5 py-2 pr-10 transition focus:outline-none focus:ring-1 focus:ring-[#0A66C2] shadow-inner"
             disabled={isSubmitting}
           />
 
@@ -187,7 +187,7 @@ export const PostCommentsSection: React.FC<PostCommentsSectionProps> = ({
             return (
               <div
                 key={comment.id}
-                className="group p-3 rounded-2xl bg-[#F8FAFC] border border-[#E9EFF5] hover:border-slate-300/80 transition-all space-y-2"
+                className="group p-3 rounded-2xl bg-[#F8FAFC] dark:bg-slate-800/60 border border-[#E9EFF5] dark:border-slate-700 hover:border-slate-300/80 dark:hover:border-slate-600 transition-all space-y-2"
               >
                 {/* Header: Photo, Name, Headline, Profile Link, Timestamp */}
                 <div className="flex items-start justify-between gap-2">
@@ -221,13 +221,13 @@ export const PostCommentsSection: React.FC<PostCommentsSectionProps> = ({
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <Link
                           to={profileLink}
-                          className="font-bold text-xs text-[#1D2226] hover:text-[#0A66C2] hover:underline transition truncate"
+                          className="font-bold text-xs text-[#1D2226] dark:text-slate-100 hover:text-[#0A66C2] dark:hover:text-blue-400 hover:underline transition truncate"
                         >
                           {comment.authorName}
                         </Link>
 
                         {isPostAuthor && (
-                          <span className="px-1.5 py-0.2 rounded-md bg-sky-50 text-sky-700 border border-sky-200 text-[10px] font-semibold leading-tight flex-shrink-0">
+                          <span className="px-1.5 py-0.2 rounded-md bg-sky-50 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-700/50 text-[10px] font-semibold leading-tight flex-shrink-0">
                             Author
                           </span>
                         )}
@@ -241,13 +241,13 @@ export const PostCommentsSection: React.FC<PostCommentsSectionProps> = ({
                       </div>
 
                       {/* Headline / Role & View Profile Shortcut */}
-                      <div className="flex items-center gap-2 text-[11px] text-[#56687A]">
+                      <div className="flex items-center gap-2 text-[11px] text-[#56687A] dark:text-slate-400">
                         <span className="truncate max-w-[200px] sm:max-w-xs">
                           {comment.authorHeadline || 'Software Engineer'}
                         </span>
                         <Link
                           to={profileLink}
-                          className="inline-flex items-center gap-0.5 text-[10px] font-medium text-[#0A66C2] hover:underline opacity-80 hover:opacity-100 flex-shrink-0"
+                          className="inline-flex items-center gap-0.5 text-[10px] font-medium text-[#0A66C2] dark:text-blue-400 hover:underline opacity-80 hover:opacity-100 flex-shrink-0"
                           title={`View ${comment.authorName}'s full profile`}
                         >
                           <span>View profile</span>
@@ -262,7 +262,7 @@ export const PostCommentsSection: React.FC<PostCommentsSectionProps> = ({
                     <button
                       type="button"
                       onClick={() => handleDelete(comment.id)}
-                      className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition opacity-0 group-hover:opacity-100 focus:opacity-100"
+                      className="p-1 rounded-lg text-slate-400 dark:text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition opacity-0 group-hover:opacity-100 focus:opacity-100"
                       title="Delete comment"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -271,12 +271,12 @@ export const PostCommentsSection: React.FC<PostCommentsSectionProps> = ({
                 </div>
 
                 {/* Comment Text */}
-                <div className="pl-10.5 text-xs text-[#28323D] leading-relaxed whitespace-pre-wrap break-words font-sans">
+                <div className="pl-10.5 text-xs text-[#28323D] dark:text-slate-300 leading-relaxed whitespace-pre-wrap break-words font-sans">
                   {comment.content}
                 </div>
 
                 {/* Action Bar: Like, Reply */}
-                <div className="pl-10.5 pt-1 flex items-center gap-4 text-[11px] text-[#6A7887]">
+                <div className="pl-10.5 pt-1 flex items-center gap-4 text-[11px] text-[#6A7887] dark:text-slate-500">
                   {/* Like Button */}
                   <button
                     type="button"

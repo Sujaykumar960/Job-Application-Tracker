@@ -73,7 +73,7 @@ export const PostCard: React.FC<PostCardProps> = ({
   const authorProfileLink = authorProfileId ? `/profile/${authorProfileId}` : '/profile';
 
   return (
-    <Card className="p-4 bg-white border border-[#D9D9D9] space-y-3.5 shadow-sm hover:border-[#0A66C2]/40 transition">
+    <Card className="p-4 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-700 space-y-3.5 shadow-sm hover:border-[#0A66C2]/40 dark:hover:border-blue-500/40 transition">
       {/* Header: Author + Post Type Badge */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0">
@@ -85,10 +85,10 @@ export const PostCard: React.FC<PostCardProps> = ({
               <img
                 src={resolveMediaUrl(post.author.avatarUrl)}
                 alt={post.author.name}
-                className="w-full h-full object-cover border border-[#d0e6fc]"
+                className="w-full h-full object-cover border border-[#d0e6fc] dark:border-blue-700/50"
               />
             ) : (
-              <div className="w-full h-full bg-[#E8F3FF] border border-[#d0e6fc] flex items-center justify-center text-[#0A66C2] font-bold text-xs hover:border-[#0A66C2] transition">
+              <div className="w-full h-full bg-[#E8F3FF] dark:bg-blue-900/50 border border-[#d0e6fc] dark:border-blue-700/50 flex items-center justify-center text-[#0A66C2] dark:text-blue-300 font-bold text-xs hover:border-[#0A66C2] dark:hover:border-blue-400 transition">
                 {post.author.avatarInitials}
               </div>
             )}
@@ -98,21 +98,21 @@ export const PostCard: React.FC<PostCardProps> = ({
             <div className="flex items-center gap-1.5 flex-wrap">
               <Link
                 to={authorProfileLink}
-                className="text-xs font-bold text-[#1D2226] hover:text-[#0A66C2] hover:underline transition truncate"
+                className="text-xs font-bold text-[#1D2226] dark:text-slate-100 hover:text-[#0A66C2] dark:hover:text-blue-400 hover:underline transition truncate"
               >
                 {post.author.name}
               </Link>
               {post.author.isVerified && (
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
               )}
               {post.author.company && (
-                <span className="text-[10px] text-[#56687A] font-mono">
+                <span className="text-[10px] text-[#56687A] dark:text-slate-400 font-mono">
                   • {post.author.company}
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-[#56687A] truncate">{post.author.headline}</p>
-            <span className="text-[10px] text-[#788896]" title={post.createdAt}>{formatDateTime(post.createdAt)}</span>
+            <p className="text-[11px] text-[#56687A] dark:text-slate-400 truncate">{post.author.headline}</p>
+            <span className="text-[10px] text-[#788896] dark:text-slate-500" title={post.createdAt}>{formatDateTime(post.createdAt)}</span>
           </div>
         </div>
 
@@ -125,7 +125,7 @@ export const PostCard: React.FC<PostCardProps> = ({
 
       {/* Main Post Content */}
       {post.content && (
-        <div className="text-xs text-[#38434F] leading-relaxed whitespace-pre-wrap font-sans">
+        <div className="text-xs text-[#38434F] dark:text-slate-300 leading-relaxed whitespace-pre-wrap font-sans">
           {post.content}
         </div>
       )}
@@ -137,7 +137,7 @@ export const PostCard: React.FC<PostCardProps> = ({
 
       {/* Code Snippet if present */}
       {post.codeSnippet && (
-        <div className="p-3 rounded-xl bg-[#F3F6F8] border border-[#D9E2EC] font-mono text-[11px] text-[#1D6F42] overflow-x-auto leading-relaxed shadow-inner">
+        <div className="p-3 rounded-xl bg-[#F3F6F8] dark:bg-slate-800 border border-[#D9E2EC] dark:border-slate-700 font-mono text-[11px] text-[#1D6F42] dark:text-emerald-400 overflow-x-auto leading-relaxed shadow-inner">
           <pre>{post.codeSnippet}</pre>
         </div>
       )}
@@ -148,7 +148,7 @@ export const PostCard: React.FC<PostCardProps> = ({
           {post.tags.map((tag) => (
             <span
               key={tag}
-              className="text-[10px] font-mono text-[#0A66C2] hover:text-[#004182] cursor-pointer transition"
+              className="text-[10px] font-mono text-[#0A66C2] dark:text-blue-400 hover:text-[#004182] dark:hover:text-blue-300 cursor-pointer transition"
             >
               #{tag}
             </span>
@@ -157,7 +157,7 @@ export const PostCard: React.FC<PostCardProps> = ({
       )}
 
       {/* Action Bar: Like, Comment, Share, Save */}
-      <div className="flex items-center justify-between pt-2 border-t border-[#E8E8E8] text-xs text-[#56687A]">
+      <div className="flex items-center justify-between pt-2 border-t border-[#E8E8E8] dark:border-slate-700 text-xs text-[#56687A] dark:text-slate-400">
         <div className="flex items-center gap-3">
           {/* Like Button */}
           <button
@@ -165,8 +165,8 @@ export const PostCard: React.FC<PostCardProps> = ({
             className={cn(
               'flex items-center gap-1.5 px-2 py-1 rounded-lg transition font-mono text-[11px]',
               post.isLiked
-                ? 'text-rose-600 bg-rose-50'
-                : 'text-[#56687A] hover:text-rose-600 hover:bg-[#F3F6F8]'
+                ? 'text-rose-600 bg-rose-50 dark:bg-rose-900/30'
+                : 'text-[#56687A] dark:text-slate-400 hover:text-rose-600 hover:bg-[#F3F6F8] dark:hover:bg-slate-800'
             )}
           >
             <Heart
@@ -181,7 +181,7 @@ export const PostCard: React.FC<PostCardProps> = ({
           {/* Comment Button */}
           <button
             onClick={() => setShowComments(!showComments)}
-            className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[#56687A] hover:text-[#1D2226] hover:bg-[#F3F6F8] transition font-mono text-[11px]"
+            className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[#56687A] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-100 hover:bg-[#F3F6F8] dark:hover:bg-slate-800 transition font-mono text-[11px]"
           >
             <MessageSquare className="w-3.5 h-3.5" />
             <span>{post.comments.length || post.commentsCount}</span>
@@ -190,13 +190,13 @@ export const PostCard: React.FC<PostCardProps> = ({
           {/* Share Button */}
           <button
             onClick={handleShareClick}
-            className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[#56687A] hover:text-[#1D2226] hover:bg-[#F3F6F8] transition font-mono text-[11px]"
+            className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[#56687A] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-100 hover:bg-[#F3F6F8] dark:hover:bg-slate-800 transition font-mono text-[11px]"
             title="Copy link to post"
           >
             {copiedShare ? (
               <>
-                <Check className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="text-emerald-600 font-semibold">Link Copied</span>
+                <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Link Copied</span>
               </>
             ) : (
               <>
@@ -213,8 +213,8 @@ export const PostCard: React.FC<PostCardProps> = ({
           className={cn(
             'p-1.5 rounded-lg transition',
             post.isSaved
-              ? 'text-amber-600 bg-amber-50'
-              : 'text-[#56687A] hover:text-amber-600 hover:bg-[#F3F6F8]'
+              ? 'text-amber-600 bg-amber-50 dark:bg-amber-900/30'
+              : 'text-[#56687A] dark:text-slate-400 hover:text-amber-600 hover:bg-[#F3F6F8] dark:hover:bg-slate-800'
           )}
           title={post.isSaved ? 'Remove Bookmark' : 'Save Post'}
         >

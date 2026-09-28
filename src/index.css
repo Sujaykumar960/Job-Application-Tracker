@@ -127,39 +127,112 @@ html.dark .border-\[\#d0e6fc\] {
   border-color: #334155 !important;
 }
 
-html.dark .bg-\[\#F3F2EF\],
-html.dark .bg-\[\#F3F6F8\],
-html.dark .bg-\[\#F8F9FA\],
-html.dark .bg-\[\#F8FAFC\],
+html.dark .bg-\[\#E6F4EA\] {
+  background-color: rgba(6, 78, 59, 0.35) !important;
+  color: #34D399 !important;
+}
+
+html.dark .border-\[\#c6ecd2\] {
+  border-color: #065F46 !important;
+}
+
+html.dark .bg-\[\#FFF4CC\] {
+  background-color: rgba(120, 53, 15, 0.3) !important;
+  color: #FCD34D !important;
+}
+
+html.dark .border-\[\#ffe899\] {
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+html.dark .text-\[\#8A6100\] {
+  color: #FCD34D !important;
+}
+
+html.dark .bg-\[\#FCE8E6\] {
+  background-color: rgba(153, 27, 27, 0.3) !important;
+  color: #FCA5A5 !important;
+}
+
+html.dark .border-\[\#f8cbc7\] {
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+html.dark .text-\[\#B3261E\] {
+  color: #F87171 !important;
+}
+
+html.dark .bg-\[\#F0F2FF\] {
+  background-color: rgba(79, 70, 229, 0.3) !important;
+  color: #A5B4FC !important;
+}
+
+html.dark .border-\[\#d6d9fd\] {
+  border-color: rgba(99, 102, 241, 0.35) !important;
+}
+
+html.dark .text-\[\#555BD9\] {
+  color: #A5B4FC !important;
+}
+
+html.dark .bg-emerald-50 {
+  background-color: rgba(6, 78, 59, 0.35) !important;
+  color: #34D399 !important;
+}
+
+html.dark .border-emerald-300 {
+  border-color: #065F46 !important;
+}
+
+html.dark .text-emerald-700 {
+  color: #34D399 !important;
+}
+
+/* Hover fixes in dark mode to prevent blinding white highlights */
+html.dark tr.hover\:bg-\[\#F3F6F8\]:hover,
+html.dark tr.hover\:bg-slate-50:hover,
+html.dark [class*="hover:bg-[#F3F6F8]"]:hover,
+html.dark [class*="hover:bg-[#f3f6f8]"]:hover,
+html.dark .hover\:bg-\[\#F3F6F8\]:hover {
+  background-color: #1E293B !important;
+}
+
+html.dark [class*="bg-[#F3F2EF]"],
+html.dark [class*="bg-[#F8F9FA]"],
+html.dark [class*="bg-[#F8FAFC]"],
 html.dark .bg-slate-50,
 html.dark .bg-gray-50 {
   background-color: #0B1120 !important;
 }
 
-html.dark .bg-\[\#F0F7FF\] {
+html.dark [class*="bg-[#F3F6F8]"] {
+  background-color: rgba(30, 41, 59, 0.75) !important;
+}
+
+html.dark [class*="bg-[#F0F7FF]"] {
   background-color: #1E293B !important;
 }
 
-html.dark .text-\[\#1D2226\],
+html.dark [class*="text-[#1D2226]"],
 html.dark .text-slate-900,
 html.dark .text-gray-900 {
   color: #F8FAFC !important;
 }
 
-html.dark .text-\[\#56687A\],
-html.dark .text-\[\#788896\],
-html.dark .text-\[\#667788\],
+html.dark [class*="text-[#56687A]"],
+html.dark [class*="text-[#788896]"],
+html.dark [class*="text-[#667788]"],
 html.dark .text-slate-600,
 html.dark .text-slate-500 {
   color: #94A3B8 !important;
 }
 
-html.dark .border-\[\#D9D9D9\],
-html.dark .border-\[\#E8E8E8\],
-html.dark .border-\[\#E2E8F0\],
+html.dark [class*="border-[#D9D9D9]"],
+html.dark [class*="border-[#E8E8E8]"],
+html.dark [class*="border-[#E2E8F0]"],
 html.dark .border-slate-200,
 html.dark .border-gray-200 {
-  border-color: #1E293B !important;
+  border-color: #334155 !important;
 }
 
 /* Modal & Dialog Backgrounds */

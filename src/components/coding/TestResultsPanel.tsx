@@ -54,11 +54,11 @@ export const TestResultsPanel: React.FC<TestResultsPanelProps> = ({
   };
 
   return (
-    <div className="rounded-2xl bg-white border border-[#D9D9D9] overflow-hidden shadow-sm flex flex-col text-xs">
+    <div className="rounded-2xl bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-700 overflow-hidden shadow-sm flex flex-col text-xs">
       {/* Top Header: Execution Status, Runtime & Memory Stats */}
-      <div className="px-4 py-2.5 bg-[#F3F6F8] border-b border-[#E8E8E8] flex flex-wrap items-center justify-between gap-3">
+      <div className="px-4 py-2.5 bg-[#F3F6F8] dark:bg-slate-800/80 border-b border-[#E8E8E8] dark:border-slate-700 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-1.5">
+          <span className="text-xs font-bold text-[#1D2226] dark:text-slate-100 font-mono flex items-center gap-1.5">
             <Terminal className="w-3.5 h-3.5 text-[#0A66C2]" />
             Execution Console
           </span>
@@ -66,7 +66,7 @@ export const TestResultsPanel: React.FC<TestResultsPanelProps> = ({
           {executionResult && getStatusBadge(executionResult.status)}
 
           {isExecuting && (
-            <span className="text-[11px] font-mono text-[#8A6100] flex items-center gap-1">
+            <span className="text-[11px] font-mono text-[#8A6100] dark:text-amber-400 flex items-center gap-1">
               <Sparkles className="w-3 h-3 animate-spin" />
               Running in sandbox container...
             </span>
@@ -76,24 +76,24 @@ export const TestResultsPanel: React.FC<TestResultsPanelProps> = ({
         {/* Benchmarks: Execution time & Memory usage */}
         {executionResult && !isExecuting && (
           <div className="flex items-center gap-4 text-[11px] font-mono">
-            <div className="flex items-center gap-1 text-[#38434F]">
+            <div className="flex items-center gap-1 text-[#38434F] dark:text-slate-300">
               <Clock className="w-3 h-3 text-emerald-600" />
               <span>Runtime: </span>
-              <strong className="text-emerald-700 font-bold">
+              <strong className="text-emerald-700 dark:text-emerald-400 font-bold">
                 {executionResult.executionTimeMs} ms
               </strong>
-              <span className="text-[#788896]">
+              <span className="text-[#788896] dark:text-slate-500">
                 (Beats {executionResult.percentileSpeed}%)
               </span>
             </div>
 
-            <div className="flex items-center gap-1 text-[#38434F]">
+            <div className="flex items-center gap-1 text-[#38434F] dark:text-slate-300">
               <Cpu className="w-3 h-3 text-[#0A66C2]" />
               <span>Memory: </span>
-              <strong className="text-[#0A66C2] font-bold">
+              <strong className="text-[#0A66C2] dark:text-blue-400 font-bold">
                 {executionResult.memoryUsageMb} MB
               </strong>
-              <span className="text-[#788896]">
+              <span className="text-[#788896] dark:text-slate-500">
                 (Beats {executionResult.percentileMemory}%)
               </span>
             </div>
@@ -102,7 +102,7 @@ export const TestResultsPanel: React.FC<TestResultsPanelProps> = ({
       </div>
 
       {/* Test Cases Tabs & Custom Input Toggle */}
-      <div className="px-4 py-2 bg-white border-b border-[#E8E8E8] flex items-center justify-between gap-2 overflow-x-auto">
+      <div className="px-4 py-2 bg-white dark:bg-slate-900 border-b border-[#E8E8E8] dark:border-slate-700 flex items-center justify-between gap-2 overflow-x-auto">
         <div className="flex items-center gap-1.5">
           {activeCases.map((tc, idx) => (
             <button
@@ -114,8 +114,8 @@ export const TestResultsPanel: React.FC<TestResultsPanelProps> = ({
               className={cn(
                 'px-2.5 py-1 rounded-lg text-[11px] font-mono font-semibold transition flex items-center gap-1.5 border',
                 !isCustomInputActive && selectedCaseIdx === idx
-                  ? 'bg-[#E8F3FF] border-[#0A66C2] text-[#1D2226] shadow-xs'
-                  : 'bg-[#F3F6F8] border-[#D9D9D9] text-[#56687A] hover:text-[#1D2226]'
+                  ? 'bg-[#E8F3FF] dark:bg-blue-900/40 border-[#0A66C2] dark:border-blue-500 text-[#1D2226] dark:text-slate-100 shadow-xs'
+                  : 'bg-[#F3F6F8] dark:bg-slate-800 border-[#D9D9D9] dark:border-slate-600 text-[#56687A] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-200'
               )}
             >
               <span>Case {idx + 1}</span>
@@ -135,8 +135,8 @@ export const TestResultsPanel: React.FC<TestResultsPanelProps> = ({
             className={cn(
               'px-2.5 py-1 rounded-lg text-[11px] font-mono font-semibold transition border',
               isCustomInputActive
-                ? 'bg-[#E8F3FF] border-[#0A66C2] text-[#1D2226] shadow-xs'
-                : 'bg-[#F3F6F8] border-[#D9D9D9] text-[#56687A] hover:text-[#1D2226]'
+                ? 'bg-[#E8F3FF] dark:bg-blue-900/40 border-[#0A66C2] dark:border-blue-500 text-[#1D2226] dark:text-slate-100 shadow-xs'
+                : 'bg-[#F3F6F8] dark:bg-slate-800 border-[#D9D9D9] dark:border-slate-600 text-[#56687A] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-200'
             )}
           >
             Custom Input
@@ -144,7 +144,7 @@ export const TestResultsPanel: React.FC<TestResultsPanelProps> = ({
         </div>
 
         {executionResult && (
-          <span className="text-[10px] font-mono text-[#788896]">
+          <span className="text-[10px] font-mono text-[#788896] dark:text-slate-400">
             Passed: {executionResult.passedCount} / {executionResult.totalCount}
           </span>
         )}
@@ -154,7 +154,7 @@ export const TestResultsPanel: React.FC<TestResultsPanelProps> = ({
       <div className="p-3.5 space-y-3 font-mono text-xs">
         {isCustomInputActive ? (
           <div className="space-y-1.5">
-            <label className="text-[10px] uppercase font-mono text-[#788896] block">
+            <label className="text-[10px] uppercase font-mono text-[#788896] dark:text-slate-400 block">
               Custom Stdin Parameters
             </label>
             <textarea
@@ -162,38 +162,38 @@ export const TestResultsPanel: React.FC<TestResultsPanelProps> = ({
               value={customInput}
               onChange={(e) => onCustomInputChange(e.target.value)}
               placeholder="e.g. [2, 7, 11, 15], target = 9"
-              className="w-full bg-white text-[#1D2226] text-xs rounded-xl border border-[#D9D9D9] p-2.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] font-mono"
+              className="w-full bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 text-xs rounded-xl border border-[#D9D9D9] dark:border-slate-600 p-2.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] font-mono"
             />
           </div>
         ) : currentCase ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Input Box */}
-            <div className="p-2.5 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] space-y-1">
-              <span className="text-[10px] text-[#788896] uppercase">Input</span>
-              <p className="text-[#1D2226] whitespace-pre-wrap font-semibold">{currentCase.input}</p>
+            <div className="p-2.5 rounded-xl bg-[#F3F6F8] dark:bg-slate-800/80 border border-[#E8E8E8] dark:border-slate-700 space-y-1">
+              <span className="text-[10px] text-[#788896] dark:text-slate-400 uppercase">Input</span>
+              <p className="text-[#1D2226] dark:text-slate-200 whitespace-pre-wrap font-semibold">{currentCase.input}</p>
             </div>
 
             {/* Expected Output */}
-            <div className="p-2.5 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] space-y-1">
-              <span className="text-[10px] text-[#788896] uppercase">Expected Output</span>
-              <p className="text-emerald-700 whitespace-pre-wrap font-semibold">{currentCase.expectedOutput}</p>
+            <div className="p-2.5 rounded-xl bg-[#F3F6F8] dark:bg-slate-800/80 border border-[#E8E8E8] dark:border-slate-700 space-y-1">
+              <span className="text-[10px] text-[#788896] dark:text-slate-400 uppercase">Expected Output</span>
+              <p className="text-emerald-700 dark:text-emerald-400 whitespace-pre-wrap font-semibold">{currentCase.expectedOutput}</p>
             </div>
 
             {/* Actual Output if evaluated */}
             {currentCase.actualOutput && (
-              <div className="p-2.5 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] space-y-1 col-span-1 sm:col-span-2">
+              <div className="p-2.5 rounded-xl bg-[#F3F6F8] dark:bg-slate-800/80 border border-[#E8E8E8] dark:border-slate-700 space-y-1 col-span-1 sm:col-span-2">
                 <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-[#788896] uppercase">Your Sandbox Return Output</span>
+                  <span className="text-[#788896] dark:text-slate-400 uppercase">Your Sandbox Return Output</span>
                   {currentCase.passed ? (
-                    <span className="text-emerald-700 font-bold">Matches Expected ✓</span>
+                    <span className="text-emerald-700 dark:text-emerald-400 font-bold">Matches Expected ✓</span>
                   ) : (
-                    <span className="text-[#B3261E] font-bold">Mismatch ✗</span>
+                    <span className="text-[#B3261E] dark:text-rose-400 font-bold">Mismatch ✗</span>
                   )}
                 </div>
                 <p
                   className={cn(
                     'whitespace-pre-wrap font-semibold',
-                    currentCase.passed ? 'text-emerald-700' : 'text-[#B3261E]'
+                    currentCase.passed ? 'text-emerald-700 dark:text-emerald-400' : 'text-[#B3261E] dark:text-rose-400'
                   )}
                 >
                   {currentCase.actualOutput}
@@ -205,17 +205,17 @@ export const TestResultsPanel: React.FC<TestResultsPanelProps> = ({
 
         {/* Stdout / Stderr logs */}
         {executionResult?.stdout && (
-          <div className="p-2.5 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] space-y-1">
-            <span className="text-[10px] text-[#788896] uppercase">Sandbox Console Stdout</span>
-            <pre className="text-[#1D2226] text-[11px] whitespace-pre-wrap leading-relaxed">
+          <div className="p-2.5 rounded-xl bg-[#F3F6F8] dark:bg-slate-800/80 border border-[#E8E8E8] dark:border-slate-700 space-y-1">
+            <span className="text-[10px] text-[#788896] dark:text-slate-400 uppercase">Sandbox Console Stdout</span>
+            <pre className="text-[#1D2226] dark:text-slate-200 text-[11px] whitespace-pre-wrap leading-relaxed">
               {executionResult.stdout}
             </pre>
           </div>
         )}
 
         {executionResult?.stderr && (
-          <div className="p-2.5 rounded-xl bg-[#FCE8E6] border border-[#f8cbc7] space-y-1 text-[#B3261E]">
-            <span className="text-[10px] text-[#B3261E] uppercase">Stderr Diagnostic Trace</span>
+          <div className="p-2.5 rounded-xl bg-[#FCE8E6] dark:bg-rose-900/30 border border-[#f8cbc7] dark:border-rose-700/50 space-y-1 text-[#B3261E] dark:text-rose-400">
+            <span className="text-[10px] uppercase">Stderr Diagnostic Trace</span>
             <pre className="text-[11px] whitespace-pre-wrap leading-relaxed">
               {executionResult.stderr}
             </pre>

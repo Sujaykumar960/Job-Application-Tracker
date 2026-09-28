@@ -379,6 +379,7 @@ export interface JobFilterState {
   jobType: string;
   workType: string;
   sortBy: 'match' | 'newest' | 'salary';
+  matchLevel: 'all' | 'highMatch' | 'remote' | 'internships' | 'highMatchInternships' | 'restInternships';
 }
 
 // Phase 4: Skill Gap & Real Job Match Types

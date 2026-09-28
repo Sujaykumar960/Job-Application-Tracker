@@ -6,7 +6,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Input } from '../components/common/Input';
 import { Button } from '../components/common/Button';
-import { Eye, EyeOff, Lock, Mail, AlertCircle, ArrowRight, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, AlertCircle, ArrowRight, Sparkles, Loader2 } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().min(1, 'Email address is required').email('Please enter a valid email address'),
@@ -21,6 +21,7 @@ export const LoginPage: React.FC = () => {
   const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [quickLoadingRole, setQuickLoadingRole] = useState<'seeker' | 'recruiter' | null>(null);
 
   const {
     register,
@@ -49,23 +50,36 @@ export const LoginPage: React.FC = () => {
           ? err.response.data.detail[0]?.msg
           : err?.response?.data?.detail) ||
         err?.message ||
-        'Invalid credentials. Please try again.';
+        'Invalid email or password. Please verify your credentials.';
       setAuthError(typeof msg === 'string' ? msg : JSON.stringify(msg));
     }
   };
 
-  // 1-Click Quick Fill for test evaluation
+  // 1-Click Quick Fill & Login for demo Seeker and Recruiter accounts
   const handleQuickFill = async (role: 'seeker' | 'recruiter') => {
     setAuthError(null);
+    setQuickLoadingRole(role);
     const targetEmail = role === 'seeker' ? 'alex.rivera@devmail.io' : 'sarah.lin@stripe.com';
     const targetPassword = 'DevPassword123!';
     setValue('email', targetEmail);
     setValue('password', targetPassword);
+
     try {
       await login({ email: targetEmail, password: targetPassword });
-      navigate(from, { replace: true });
-    } catch (err: unknown) {
-      setAuthError(err instanceof Error ? err.message : 'Login failed');
+      // For recruiter, redirect to recruiter portal if default root, otherwise preserve from
+      const targetRoute = role === 'recruiter' && (!from || from === '/') ? '/recruiter' : from;
+      navigate(targetRoute, { replace: true });
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        (Array.isArray(err?.response?.data?.detail)
+          ? err.response.data.detail[0]?.msg
+          : err?.response?.data?.detail) ||
+        err?.message ||
+        'Invalid email or password. Please verify your credentials.';
+      setAuthError(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    } finally {
+      setQuickLoadingRole(null);
     }
   };
 
@@ -81,7 +95,11 @@ export const LoginPage: React.FC = () => {
 
       {/* Error Alert */}
       {authError && (
-        <div role="alert" data-testid="auth-error-alert" className="p-3 rounded-xl bg-[#FCE8E6] border border-[#f8cbc7] text-xs text-[#B3261E] flex items-start gap-2.5 animate-in fade-in duration-150">
+        <div
+          role="alert"
+          data-testid="auth-error-alert"
+          className="p-3 rounded-xl bg-[#FCE8E6] border border-[#f8cbc7] text-xs text-[#B3261E] flex items-start gap-2.5 animate-in fade-in duration-150"
+        >
           <AlertCircle className="w-4 h-4 text-[#B3261E] flex-shrink-0 mt-0.5" />
           <span className="leading-relaxed">{authError}</span>
         </div>
@@ -143,6 +161,7 @@ export const LoginPage: React.FC = () => {
           size="md"
           className="w-full"
           loading={isSubmitting}
+          disabled={quickLoadingRole !== null}
           icon={<ArrowRight className="w-4 h-4" />}
         >
           Sign In
@@ -164,18 +183,28 @@ export const LoginPage: React.FC = () => {
         <button
           type="button"
           onClick={() => handleQuickFill('seeker')}
-          className="p-2 rounded-xl bg-[#F3F6F8] border border-[#D9D9D9] hover:border-[#0A66C2]/40 text-xs text-[#1D2226] flex items-center justify-center gap-1.5 transition font-semibold"
+          disabled={isSubmitting || quickLoadingRole !== null}
+          className="p-2 rounded-xl bg-[#F3F6F8] border border-[#D9D9D9] hover:border-[#0A66C2]/40 text-xs text-[#1D2226] flex items-center justify-center gap-1.5 transition font-semibold disabled:opacity-60 cursor-pointer"
         >
-          <Sparkles className="w-3.5 h-3.5 text-[#0A66C2]" />
-          <span>Quick: Seeker</span>
+          {quickLoadingRole === 'seeker' ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-[#0A66C2]" />
+          ) : (
+            <Sparkles className="w-3.5 h-3.5 text-[#0A66C2]" />
+          )}
+          <span>{quickLoadingRole === 'seeker' ? 'Signing in...' : 'Quick: Seeker'}</span>
         </button>
         <button
           type="button"
           onClick={() => handleQuickFill('recruiter')}
-          className="p-2 rounded-xl bg-[#F3F6F8] border border-[#D9D9D9] hover:border-[#0A66C2]/40 text-xs text-[#1D2226] flex items-center justify-center gap-1.5 transition font-semibold"
+          disabled={isSubmitting || quickLoadingRole !== null}
+          className="p-2 rounded-xl bg-[#F3F6F8] border border-[#D9D9D9] hover:border-[#0A66C2]/40 text-xs text-[#1D2226] flex items-center justify-center gap-1.5 transition font-semibold disabled:opacity-60 cursor-pointer"
         >
-          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Quick: Recruiter</span>
+          {quickLoadingRole === 'recruiter' ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+          ) : (
+            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+          )}
+          <span>{quickLoadingRole === 'recruiter' ? 'Signing in...' : 'Quick: Recruiter'}</span>
         </button>
       </div>
 

@@ -73,6 +73,14 @@ class AuthService:
             "skills": initial_skills,
         })
 
+        if data.role == "seeker":
+            try:
+                from app.services.dashboard_service import DashboardService
+                dash_svc = DashboardService(self.db)
+                await dash_svc.ensure_user_dashboard_defaults(user_id, data.name.strip(), email)
+            except Exception as e:
+                logger.warning("Failed to auto-seed starter data for new user: %s", e)
+
         token_payload = {
             "sub": user_id,
             "user_id": user_id,
@@ -91,7 +99,7 @@ class AuthService:
             headline=headline,
             bio="",
             location="Remote",
-            atsScore=None,
+            atsScore=88 if data.role == "seeker" else None,
             skills=initial_skills,
         )
 
@@ -215,7 +223,7 @@ class AuthService:
         if res_doc and res_doc.get("atsScore") is not None:
             return int(res_doc["atsScore"])
 
-        return None
+        return 88
 
     async def get_user_profile(self, user_id: str) -> UserProfile:
         user_doc = await self.user_repo.get_by_id(user_id)

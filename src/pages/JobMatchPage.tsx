@@ -254,9 +254,9 @@ export const JobMatchPage: React.FC = () => {
 
       {/* Notice if no resume uploaded */}
       {resumes.length === 0 && (
-        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center justify-between gap-3 shadow-xs">
+        <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-300 flex items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
             <span>
               <strong>No uploaded resume found:</strong> Matching is currently using verified profile skills. Upload a resume to enable deep text extraction and AI ATS analysis.
             </span>
@@ -271,14 +271,14 @@ export const JobMatchPage: React.FC = () => {
 
       {/* Toast Alert */}
       {toastMessage && (
-        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-300 text-xs text-emerald-800 flex items-center justify-between gap-3 shadow-sm animate-in fade-in duration-200">
+        <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between gap-3 shadow-sm animate-in fade-in duration-200">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-700 flex-shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400 flex-shrink-0" />
             <span>{toastMessage}</span>
           </div>
           <Link
             to="/applications"
-            className="font-semibold text-emerald-800 underline text-xs flex items-center gap-1 flex-shrink-0"
+            className="font-semibold text-emerald-800 dark:text-emerald-300 underline text-xs flex items-center gap-1 flex-shrink-0"
           >
             Open Tracker <ArrowRight className="w-3 h-3" />
           </Link>
@@ -288,10 +288,10 @@ export const JobMatchPage: React.FC = () => {
       {/* ========================================================================= */}
       {/* 1. INPUT CONFIGURATION: RESUME + TARGET JOB                               */}
       {/* ========================================================================= */}
-      <Card className="p-4 bg-white border border-[#D9D9D9] space-y-4 shadow-xs">
-        <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8]">
-          <span className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-2">
-            <SlidersHorizontal className="w-3.5 h-3.5 text-[#0A66C2]" />
+      <Card className="p-4 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 space-y-4 shadow-xs">
+        <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8] dark:border-slate-800">
+          <span className="text-xs font-bold text-[#1D2226] dark:text-slate-100 uppercase font-mono tracking-wider flex items-center gap-2">
+            <SlidersHorizontal className="w-3.5 h-3.5 text-[#0A66C2] dark:text-blue-400" />
             Comparison Inputs
           </span>
           <button
@@ -299,7 +299,7 @@ export const JobMatchPage: React.FC = () => {
               setIsCustomJob(!isCustomJob);
               setMatchAnalysis(null);
             }}
-            className="text-[11px] text-[#0A66C2] hover:text-[#004182] font-medium transition"
+            className="text-[11px] text-[#0A66C2] dark:text-blue-400 hover:text-[#004182] dark:hover:text-blue-300 font-medium transition"
           >
             {isCustomJob ? '← Select from Saved Jobs' : '+ Paste Custom Job Description'}
           </button>
@@ -308,8 +308,8 @@ export const JobMatchPage: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Left: Select Candidate Resume */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-[#1D2226] flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5 text-[#0A66C2]" />
+            <label className="block text-xs font-semibold text-[#1D2226] dark:text-slate-200 flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-[#0A66C2] dark:text-blue-400" />
               1. Candidate Resume / Skill Source
             </label>
             <select
@@ -317,7 +317,7 @@ export const JobMatchPage: React.FC = () => {
               onChange={(e) => {
                 setSelectedResumeId(e.target.value);
               }}
-              className="w-full bg-white text-[#1D2226] text-xs rounded-lg border border-[#D9D9D9] px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
+              className="w-full bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 text-xs rounded-lg border border-[#D9D9D9] dark:border-slate-700 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
             >
               {resumes.length === 0 ? (
                 <option value="">Profile Skills (Default)</option>
@@ -337,8 +337,8 @@ export const JobMatchPage: React.FC = () => {
 
           {/* Right: Select Job or Paste Custom */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-[#1D2226] flex items-center gap-1.5">
-              <Briefcase className="w-3.5 h-3.5 text-emerald-600" />
+            <label className="block text-xs font-semibold text-[#1D2226] dark:text-slate-200 flex items-center gap-1.5">
+              <Briefcase className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               2. Target Opportunity
             </label>
             {isCustomJob ? (
@@ -347,7 +347,7 @@ export const JobMatchPage: React.FC = () => {
                 value={customJobText}
                 onChange={(e) => setCustomJobText(e.target.value)}
                 placeholder="Paste the target job description or required competencies here..."
-                className="w-full bg-white text-[#1D2226] text-xs rounded-lg border border-[#D9D9D9] p-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
+                className="w-full bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 text-xs rounded-lg border border-[#D9D9D9] dark:border-slate-700 p-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
               />
             ) : (
               <select
@@ -355,7 +355,7 @@ export const JobMatchPage: React.FC = () => {
                 onChange={(e) => {
                   setSelectedJobId(e.target.value);
                 }}
-                className="w-full bg-white text-[#1D2226] text-xs rounded-lg border border-[#D9D9D9] px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
+                className="w-full bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 text-xs rounded-lg border border-[#D9D9D9] dark:border-slate-700 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
               >
                 {jobs.map((job) => (
                   <option key={job.id} value={job.id}>
@@ -382,8 +382,8 @@ export const JobMatchPage: React.FC = () => {
 
       {/* Match Error Alert */}
       {matchError && (
-        <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800 flex items-center gap-2 shadow-xs">
-          <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+        <div className="p-3.5 rounded-xl bg-red-50 dark:bg-rose-950/30 border border-red-200 dark:border-rose-800 text-xs text-red-800 dark:text-rose-300 flex items-center gap-2 shadow-xs">
+          <AlertCircle className="w-4 h-4 text-red-600 dark:text-rose-400 flex-shrink-0" />
           <span>{matchError}</span>
         </div>
       )}
@@ -391,10 +391,10 @@ export const JobMatchPage: React.FC = () => {
       {/* ========================================================================= */}
       {/* 2. OVERALL MATCH SCORE BANNER                                             */}
       {/* ========================================================================= */}
-      <div className="p-5 rounded-2xl bg-[#E8F3FF] border border-[#d0e6fc] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+      <div className="p-5 rounded-2xl bg-[#E8F3FF] dark:bg-slate-900 border border-[#d0e6fc] dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="text-3xl sm:text-4xl font-extrabold text-[#1D2226] font-mono tracking-tight">
+            <span className="text-3xl sm:text-4xl font-extrabold text-[#1D2226] dark:text-slate-100 font-mono tracking-tight">
               {score}% Match
             </span>
             <Badge
@@ -404,9 +404,9 @@ export const JobMatchPage: React.FC = () => {
               {score >= 80 ? 'High Compatibility' : score >= 60 ? 'Moderate Compatibility' : 'Developing Match'}
             </Badge>
           </div>
-          <p className="text-xs text-[#56687A]">
-            Comparing <span className="text-[#0A66C2] font-semibold">{selectedResumeDisplay}</span> against{' '}
-            <span className="text-[#1D2226] font-semibold">
+          <p className="text-xs text-[#56687A] dark:text-slate-400">
+            Comparing <span className="text-[#0A66C2] dark:text-blue-400 font-semibold">{selectedResumeDisplay}</span> against{' '}
+            <span className="text-[#1D2226] dark:text-slate-200 font-semibold">
               {isCustomJob ? 'Custom Opportunity' : `${currentJob?.title || 'Selected Role'} @ ${currentJob?.company || ''}`}
             </span>
           </p>
@@ -414,12 +414,12 @@ export const JobMatchPage: React.FC = () => {
 
         <div className="flex items-center gap-2 flex-wrap">
           <Link to="/skills">
-            <Button size="sm" variant="outline" icon={<Target className="w-3.5 h-3.5 text-[#0A66C2]" />}>
+            <Button size="sm" variant="outline" icon={<Target className="w-3.5 h-3.5 text-[#0A66C2] dark:text-blue-400" />}>
               Skill Gap Matrix
             </Button>
           </Link>
           <Link to="/learning">
-            <Button size="sm" variant="secondary" icon={<BookOpen className="w-3.5 h-3.5 text-[#0A66C2]" />}>
+            <Button size="sm" variant="secondary" icon={<BookOpen className="w-3.5 h-3.5 text-[#0A66C2] dark:text-blue-400" />}>
               Learn Missing Skills
             </Button>
           </Link>
@@ -441,9 +441,9 @@ export const JobMatchPage: React.FC = () => {
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* MATCHED SKILLS */}
-        <Card className="p-4 bg-white border border-[#D9D9D9] space-y-3 shadow-xs">
-          <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8]">
-            <div className="flex items-center gap-2 text-xs font-bold text-emerald-700">
+        <Card className="p-4 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 space-y-3 shadow-xs">
+          <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8] dark:border-slate-800">
+            <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400">
               <Check className="w-4 h-4 stroke-[3]" />
               <span>Matched Skills ({matchAnalysis?.matchedSkills?.length || 0})</span>
             </div>
@@ -454,18 +454,18 @@ export const JobMatchPage: React.FC = () => {
 
           <div className="space-y-2">
             {!matchAnalysis?.matchedSkills || matchAnalysis.matchedSkills.length === 0 ? (
-              <p className="text-xs text-[#788896] italic py-2">No matching skills detected for this role.</p>
+              <p className="text-xs text-[#788896] dark:text-slate-400 italic py-2">No matching skills detected for this role.</p>
             ) : (
               matchAnalysis.matchedSkills.map((skill) => (
                 <div
                   key={skill}
-                  className="flex items-center justify-between p-2 rounded-xl bg-[#E6F4EA] border border-[#c6ecd2] text-xs font-mono text-[#1D2226]"
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-500/10 dark:bg-emerald-950/30 border border-emerald-300/40 dark:border-emerald-700/40 text-xs text-[#1D2226] dark:text-slate-100 transition-colors"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-emerald-700 font-bold">✓</span>
+                    <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <span className="font-semibold">{skill}</span>
                   </div>
-                  <span className="text-[10px] text-emerald-700 font-sans">Full Match</span>
+                  <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium font-sans">Full Match</span>
                 </div>
               ))
             )}
@@ -473,9 +473,9 @@ export const JobMatchPage: React.FC = () => {
         </Card>
 
         {/* PARTIAL SKILLS */}
-        <Card className="p-4 bg-white border border-[#D9D9D9] space-y-3 shadow-xs">
-          <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8]">
-            <div className="flex items-center gap-2 text-xs font-bold text-[#0A66C2]">
+        <Card className="p-4 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 space-y-3 shadow-xs">
+          <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8] dark:border-slate-800">
+            <div className="flex items-center gap-2 text-xs font-bold text-[#0A66C2] dark:text-blue-400">
               <Sparkles className="w-4 h-4" />
               <span>Partial Skills ({matchAnalysis?.partialSkills?.length || 0})</span>
             </div>
@@ -486,18 +486,18 @@ export const JobMatchPage: React.FC = () => {
 
           <div className="space-y-2">
             {!matchAnalysis?.partialSkills || matchAnalysis.partialSkills.length === 0 ? (
-              <p className="text-xs text-[#788896] italic py-2">No adjacent partial competencies flagged.</p>
+              <p className="text-xs text-[#788896] dark:text-slate-400 italic py-2">No adjacent partial competencies flagged.</p>
             ) : (
               matchAnalysis.partialSkills.map((item) => (
                 <div
                   key={item.name}
-                  className="p-2.5 rounded-xl bg-[#F3F6F8] border border-[#d0e6fc] space-y-1 text-xs"
+                  className="p-2.5 rounded-xl bg-blue-500/10 dark:bg-blue-950/30 border border-blue-300/40 dark:border-blue-700/40 space-y-1 text-xs"
                 >
-                  <div className="flex items-center justify-between font-mono">
-                    <span className="font-bold text-[#0A66C2]">~ {item.name}</span>
-                    <span className="text-[10px] text-[#0A66C2]">Partial Depth</span>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[#0A66C2] dark:text-blue-400">~ {item.name}</span>
+                    <span className="text-[10px] text-[#0A66C2] dark:text-blue-400/90 font-medium">Partial Depth</span>
                   </div>
-                  <p className="text-[11px] text-[#56687A] leading-snug">{item.note}</p>
+                  <p className="text-[11px] text-[#56687A] dark:text-slate-400 leading-snug">{item.note}</p>
                 </div>
               ))
             )}
@@ -505,10 +505,10 @@ export const JobMatchPage: React.FC = () => {
         </Card>
 
         {/* MISSING SKILLS */}
-        <Card className="p-4 bg-white border border-[#D9D9D9] space-y-3 shadow-xs">
-          <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8]">
-            <div className="flex items-center gap-2 text-xs font-bold text-[#8A6100]">
-              <AlertTriangle className="w-4 h-4" />
+        <Card className="p-4 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 space-y-3 shadow-xs">
+          <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8] dark:border-slate-800">
+            <div className="flex items-center gap-2 text-xs font-bold text-[#8A6100] dark:text-amber-400">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
               <span>Missing Skills ({matchAnalysis?.missingSkills?.length || 0})</span>
             </div>
             <Badge variant="warning" size="sm">
@@ -518,7 +518,7 @@ export const JobMatchPage: React.FC = () => {
 
           <div className="space-y-2">
             {!matchAnalysis?.missingSkills || matchAnalysis.missingSkills.length === 0 ? (
-              <p className="text-xs text-emerald-700 italic py-2">All required technical competencies are satisfied!</p>
+              <p className="text-xs text-emerald-700 dark:text-emerald-400 italic py-2">All required technical competencies are satisfied!</p>
             ) : (
               matchAnalysis.missingSkills.map((item, idx) => {
                 const skillName = typeof item === 'string' ? item : item.name;
@@ -526,18 +526,18 @@ export const JobMatchPage: React.FC = () => {
                 return (
                   <div
                     key={idx}
-                    className="p-2 rounded-xl bg-[#FFF4CC]/50 border border-[#ffe899] flex items-center justify-between text-xs font-mono"
+                    className="p-2.5 rounded-xl bg-amber-500/10 dark:bg-amber-950/30 border border-amber-300/40 dark:border-amber-700/40 flex items-center justify-between text-xs transition-colors hover:border-amber-400/60"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="text-[#8A6100] font-bold">⚠</span>
-                      <span className="text-[#1D2226] font-semibold">{skillName}</span>
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span className="text-[#1D2226] dark:text-slate-100 font-semibold">{skillName}</span>
                     </div>
                     <Link
                       to="/learning"
-                      className="text-[10px] text-[#0A66C2] hover:text-[#004182] font-medium flex items-center gap-0.5"
+                      className="text-xs text-[#0A66C2] dark:text-blue-400 hover:text-[#004182] dark:hover:text-blue-300 font-medium flex items-center gap-0.5"
                       title={`Learn ${moduleName}`}
                     >
-                      Learn <ArrowRight className="w-2.5 h-2.5" />
+                      Learn <ArrowRight className="w-3 h-3" />
                     </Link>
                   </div>
                 );
@@ -550,14 +550,14 @@ export const JobMatchPage: React.FC = () => {
       {/* ========================================================================= */}
       {/* 4. RECOMMENDATIONS TO CLOSE THE GAP (Linked to Learning)                  */}
       {/* ========================================================================= */}
-      <Card className="p-4 bg-white border border-[#D9D9D9] space-y-3 shadow-xs">
-        <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8]">
+      <Card className="p-4 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 space-y-3 shadow-xs">
+        <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8] dark:border-slate-800">
           <div>
-            <h3 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-2">
+            <h3 className="text-xs font-bold text-[#1D2226] dark:text-slate-100 flex items-center gap-2">
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
               Actionable Recommendations to Close the Gap
             </h3>
-            <p className="text-[11px] text-[#56687A] mt-0.5">
+            <p className="text-[11px] text-[#56687A] dark:text-slate-400 mt-0.5">
               Target steps to increase compatibility before submitting your application.
             </p>
           </div>
@@ -568,7 +568,7 @@ export const JobMatchPage: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {!matchAnalysis?.recommendations || matchAnalysis.recommendations.length === 0 ? (
-            <div className="col-span-full py-4 text-center text-xs text-[#788896]">
+            <div className="col-span-full py-4 text-center text-xs text-[#788896] dark:text-slate-400">
               No recommendations at this time.
             </div>
           ) : (
@@ -581,16 +581,16 @@ export const JobMatchPage: React.FC = () => {
               return (
                 <div
                   key={i}
-                  className="p-3.5 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] flex flex-col justify-between space-y-3 group hover:border-[#0A66C2]/40 transition"
+                  className="p-3.5 rounded-xl bg-[#F3F6F8] dark:bg-slate-800/80 border border-[#E8E8E8] dark:border-slate-700 flex flex-col justify-between space-y-3 group hover:border-[#0A66C2]/40 transition"
                 >
                   <div className="space-y-1">
-                    <h4 className="text-xs font-bold text-[#1D2226] group-hover:text-[#0A66C2] transition">
+                    <h4 className="text-xs font-bold text-[#1D2226] dark:text-slate-100 group-hover:text-[#0A66C2] dark:group-hover:text-blue-400 transition">
                       {title}
                     </h4>
-                    <p className="text-[11px] text-[#56687A] leading-relaxed">{desc}</p>
+                    <p className="text-[11px] text-[#56687A] dark:text-slate-400 leading-relaxed">{desc}</p>
                   </div>
 
-                  <div className="pt-2 border-t border-[#E8E8E8] flex justify-end">
+                  <div className="pt-2 border-t border-[#E8E8E8] dark:border-slate-700 flex justify-end">
                     <Link to={link}>
                       <Button size="xs" variant="primary" className="text-[10px]">
                         {action}
