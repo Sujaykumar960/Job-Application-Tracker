@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 
 
 class TestCase(BaseModel):
+    __test__ = False
     id: str
     input: str
     expectedOutput: Optional[str] = ""
