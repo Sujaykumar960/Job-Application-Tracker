@@ -23,6 +23,9 @@ SEEDED_USERS = [
         "name": "Alex Rivera",
         "email": "alex.rivera@devmail.io",
         "role": "seeker",
+        # Only demo accounts get the synthetic 50-application dataset. Every
+        # other account starts at zero so JA-08 analytics describe real activity.
+        "isDemoAccount": True,
         "headline": "Full Stack & Distributed Systems Engineer",
         "bio": "Building low-latency sync engines and high-throughput microservices. Passionate about developer tooling and architecture.",
         "location": "Seattle, WA",

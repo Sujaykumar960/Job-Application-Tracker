@@ -36,7 +36,7 @@ async def create_user_and_token(client, email: str, name: str, role: str = "seek
 async def test_ja05_application_notes_crud_and_validation(client):
     """
     JA-05: Add short notes to any application (recruiter name, feedback, etc.) and see them later.
-    Constraint 2: Empty notes are rejected (400), cannot add note to non-existent application (400).
+    Constraint 2: Empty notes are rejected (400), cannot add note to non-existent application (404).
     Database: Note table supports one Application -> many Notes.
     """
     token_a = await create_user_and_token(client, "alice.notes@r2test.io", "Alice Notes")
@@ -60,12 +60,14 @@ async def test_ja05_application_notes_crud_and_validation(client):
     empty_res_2 = await client.post(f"/api/applications/{app_id}/notes", json={"content": "   "}, headers=headers_a)
     assert empty_res_2.status_code == 400
 
-    # 3. Constraint validation: cannot add note to non-existent application (400 Bad Request)
+    # 3. Constraint validation: cannot add note to non-existent application (404 Not Found)
+    # 404 rather than 400: every other application endpoint already answers 404
+    # for a missing application, so the same condition gets one status code.
     non_existent_res = await client.post("/api/applications/non_existent_app_id_999/notes", json={
         "content": "R2Test note on ghost application"
     }, headers=headers_a)
-    assert non_existent_res.status_code == 400
-    assert "not found" in non_existent_res.json()["detail"].lower() or "cannot add" in non_existent_res.json()["detail"].lower()
+    assert non_existent_res.status_code == 404
+    assert "not found" in non_existent_res.json()["detail"].lower()
 
     # 4. Successfully add first note (Recruiter info)
     note_1_res = await client.post(f"/api/applications/{app_id}/notes", json={
