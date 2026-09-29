@@ -42,7 +42,31 @@ export interface ExecutionResult {
  */
 export const codeExecutionApi = {
   execute: async (payload: ExecuteCodePayload): Promise<ExecutionResult> => {
-    const response = await apiClient.post<ExecutionResult>('/code/execute', payload);
-    return response.data;
+    try {
+      const response = await apiClient.post<ExecutionResult>('/code/execute', payload);
+      return response.data;
+    } catch (err: any) {
+      const errorMsg =
+        err?.response?.data?.detail ||
+        err?.message ||
+        'Unable to reach code execution sandbox server. Please verify backend is running.';
+      return {
+        status: 'Runtime Error',
+        stdout: '',
+        stderr: errorMsg,
+        executionTimeMs: 0,
+        memoryUsageMb: 0,
+        percentileSpeed: 0,
+        percentileMemory: 0,
+        testCaseResults: (payload.testCases || []).map((tc) => ({
+          ...tc,
+          passed: false,
+          actualOutput: 'Execution Error',
+          executionTimeMs: 0,
+        })),
+        passedCount: 0,
+        totalCount: payload.testCases?.length || 0,
+      };
+    }
   },
 };

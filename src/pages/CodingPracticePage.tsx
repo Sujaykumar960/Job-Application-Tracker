@@ -33,9 +33,9 @@ export const CodingPracticePage: React.FC = () => {
     CODING_PROBLEMS.find((p) => p.id === currentProblemId) || CODING_PROBLEMS[0];
 
   // Language & Code Editor State
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('go');
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('python');
   const [code, setCode] = useState<string>(
-    currentProblem.starterCode[selectedLanguage] || currentProblem.starterCode.go
+    currentProblem.starterCode.python || currentProblem.starterCode[selectedLanguage] || currentProblem.starterCode.go
   );
 
   // Execution & Test Results State

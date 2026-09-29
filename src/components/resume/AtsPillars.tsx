@@ -18,19 +18,27 @@ export const AtsPillars: React.FC<AtsPillarsProps> = ({ pillars }) => {
   const getStatusColor = (status: PillarMetric['status']) => {
     switch (status) {
       case 'optimal':
-        return 'text-emerald-700 dark:text-emerald-400 bg-emerald-600 dark:bg-emerald-500';
+        return {
+          textColor: 'text-emerald-700 dark:text-emerald-400',
+          barColor: 'bg-emerald-600 dark:bg-emerald-500',
+        };
       case 'good':
-        return 'text-[#0A66C2] dark:text-blue-400 bg-[#0A66C2] dark:bg-blue-500';
+        return {
+          textColor: 'text-[#0A66C2] dark:text-blue-400',
+          barColor: 'bg-[#0A66C2] dark:bg-blue-500',
+        };
       case 'needs_work':
-        return 'text-[#8A6100] dark:text-amber-400 bg-amber-500 dark:bg-amber-400';
+        return {
+          textColor: 'text-[#8A6100] dark:text-amber-400',
+          barColor: 'bg-amber-500 dark:bg-amber-400',
+        };
     }
   };
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
       {pillars.map((p) => {
-        const statusClass = getStatusColor(p.status);
-        const [textColor, barColor] = statusClass.split(' ');
+        const { textColor, barColor } = getStatusColor(p.status);
 
         return (
           <div

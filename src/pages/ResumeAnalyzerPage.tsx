@@ -170,7 +170,7 @@ export const ResumeAnalyzerPage: React.FC = () => {
       console.error('AI Analysis failed:', err);
       setError(
         err.response?.data?.detail ||
-          'AI analysis failed. Please verify that GROQ_API_KEY is configured on the backend.'
+        'AI analysis failed. Please verify that GROQ_API_KEY is configured on the backend.'
       );
     } finally {
       setIsAnalyzing(false);
@@ -443,11 +443,10 @@ export const ResumeAnalyzerPage: React.FC = () => {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
-                      activeTab === tab.id
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${activeTab === tab.id
                         ? 'bg-[#0A66C2] text-white shadow-sm'
                         : 'text-[#56687A] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-100 hover:bg-[#F3F6F8] dark:hover:bg-slate-800'
-                    }`}
+                      }`}
                   >
                     {tab.label}
                   </button>

@@ -57,17 +57,17 @@ def _limit_child_resources() -> None:
     """Apply resource ceilings in the forked child before exec.
 
     Runs via `preexec_fn`, so it executes post-fork / pre-exec in the child.
-    Must stay POSIX-only and allocation-free: anything that raises here leaves
-    the child without limits.
+    Must stay POSIX-only and allocation-free.
     """
-    import resource
-
-    resource.setrlimit(resource.RLIMIT_CPU, (SANDBOX_MAX_CPU_SECONDS, SANDBOX_MAX_CPU_SECONDS))
-    resource.setrlimit(resource.RLIMIT_AS, (SANDBOX_MAX_MEMORY_BYTES, SANDBOX_MAX_MEMORY_BYTES))
-    resource.setrlimit(resource.RLIMIT_FSIZE, (SANDBOX_MAX_FILE_SIZE_BYTES, SANDBOX_MAX_FILE_SIZE_BYTES))
-    # Never allow the child to raise its own limits back up.
-    resource.setrlimit(resource.RLIMIT_NPROC, (64, 64))
-    os.setsid()  # Own process group, so timeouts can reap the whole tree.
+    try:
+        import resource
+        resource.setrlimit(resource.RLIMIT_CPU, (SANDBOX_MAX_CPU_SECONDS, SANDBOX_MAX_CPU_SECONDS))
+        resource.setrlimit(resource.RLIMIT_AS, (SANDBOX_MAX_MEMORY_BYTES, SANDBOX_MAX_MEMORY_BYTES))
+        resource.setrlimit(resource.RLIMIT_FSIZE, (SANDBOX_MAX_FILE_SIZE_BYTES, SANDBOX_MAX_FILE_SIZE_BYTES))
+        resource.setrlimit(resource.RLIMIT_NPROC, (64, 64))
+        os.setsid()  # Own process group, so timeouts can reap the whole tree.
+    except Exception:
+        pass
 
 
 def _validate_python_security(code: str) -> Optional[str]:
@@ -97,7 +97,23 @@ def _validate_python_security(code: str) -> Optional[str]:
 
 def _clean_json_str(val: str) -> str:
     """Normalize output representations for resilient evaluation."""
+    if not val:
+        return ""
     s = val.strip()
+    # Try parsing as JSON or python literal first to compare canonical structure for dicts and lists
+    try:
+        parsed = json.loads(s)
+        if isinstance(parsed, (dict, list)):
+            return json.dumps(parsed, sort_keys=True)
+    except Exception:
+        pass
+    try:
+        parsed = ast.literal_eval(s)
+        if isinstance(parsed, (dict, list)):
+            return json.dumps(parsed, sort_keys=True)
+    except Exception:
+        pass
+
     # Normalize booleans
     s = re.sub(r"\btrue\b", "True", s, flags=re.IGNORECASE)
     s = re.sub(r"\bfalse\b", "False", s, flags=re.IGNORECASE)
@@ -252,6 +268,25 @@ def parse_input_str(raw_input):
     except Exception:
         return [raw_input]
 
+def _run_design_test(cls, raw_in):
+    m_cap = _re.search(r'capacity\s*=\s*(\d+)', raw_in)
+    cap = int(m_cap.group(1)) if m_cap else 2
+    obj = cls(cap)
+    m_ops = _re.search(r'operations\s*:\s*\[(.*)\]', raw_in)
+    if not m_ops:
+        return []
+    op_calls = _re.findall(r'([a-zA-Z_]\w*)\s*\((.*?)\)', m_ops.group(1))
+    outputs = []
+    for op_name, arg_str in op_calls:
+        args = [int(a.strip()) if a.strip().lstrip('-').isdigit() else a.strip() for a in arg_str.split(',') if a.strip()]
+        method = getattr(obj, op_name, None) or getattr(obj, op_name.lower(), None)
+        if callable(method):
+            res = method(*args)
+            outputs.append(res)
+        else:
+            outputs.append(None)
+    return outputs
+
 def find_callable():
     # Check if Solution class exists
     if 'Solution' in globals() and isinstance(globals()['Solution'], type):
@@ -259,15 +294,22 @@ def find_callable():
         methods = [m for m in dir(inst) if not m.startswith('_') and callable(getattr(inst, m))]
         if methods:
             return getattr(inst, methods[0])
+    # Check for design classes like LRUCache
+    for cls_name in ('LRUCache', 'LFUCache', 'MinStack', 'Trie', 'Twitter'):
+        if cls_name in globals() and isinstance(globals()[cls_name], type):
+            return globals()[cls_name]
     # Check functions defined by user
     for k, v in list(globals().items()):
-        if callable(v) and not k.startswith('_') and k not in ('find_callable', 'parse_input_str'):
+        if callable(v) and not k.startswith('_') and k not in ('find_callable', 'parse_input_str', '_run_design_test', '_coerce_scalar'):
             return v
     return None
+
 func = find_callable()
 if not func:
-    print(json.dumps({{"error": "No callable function or Solution class method found."}}))
+    print(json.dumps({{"error": "No callable function, Solution method, or design class found."}}))
     sys.exit(0)
+
+is_design_class = isinstance(func, type) and func.__name__ in ('LRUCache', 'LFUCache', 'MinStack', 'Trie', 'Twitter')
 
 results = []
 test_cases_json = sys.stdin.read()
@@ -277,18 +319,26 @@ for tc in test_cases:
     t0 = time.perf_counter()
     try:
         raw_in = tc.get("input", "")
-        args = parse_input_str(raw_in) if raw_in else []
-        sig = _inspect.signature(func)
-        params = list(sig.parameters.values())
-        has_var_pos = any(p.kind == _inspect.Parameter.VAR_POSITIONAL for p in params)
-        if not has_var_pos and len(params) == 0:
-            ret = func()
-        elif not has_var_pos and len(args) > len(params):
-            ret = func(*args[:len(params)])
+        if is_design_class and "operations:" in raw_in:
+            out_list = _run_design_test(func, raw_in)
+            ret_str = json.dumps(out_list)
         else:
-            ret = func(*args)
+            args = parse_input_str(raw_in) if raw_in else []
+            sig = _inspect.signature(func)
+            params = list(sig.parameters.values())
+            has_var_pos = any(p.kind == _inspect.Parameter.VAR_POSITIONAL for p in params)
+            if not has_var_pos and len(params) == 0:
+                ret = func()
+            elif not has_var_pos and len(args) > len(params):
+                ret = func(*args[:len(params)])
+            else:
+                ret = func(*args)
+            if isinstance(ret, (list, dict, tuple)):
+                ret_str = json.dumps(ret)
+            else:
+                ret_str = str(ret)
         elapsed_ms = int((time.perf_counter() - t0) * 1000)
-        results.append({{"id": tc.get("id"), "output": str(ret), "error": None, "timeMs": elapsed_ms}})
+        results.append({{"id": tc.get("id"), "output": ret_str, "error": None, "timeMs": elapsed_ms}})
     except Exception as e:
         elapsed_ms = int((time.perf_counter() - t0) * 1000)
         results.append({{"id": tc.get("id"), "output": None, "error": f"{{type(e).__name__}}: {{str(e)}}", "timeMs": elapsed_ms}})
@@ -309,6 +359,10 @@ print(json.dumps({{"results": results}}))
     if "SYSTEMROOT" in os.environ:
         clean_env["SYSTEMROOT"] = os.environ["SYSTEMROOT"]
 
+    extra_kwargs = {}
+    if sys.platform != "win32":
+        extra_kwargs["preexec_fn"] = _limit_child_resources
+
     try:
         proc = subprocess.run(
             [sys.executable, "-c", harness_script],
@@ -317,8 +371,8 @@ print(json.dumps({{"results": results}}))
             capture_output=True,
             timeout=5.0,  # 5-second CPU limit
             env=clean_env,
-            preexec_fn=_limit_child_resources,  # POSIX-only; bounds memory + fork bomb
             cwd=tempfile.gettempdir(),  # Never execute with the API's CWD in scope
+            **extra_kwargs,
         )
     except subprocess.TimeoutExpired:
         return (
@@ -343,7 +397,8 @@ print(json.dumps({{"results": results}}))
         # (-9) is what RLIMIT_AS / RLIMIT_CPU enforcement looks like from
         # outside, and deserves a clearer message than "Runtime Error".
         stderr_text = (proc.stderr or "").strip()
-        if proc.returncode == -signal.SIGKILL:
+        sigkill_code = getattr(signal, "SIGKILL", 9)
+        if proc.returncode == -sigkill_code:
             stderr_text = (
                 f"Memory limit exceeded ({SANDBOX_MAX_MEMORY_BYTES // (1024 * 1024)} MB) "
                 f"or CPU time limit exceeded ({SANDBOX_MAX_CPU_SECONDS}s). "
