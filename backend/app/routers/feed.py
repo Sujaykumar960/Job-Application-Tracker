@@ -66,6 +66,30 @@ async def get_feed_posts(
     return docs
 
 
+@router.get("/saved", response_model=List[FeedPost])
+@router.get("/posts/saved", response_model=List[FeedPost])
+async def get_saved_posts(
+    user: Dict[str, Any] = Depends(get_current_active_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Fetch posts bookmarked/saved by authenticated user."""
+    repo = PostRepository(db)
+    docs = await repo.find_many({"bookmarks": user["id"]}, sort=[("createdAt", -1)], limit=100)
+    results = []
+    for doc in docs:
+        computed = dict(doc)
+        likes = doc.get("likes", [])
+        bookmarks = doc.get("bookmarks", [])
+        comments = doc.get("comments", [])
+        computed["likesCount"] = len(likes)
+        computed["commentsCount"] = len(comments)
+        computed["isLiked"] = user["id"] in likes
+        computed["isSaved"] = True
+        computed["sharesCount"] = doc.get("sharesCount", 0)
+        results.append(computed)
+    return results
+
+
 @router.get("/posts/{post_id}", response_model=FeedPost)
 async def get_post_by_id(
     post_id: str,
@@ -135,30 +159,6 @@ async def delete_post(
     user_id = user["id"]
     await repo.delete_post_by_author(post_id, user_id)
     return StandardSuccessResponse(success=True, message="Post deleted successfully.")
-
-
-@router.get("/saved", response_model=List[FeedPost])
-@router.get("/posts/saved", response_model=List[FeedPost])
-async def get_saved_posts(
-    user: Dict[str, Any] = Depends(get_current_active_user),
-    db: AsyncIOMotorDatabase = Depends(get_db),
-):
-    """Fetch posts bookmarked/saved by authenticated user."""
-    repo = PostRepository(db)
-    docs = await repo.find_many({"bookmarks": user["id"]}, sort=[("createdAt", -1)], limit=100)
-    results = []
-    for doc in docs:
-        computed = dict(doc)
-        likes = doc.get("likes", [])
-        bookmarks = doc.get("bookmarks", [])
-        comments = doc.get("comments", [])
-        computed["likesCount"] = len(likes)
-        computed["commentsCount"] = len(comments)
-        computed["isLiked"] = user["id"] in likes
-        computed["isSaved"] = True
-        computed["sharesCount"] = doc.get("sharesCount", 0)
-        results.append(computed)
-    return results
 
 
 @router.post("/posts/{post_id}/like", response_model=LikeResponse)

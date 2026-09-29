@@ -274,7 +274,7 @@ export const HomePage: React.FC = () => {
             </div>
             <div className="mt-2">
               <div className="text-xl font-extrabold text-[#0A66C2] dark:text-blue-400 tracking-tight">
-                {dashboardData.savedJobsCount > 0 ? dashboardData.savedJobsCount : 8}
+                {dashboardData.savedJobsCount}
               </div>
               <p className="text-[10px] text-[#788896] dark:text-slate-400 mt-0.5 truncate">Bookmarked roles</p>
             </div>
@@ -290,10 +290,10 @@ export const HomePage: React.FC = () => {
             </div>
             <div className="mt-2">
               <div className="text-xl font-extrabold text-[#1D2226] dark:text-slate-100 tracking-tight">
-                {learningProgress.questionsSolved > 0 ? learningProgress.questionsSolved : 24}
+                {learningProgress.questionsSolved}
               </div>
               <p className="text-[10px] text-[#788896] dark:text-slate-400 mt-0.5 truncate">
-                {learningProgress.accuracy > 0 ? `${learningProgress.accuracy.toFixed(1)}%` : '87.5%'} accuracy
+                {learningProgress.accuracy > 0 ? `${learningProgress.accuracy.toFixed(1)}%` : '0%'} accuracy
               </p>
             </div>
           </Card>
@@ -308,7 +308,7 @@ export const HomePage: React.FC = () => {
             </div>
             <div className="mt-2">
               <div className="text-xl font-extrabold text-[#F5A623] dark:text-amber-400 tracking-tight">
-                {learningProgress.streakDays > 0 ? `${learningProgress.streakDays}d` : '7d'}
+                {learningProgress.streakDays > 0 ? `${learningProgress.streakDays}d` : '0d'}
               </div>
               <p className="text-[10px] text-[#12B886] dark:text-emerald-400 font-medium mt-0.5 truncate">Active streak</p>
             </div>
@@ -326,7 +326,7 @@ export const HomePage: React.FC = () => {
               <div className="text-xl font-extrabold text-[#12B886] dark:text-emerald-400 tracking-tight">
                 {dashboardData.applications.total > 0
                   ? `${Math.round(((dashboardData.applications.interviewing + dashboardData.applications.offered) / dashboardData.applications.total) * 100)}%`
-                  : '52%'}
+                  : '0%'}
               </div>
               <p className="text-[10px] text-[#788896] dark:text-slate-400 mt-0.5 truncate">Positive responses</p>
             </div>

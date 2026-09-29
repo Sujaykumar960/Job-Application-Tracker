@@ -204,6 +204,24 @@ class DatabaseManager:
             await cls.db.notes.create_index([("applicationId", ASCENDING), ("createdAt", DESCENDING)])
             await cls.db.notes.create_index([("userId", ASCENDING), ("createdAt", DESCENDING)])
 
+            # 17. Revoked Tokens (TTL: auto-expunge revoked tokens 24h after expiry)
+            await cls.db.revoked_tokens.create_index(
+                [("expiresAt", ASCENDING)],
+                expireAfterSeconds=0,
+                name="revoked_tokens_ttl",
+            )
+
+            # 18. Files Collection (media metadata)
+            await cls.db.files.create_index([("storageKey", ASCENDING)], unique=True)
+            await cls.db.files.create_index([("ownerId", ASCENDING), ("createdAt", DESCENDING)])
+
+            # 19. Saved Jobs Collection
+            await cls.db.saved_jobs.create_index(
+                [("userId", ASCENDING), ("jobId", ASCENDING)],
+                unique=True,
+            )
+            await cls.db.saved_jobs.create_index([("userId", ASCENDING), ("savedAt", DESCENDING)])
+
             logger.info("All domain MongoDB indexes verified / created successfully.")
         except Exception as e:
             logger.warning("Error creating MongoDB indexes (non-fatal): %s", e)
