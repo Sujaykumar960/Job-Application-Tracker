@@ -160,15 +160,14 @@ test.describe('CareerX Authentication & Authorization Suite', () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test('10. Seeker visiting /recruiter displays role warning banner', async ({ page }) => {
+  test('10. Seeker visiting /recruiter is redirected to dashboard', async ({ page }) => {
     await loginAsSeeker(page);
 
     // Navigate to recruiter portal
     await page.goto('/recruiter');
 
-    // Seeker should see warning banner
-    const roleNotice = page.locator('text=You are currently viewing as seeker');
-    await expect(roleNotice).toBeVisible({ timeout: 10000 });
+    // ProtectedRoute redirects non-recruiter roles away from the recruiter portal
+    await expect(page).toHaveURL(/\/dashboard/);
   });
 
 });
