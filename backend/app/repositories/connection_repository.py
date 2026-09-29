@@ -962,7 +962,10 @@ class ConnectionRepository(BaseRepository):
         viewer_skills = {s.lower() for s in viewer_profile.get("skills", [])}
         viewer_company = (viewer_profile.get("company") or "").lower()
 
-        cand_cursor = self.profiles.find({"userId": {"$nin": list(excluded_ids)}})
+        cand_cursor = self.profiles.find({
+            "userId": {"$nin": list(excluded_ids)},
+            "role": {"$ne": "admin"},
+        }).sort([("updatedAt", -1), ("createdAt", -1)])
         cand_profiles = await cand_cursor.to_list(length=100)
 
         if len(cand_profiles) < limit:
@@ -1026,18 +1029,62 @@ class ConnectionRepository(BaseRepository):
         skip: int = 0,
     ) -> List[NetworkUser]:
         """Fetch directory of network users with dynamic relationship states."""
+        # 1. Auto-synchronize any active registered/logged-in users missing a profile in profiles collection
+        try:
+            active_users = await self.users.find(
+                {"isActive": {"$ne": False}, "role": {"$ne": "admin"}},
+                {"id": 1, "_id": 1, "name": 1, "email": 1, "role": 1, "company": 1, "createdAt": 1},
+            ).to_list(length=1000)
+            if active_users:
+                u_ids = [str(u.get("id") or u["_id"]) for u in active_users]
+                existing_prof_docs = await self.profiles.find({"userId": {"$in": u_ids}}, {"userId": 1}).to_list(length=len(u_ids))
+                existing_uids = {p.get("userId") for p in existing_prof_docs}
+                missing_profiles = []
+                now = utc_now_iso()
+                for u in active_users:
+                    uid = str(u.get("id") or u["_id"])
+                    if uid not in existing_uids:
+                        disp_name = resolve_user_display_name(u)
+                        parts = disp_name.strip().split()
+                        initials = "".join([p[0].upper() for p in parts[:2]]) if parts else "CX"
+                        u_role = u.get("role") or "seeker"
+                        missing_profiles.append({
+                            "userId": uid,
+                            "name": disp_name,
+                            "email": u.get("email"),
+                            "role": u_role,
+                            "headline": "Software Engineer" if u_role == "seeker" else "Talent Partner",
+                            "company": u.get("company") or "Remote",
+                            "location": "Remote",
+                            "skills": ["React", "TypeScript", "Python"] if u_role == "seeker" else ["Technical Recruiting", "Sourcing"],
+                            "avatarInitials": initials,
+                            "avatarGradient": "from-brand-600 to-indigo-800",
+                            "isActive": True,
+                            "createdAt": u.get("createdAt") or now,
+                            "updatedAt": now,
+                        })
+                if missing_profiles:
+                    try:
+                        await self.profiles.insert_many(missing_profiles, ordered=False)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
         query_filter: Dict[str, Any] = {}
         if viewing_user_id:
-            query_filter["userId"] = {"$ne": viewing_user_id}
+            query_filter["userId"] = {"$ne": str(viewing_user_id)}
 
         if role and role.lower() != "all":
             role_users = await self.users.find({"role": role, "isActive": {"$ne": False}}, {"_id": 1, "id": 1}).to_list(length=1000)
             role_uids = []
             for ru in role_users:
                 ruid = str(ru.get("id") or ru["_id"])
-                if not viewing_user_id or ruid != viewing_user_id:
+                if not viewing_user_id or ruid != str(viewing_user_id):
                     role_uids.append(ruid)
             query_filter["userId"] = {"$in": role_uids}
+        else:
+            query_filter["role"] = {"$ne": "admin"}
 
         if company and company.lower() != "all":
             query_filter["company"] = {"$regex": re.escape(company), "$options": "i"}
@@ -1058,15 +1105,15 @@ class ConnectionRepository(BaseRepository):
                 {"location": {"$regex": safe_s, "$options": "i"}},
             ]
 
-        cursor = self.profiles.find(query_filter).skip(skip).limit(limit)
+        cursor = self.profiles.find(query_filter).sort([("updatedAt", -1), ("createdAt", -1)]).skip(skip).limit(limit)
         profiles = await cursor.to_list(length=limit)
 
         # If profiles are fewer than limit and no specific profile filters are present, supplement with active users
         if len(profiles) < limit and not skills and not company and not location:
             existing_uids = {p.get("userId") for p in profiles}
             if viewing_user_id:
-                existing_uids.add(viewing_user_id)
-            u_filter: Dict[str, Any] = {"isActive": {"$ne": False}}
+                existing_uids.add(str(viewing_user_id))
+            u_filter: Dict[str, Any] = {"isActive": {"$ne": False}, "role": {"$ne": "admin"}}
             if role and role.lower() != "all":
                 u_filter["role"] = role
             if search:
@@ -1075,7 +1122,7 @@ class ConnectionRepository(BaseRepository):
                     {"name": {"$regex": safe_s, "$options": "i"}},
                     {"email": {"$regex": safe_s, "$options": "i"}},
                 ]
-            users_cursor = self.users.find(u_filter).skip(skip).limit(limit)
+            users_cursor = self.users.find(u_filter).sort([("updatedAt", -1), ("createdAt", -1)]).skip(skip).limit(limit)
             users_docs = await users_cursor.to_list(length=limit)
             for u in users_docs:
                 uid = str(u.get("id") or u["_id"])
@@ -1083,8 +1130,8 @@ class ConnectionRepository(BaseRepository):
                     existing_uids.add(uid)
                     profiles.append({
                         "userId": uid,
-                        "name": u.get("name"),
-                        "company": u.get("company"),
+                        "name": resolve_user_display_name(u),
+                        "company": u.get("company") or "Remote",
                         "location": "Remote",
                         "headline": "Software Engineer" if u.get("role") == "seeker" else "Talent Partner",
                         "skills": [],

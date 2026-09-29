@@ -66,15 +66,15 @@ class AuthService:
             if data.role == "seeker"
             else "Technical Talent Partner"
         )
-        await self.user_repo.create_profile({
-            "userId": user_id,
-            "name": data.name.strip(),
-            "headline": headline,
-            "bio": "",
-            "location": "Remote",
-            "atsScore": 0 if data.role == "seeker" else None,
-            "skills": initial_skills,
-        })
+        await self.user_repo.ensure_profile(
+            user_id=user_id,
+            name=data.name.strip(),
+            email=email,
+            role=data.role,
+            headline=headline,
+            company="Remote",
+            skills=initial_skills,
+        )
 
         if data.role == "seeker":
             try:
@@ -142,9 +142,15 @@ class AuthService:
         access_token = create_access_token(token_payload)
         refresh_token = create_refresh_token(token_payload)
 
-        # Retrieve profile details
-        profile = await self.user_repo.get_profile(user_id)
-        name = profile.get("name") if profile else email.split("@")[0].capitalize()
+        # Retrieve and ensure active profile details exist in profiles collection
+        profile = await self.user_repo.ensure_profile(
+            user_id=user_id,
+            name=user_doc.get("name"),
+            email=email,
+            role=role,
+            company=user_doc.get("company"),
+        )
+        name = profile.get("name") if profile else (user_doc.get("name") or email.split("@")[0].capitalize())
         real_ats_score = await self._resolve_ats_score(user_id, profile)
 
         user_profile = UserProfile(

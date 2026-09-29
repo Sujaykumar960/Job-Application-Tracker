@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.repositories.base import BaseRepository
@@ -29,9 +29,72 @@ class UserRepository(BaseRepository):
     async def update_profile(self, user_id: str, update_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         clean_data = dict(update_data)
         clean_data["updatedAt"] = utc_now_iso()
+        if clean_data.get("name"):
+            name = clean_data["name"].strip()
+            parts = name.split()
+            clean_data["avatarInitials"] = "".join([p[0].upper() for p in parts[:2]]) if parts else "CX"
+            await self.collection.update_many(
+                {"$or": [{"id": user_id}, {"_id": user_id}]},
+                {"$set": {"name": name, "updatedAt": clean_data["updatedAt"]}},
+            )
         res = await self.profiles_collection.find_one_and_update(
             {"userId": user_id},
             {"$set": clean_data},
+            upsert=True,
+            return_document=True,
+        )
+        return serialize_mongo_doc(res)
+
+    async def ensure_profile(
+        self,
+        user_id: str,
+        name: Optional[str] = None,
+        email: Optional[str] = None,
+        role: Optional[str] = None,
+        company: Optional[str] = None,
+        headline: Optional[str] = None,
+        location: Optional[str] = None,
+        skills: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """Ensure a complete, active, and updated profile exists in the profiles collection for the user."""
+        now = utc_now_iso()
+        existing = await self.profiles_collection.find_one({"userId": user_id})
+
+        display_name = name or (existing and existing.get("name")) or (email and email.split("@")[0].title()) or "Engineering Peer"
+        parts = display_name.strip().split()
+        initials = "".join([p[0].upper() for p in parts[:2]]) if parts else "CX"
+        if len(initials) == 1 and len(display_name.strip()) >= 2:
+            initials = display_name.strip()[:2].upper()
+
+        default_role = role or (existing and existing.get("role")) or "seeker"
+        default_headline = headline or (existing and existing.get("headline")) or (
+            "Software Engineer" if default_role == "seeker" else "Talent Partner"
+        )
+        default_skills = skills if skills is not None else ((existing and existing.get("skills")) or (
+            ["React", "TypeScript", "Python"] if default_role == "seeker" else ["Technical Recruiting", "Sourcing"]
+        ))
+
+        doc: Dict[str, Any] = {
+            "userId": user_id,
+            "name": display_name,
+            "role": default_role,
+            "headline": default_headline,
+            "company": company or (existing and existing.get("company")) or "Remote",
+            "location": location or (existing and existing.get("location")) or "Remote",
+            "skills": default_skills,
+            "avatarInitials": initials,
+            "avatarGradient": (existing and existing.get("avatarGradient")) or "from-brand-600 to-indigo-800",
+            "isActive": True,
+            "updatedAt": now,
+        }
+        if email:
+            doc["email"] = email.lower()
+        if not existing or not existing.get("createdAt"):
+            doc["createdAt"] = now
+
+        res = await self.profiles_collection.find_one_and_update(
+            {"userId": user_id},
+            {"$set": doc},
             upsert=True,
             return_document=True,
         )

@@ -553,10 +553,12 @@ export const NetworkPage: React.FC = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-2">
+              {activeTab === 'discover' && <Sparkles className="w-3.5 h-3.5 text-[#0A66C2]" />}
               {activeTab === 'suggestions' && <UserPlus className="w-3.5 h-3.5 text-[#0A66C2]" />}
               {activeTab === 'connections' && <UserCheck className="w-3.5 h-3.5 text-emerald-600" />}
               {activeTab === 'following' && <Users className="w-3.5 h-3.5 text-sky-600" />}
               <span>
+                {activeTab === 'discover' && 'Discover Engineers & Talent Partners'}
                 {activeTab === 'suggestions' && 'Recommended Engineers for You'}
                 {activeTab === 'connections' && 'Your 1st-Degree Connections'}
                 {activeTab === 'following' && 'Engineers & Tech Leaders You Follow'}
