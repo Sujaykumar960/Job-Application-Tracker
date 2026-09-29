@@ -8,6 +8,7 @@ import { JobMatchModal } from '../components/jobs/JobMatchModal';
 import { companyApi } from '../api/companyApi';
 import { applicationApi } from '../api/applicationApi';
 import { resumeApi } from '../api/resumeApi';
+import { useAuth } from '../context/AuthContext';
 import { CompanyProfile } from '../types/company';
 import { JobItem, Application } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
@@ -28,6 +29,7 @@ import { cn } from '../utils/cn';
 
 export const CompaniesPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   // Companies state from backend
   const [companies, setCompanies] = useState<CompanyProfile[]>([]);
@@ -63,28 +65,53 @@ export const CompaniesPage: React.FC = () => {
   // Track applied jobs (would need to be fetched from backend)
   const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
 
-  // Helper to calculate average match score for a company
+  // Helper to calculate real-time match score for a company
   const getCompanyMatchScore = (c: CompanyProfile): number => {
+    if (c.matchScore !== undefined && c.matchScore !== null) {
+      return c.matchScore;
+    }
     if (c.jobs && c.jobs.length > 0) {
       const scores = c.jobs.map((j) => j.matchScore || 0);
       return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
     }
-    return 88;
+    return user?.atsScore ? Math.round((user.atsScore + 85) / 2) : 88;
   };
 
-  // Follow Toggle
+  // Follow Toggle with optimistic instant UI update
   const handleFollowToggle = async (companyId: string) => {
+    setCompanies((prev) =>
+      prev.map((c) => {
+        if (c.id === companyId || c.slug === companyId) {
+          const nextFollowing = !c.isFollowing;
+          const nextCount = Math.max(0, (c.followersCount || 0) + (nextFollowing ? 1 : -1));
+          return { ...c, isFollowing: nextFollowing, followersCount: nextCount };
+        }
+        return c;
+      })
+    );
+
     try {
       const result = await companyApi.toggleFollowCompany(companyId);
       setCompanies((prev) =>
         prev.map((c) =>
-          c.id === companyId
+          c.id === companyId || c.slug === companyId
             ? { ...c, isFollowing: result.isFollowing, followersCount: result.followersCount }
             : c
         )
       );
     } catch (err) {
       console.error('Failed to toggle follow:', err);
+      // Revert optimistic update
+      setCompanies((prev) =>
+        prev.map((c) => {
+          if (c.id === companyId || c.slug === companyId) {
+            const nextFollowing = !c.isFollowing;
+            const nextCount = Math.max(0, (c.followersCount || 0) + (nextFollowing ? 1 : -1));
+            return { ...c, isFollowing: nextFollowing, followersCount: nextCount };
+          }
+          return c;
+        })
+      );
       alert('Failed to update follow status. Please try again.');
     }
   };
@@ -208,7 +235,14 @@ export const CompaniesPage: React.FC = () => {
     return Math.round(total / companies.length);
   }, [companies]);
 
-  const industriesList = ['All', 'Fintech', 'Developer Tools', 'Cloud Platform', 'Monitoring'];
+  const industriesList = useMemo(() => {
+    const list = ['All'];
+    const set = new Set<string>();
+    companies.forEach((c) => {
+      if (c.industry && c.industry.trim()) set.add(c.industry.trim());
+    });
+    return [...list, ...Array.from(set).sort()];
+  }, [companies]);
 
   // Loading state
   if (isLoading) {
@@ -405,7 +439,13 @@ export const CompaniesPage: React.FC = () => {
             <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div className="mt-1.5 pt-1.5 border-t border-[#E8E8E8] dark:border-slate-800 flex items-center justify-between text-[10px] text-emerald-700 dark:text-emerald-400 font-mono font-semibold">
-            <span>Based on ATS Resume</span>
+            <span>
+              {user?.atsScore
+                ? `ATS Resume: ${user.atsScore}%`
+                : user?.skills?.length
+                ? `Matched: ${user.skills.length} skills`
+                : 'Live ATS Matching'}
+            </span>
             <span className="text-[9px] uppercase tracking-wider">{quickFilter === 'highMatch' ? `Checked (${highMatchCompaniesCount}) ✓` : 'Click to Check'}</span>
           </div>
         </div>
@@ -470,9 +510,15 @@ export const CompaniesPage: React.FC = () => {
       {/* ========================================================================= */}
       {filteredCompanies.length === 0 ? (
         <div className="p-12 text-center border border-dashed border-[#D9D9D9] dark:border-slate-800 rounded-2xl bg-[#F3F6F8] dark:bg-slate-900/50 space-y-2">
-          <p className="text-sm font-semibold text-[#1D2226] dark:text-slate-100">No companies found matching your criteria</p>
+          <p className="text-sm font-semibold text-[#1D2226] dark:text-slate-100">
+            {quickFilter === 'following'
+              ? 'You are not following any companies yet'
+              : 'No companies found matching your criteria'}
+          </p>
           <p className="text-xs text-[#56687A] dark:text-slate-400">
-            Try adjusting your search query or reset the industry filter.
+            {quickFilter === 'following'
+              ? 'Click "Follow" on any company card to get instant hiring alerts and follow their latest updates.'
+              : 'Try adjusting your search query or reset the industry filter.'}
           </p>
           <Button
             size="xs"
@@ -483,7 +529,7 @@ export const CompaniesPage: React.FC = () => {
               setQuickFilter('all');
             }}
           >
-            Reset Filters
+            {quickFilter === 'following' ? 'Browse All Companies' : 'Reset Filters'}
           </Button>
         </div>
       ) : (

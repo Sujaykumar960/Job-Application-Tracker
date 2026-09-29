@@ -6,7 +6,8 @@ import { CandidateCard } from '../components/network/CandidateCard';
 import { ConnectionRequestCard } from '../components/network/ConnectionRequestCard';
 import { NetworkUser } from '../types';
 import { connectionApi } from '../api/connectionApi';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { companyApi } from '../api/companyApi';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Users,
   UserPlus,
@@ -41,6 +42,7 @@ export const NetworkPage: React.FC = () => {
   const [activeTab, setActiveTabState] = useState<NetworkTab>(initialTab);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCompany, setSelectedCompany] = useState('All');
+  const [companiesCount, setCompaniesCount] = useState<number>(0);
 
   // Sync activeTab when URL parameter changes
   useEffect(() => {
@@ -92,6 +94,11 @@ export const NetworkPage: React.FC = () => {
 
     fetchNetworkData();
   }, [activeTab]);
+
+  // Fetch companies count for Partner Companies button
+  useEffect(() => {
+    companyApi.getCompanies().then((data) => setCompaniesCount(data.length)).catch(() => {});
+  }, []);
 
   // Helper state matchers
   const isConnected = (u: NetworkUser) => u.connectionState === 'connected' || u.connectionState === 'Connected';
@@ -282,14 +289,25 @@ export const NetworkPage: React.FC = () => {
           </Badge>
         }
         actions={
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => navigate('/feed')}
-            icon={<Sparkles className="w-3.5 h-3.5 text-brand-400" />}
-          >
-            Engineering Feed
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link to="/companies">
+              <Button
+                size="sm"
+                variant="outline"
+                icon={<Building2 className="w-3.5 h-3.5 text-brand-400" />}
+              >
+                Partner Companies{companiesCount > 0 ? ` (${companiesCount})` : ''}
+              </Button>
+            </Link>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate('/feed')}
+              icon={<Sparkles className="w-3.5 h-3.5 text-brand-400" />}
+            >
+              Engineering Feed
+            </Button>
+          </div>
         }
       />
 
