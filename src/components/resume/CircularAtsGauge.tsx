@@ -28,9 +28,9 @@ export const CircularAtsGauge: React.FC<CircularAtsGaugeProps> = ({
   };
 
   const getTierLabel = () => {
-    if (score >= 90) return { text: 'Top 5% Tier', color: 'text-[#137333] bg-[#E6F4EA] border-[#c6ecd2]' };
-    if (score >= 80) return { text: 'FAANG Ready', color: 'text-[#0A66C2] bg-[#E8F3FF] border-[#d0e6fc]' };
-    return { text: 'Needs Tuning', color: 'text-[#8A6100] bg-[#FFF4CC] border-[#ffe899]' };
+    if (score >= 90) return { text: 'Top 5% Tier', color: 'text-[#137333] dark:text-emerald-400 bg-[#E6F4EA] dark:bg-emerald-950/40 border-[#c6ecd2] dark:border-emerald-800/40' };
+    if (score >= 80) return { text: 'FAANG Ready', color: 'text-[#0A66C2] dark:text-blue-400 bg-[#E8F3FF] dark:bg-blue-950/40 border-[#d0e6fc] dark:border-blue-800/40' };
+    return { text: 'Needs Tuning', color: 'text-[#8A6100] dark:text-amber-400 bg-[#FFF4CC] dark:bg-amber-950/40 border-[#ffe899] dark:border-amber-800/40' };
   };
 
   const tier = getTierLabel();
@@ -62,9 +62,9 @@ export const CircularAtsGauge: React.FC<CircularAtsGaugeProps> = ({
             cx={size / 2}
             cy={size / 2}
             r={radius}
-            stroke="#E8E8E8"
             strokeWidth={strokeWidth}
             fill="transparent"
+            className="stroke-[#E8E8E8] dark:stroke-slate-800"
           />
 
           {/* Foreground progress circle */}
@@ -85,12 +85,12 @@ export const CircularAtsGauge: React.FC<CircularAtsGaugeProps> = ({
         {/* Center Content */}
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
           <div className="flex items-baseline">
-            <span className="text-3xl font-extrabold text-[#1D2226] tracking-tight font-mono">
+            <span className="text-3xl font-extrabold text-[#1D2226] dark:text-slate-100 tracking-tight font-mono">
               {score}
             </span>
-            <span className="text-xs text-[#788896] font-mono">/100</span>
+            <span className="text-xs text-[#788896] dark:text-slate-400 font-mono">/100</span>
           </div>
-          <span className="text-[10px] text-[#56687A] font-medium">ATS Match</span>
+          <span className="text-[10px] text-[#56687A] dark:text-slate-400 font-medium">ATS Match</span>
         </div>
       </div>
 
@@ -99,8 +99,8 @@ export const CircularAtsGauge: React.FC<CircularAtsGaugeProps> = ({
         <span className={cn('text-[10px] font-mono font-semibold px-2.5 py-0.5 rounded-full border', tier.color)}>
           {tier.text}
         </span>
-        {label && <p className="text-[11px] text-[#56687A] mt-1">{label}</p>}
-        <p className="text-[9px] text-[#788896] mt-0.5 font-sans">CareerX AI Heuristic Analysis</p>
+        {label && <p className="text-[11px] text-[#56687A] dark:text-slate-400 mt-1">{label}</p>}
+        <p className="text-[9px] text-[#788896] dark:text-slate-500 mt-0.5 font-sans">CareerX AI Heuristic Analysis</p>
       </div>
     </div>
   );

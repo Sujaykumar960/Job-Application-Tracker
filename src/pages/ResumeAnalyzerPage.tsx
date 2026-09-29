@@ -232,15 +232,15 @@ export const ResumeAnalyzerPage: React.FC = () => {
 
       {/* Optional Job Description Comparison Input Box */}
       {showJdInput && (
-        <Card className="p-4 bg-white border border-[#D9D9D9] space-y-3 shadow-sm animate-in slide-in-from-top-2 duration-200">
+        <Card className="p-4 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 space-y-3 shadow-sm animate-in slide-in-from-top-2 duration-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Target className="w-4 h-4 text-[#0A66C2]" />
-              <h3 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider">
+              <Target className="w-4 h-4 text-[#0A66C2] dark:text-blue-400" />
+              <h3 className="text-xs font-bold text-[#1D2226] dark:text-slate-100 uppercase font-mono tracking-wider">
                 Target Role / Job Description Comparison
               </h3>
             </div>
-            <span className="text-[11px] text-[#56687A]">
+            <span className="text-[11px] text-[#56687A] dark:text-slate-400">
               Paste real job requirements to diagnose keyword match & specific skill gaps
             </span>
           </div>
@@ -250,7 +250,7 @@ export const ResumeAnalyzerPage: React.FC = () => {
             value={jobDescription}
             onChange={(e) => setJobDescription(e.target.value)}
             placeholder="Paste target job description here (e.g. Senior Backend Engineer with Go, Kafka, Redis, Distributed Systems)..."
-            className="w-full text-xs font-mono p-3 rounded-lg border border-[#D9D9D9] focus:outline-none focus:ring-1 focus:ring-[#0A66C2] focus:border-[#0A66C2] text-[#1D2226]"
+            className="w-full text-xs font-mono p-3 rounded-lg border border-[#D9D9D9] dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] text-[#1D2226] dark:text-slate-100"
           />
 
           <div className="flex items-center justify-end gap-2">
@@ -282,18 +282,18 @@ export const ResumeAnalyzerPage: React.FC = () => {
         {/* LEFT COLUMN: Resume Upload, Version Switcher & Integrity Card (4 Cols)    */}
         {/* ========================================================================= */}
         <div className="lg:col-span-4 space-y-4">
-          <Card className="p-4 bg-white border border-[#D9D9D9] space-y-4 shadow-sm">
-            <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8]">
-              <span className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider">
+          <Card className="p-4 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8] dark:border-slate-800">
+              <span className="text-xs font-bold text-[#1D2226] dark:text-slate-100 uppercase font-mono tracking-wider">
                 Resume Library
               </span>
               {activeResume ? (
-                <span className="text-[10px] text-emerald-700 font-mono font-semibold flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono font-semibold flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                   Active Document
                 </span>
               ) : (
-                <span className="text-[10px] text-[#788896] font-mono">0 Documents</span>
+                <span className="text-[10px] text-[#788896] dark:text-slate-400 font-mono">0 Documents</span>
               )}
             </div>
 
@@ -310,20 +310,20 @@ export const ResumeAnalyzerPage: React.FC = () => {
           </Card>
 
           {/* AI vs User Legend Card */}
-          <Card className="p-3.5 bg-[#F3F6F8] border border-[#E8E8E8] space-y-2 text-xs">
-            <span className="text-[10px] uppercase font-mono font-bold text-[#788896] block">
+          <Card className="p-3.5 bg-[#F3F6F8] dark:bg-slate-900/60 border border-[#E8E8E8] dark:border-slate-800 space-y-2 text-xs">
+            <span className="text-[10px] uppercase font-mono font-bold text-[#788896] dark:text-slate-400 block">
               Data Integrity & Security Standards
             </span>
             <div className="space-y-1.5 text-[11px]">
-              <div className="flex items-center gap-2 text-[#38434F]">
+              <div className="flex items-center gap-2 text-[#38434F] dark:text-slate-300">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 flex-shrink-0" />
-                <span className="font-semibold text-[#1D2226]">Verified Extraction:</span>
-                <span className="text-[#56687A]">Parsed directly from your uploaded PDF/DOCX.</span>
+                <span className="font-semibold text-[#1D2226] dark:text-slate-100">Verified Extraction:</span>
+                <span className="text-[#56687A] dark:text-slate-400">Parsed directly from your uploaded PDF/DOCX.</span>
               </div>
-              <div className="flex items-center gap-2 text-[#38434F]">
+              <div className="flex items-center gap-2 text-[#38434F] dark:text-slate-300">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#0A66C2] flex-shrink-0" />
-                <span className="font-semibold text-[#0A66C2]">Groq AI Analysis:</span>
-                <span className="text-[#56687A]">Evaluated via server-side Llama 3.3 models.</span>
+                <span className="font-semibold text-[#0A66C2] dark:text-blue-400">Groq AI Analysis:</span>
+                <span className="text-[#56687A] dark:text-slate-400">Evaluated via server-side Llama 3.3 models.</span>
               </div>
             </div>
           </Card>
@@ -335,22 +335,22 @@ export const ResumeAnalyzerPage: React.FC = () => {
         <div className="lg:col-span-8 space-y-4">
           {/* STATE 1: INITIAL LOADING OF RESUMES */}
           {isLoadingResumes && (
-            <Card className="p-12 bg-white border border-[#D9D9D9] flex flex-col items-center justify-center text-center space-y-3 shadow-sm">
-              <Loader2 className="w-8 h-8 text-[#0A66C2] animate-spin" />
-              <p className="text-sm font-semibold text-[#1D2226]">Loading resume documents...</p>
-              <p className="text-xs text-[#56687A]">Connecting to CareerX document storage</p>
+            <Card className="p-12 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 flex flex-col items-center justify-center text-center space-y-3 shadow-sm">
+              <Loader2 className="w-8 h-8 text-[#0A66C2] dark:text-blue-400 animate-spin" />
+              <p className="text-sm font-semibold text-[#1D2226] dark:text-slate-100">Loading resume documents...</p>
+              <p className="text-xs text-[#56687A] dark:text-slate-400">Connecting to CareerX document storage</p>
             </Card>
           )}
 
           {/* STATE 2: NO RESUMES UPLOADED YET */}
           {!isLoadingResumes && resumes.length === 0 && (
-            <Card className="p-12 bg-white border border-[#D9D9D9] flex flex-col items-center justify-center text-center space-y-4 shadow-sm">
-              <div className="w-16 h-16 rounded-2xl bg-[#F3F6F8] flex items-center justify-center border border-[#E8E8E8]">
-                <FileText className="w-8 h-8 text-[#788896]" />
+            <Card className="p-12 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 flex flex-col items-center justify-center text-center space-y-4 shadow-sm">
+              <div className="w-16 h-16 rounded-2xl bg-[#F3F6F8] dark:bg-slate-800 flex items-center justify-center border border-[#E8E8E8] dark:border-slate-700">
+                <FileText className="w-8 h-8 text-[#788896] dark:text-slate-400" />
               </div>
               <div className="space-y-1 max-w-md">
-                <h3 className="text-base font-bold text-[#1D2226]">No Resumes Uploaded Yet</h3>
-                <p className="text-xs text-[#56687A] leading-relaxed">
+                <h3 className="text-base font-bold text-[#1D2226] dark:text-slate-100">No Resumes Uploaded Yet</h3>
+                <p className="text-xs text-[#56687A] dark:text-slate-400 leading-relaxed">
                   Upload your actual PDF or Word (.docx) resume using the upload zone on the left to start real-time Groq AI ATS screening diagnostics.
                 </p>
               </div>
@@ -359,13 +359,13 @@ export const ResumeAnalyzerPage: React.FC = () => {
 
           {/* STATE 3: ANALYZING IN PROGRESS */}
           {isAnalyzing && (
-            <Card className="p-12 bg-white border border-[#D9D9D9] flex flex-col items-center justify-center text-center space-y-4 shadow-sm animate-pulse">
-              <div className="w-14 h-14 rounded-2xl bg-[#E8F3FF] flex items-center justify-center text-[#0A66C2]">
+            <Card className="p-12 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 flex flex-col items-center justify-center text-center space-y-4 shadow-sm animate-pulse">
+              <div className="w-14 h-14 rounded-2xl bg-[#E8F3FF] dark:bg-blue-950/40 flex items-center justify-center text-[#0A66C2] dark:text-blue-400">
                 <Sparkles className="w-7 h-7 animate-spin" />
               </div>
               <div className="space-y-1 max-w-md">
-                <h3 className="text-base font-bold text-[#1D2226]">Running Groq AI ATS Analysis...</h3>
-                <p className="text-xs text-[#56687A] leading-relaxed">
+                <h3 className="text-base font-bold text-[#1D2226] dark:text-slate-100">Running Groq AI ATS Analysis...</h3>
+                <p className="text-xs text-[#56687A] dark:text-slate-400 leading-relaxed">
                   Extracting keywords, parsing competency taxonomy, auditing STAR impact metrics, and computing overall ATS readiness score.
                 </p>
               </div>
@@ -374,14 +374,14 @@ export const ResumeAnalyzerPage: React.FC = () => {
 
           {/* STATE 4: RESUME EXISTS BUT NOT ANALYZED YET */}
           {!isLoadingResumes && !isAnalyzing && resumes.length > 0 && !analysis && (
-            <Card className="p-10 bg-white border border-[#D9D9D9] flex flex-col items-center justify-center text-center space-y-4 shadow-sm">
-              <div className="w-14 h-14 rounded-2xl bg-[#E8F3FF] flex items-center justify-center text-[#0A66C2]">
+            <Card className="p-10 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 flex flex-col items-center justify-center text-center space-y-4 shadow-sm">
+              <div className="w-14 h-14 rounded-2xl bg-[#E8F3FF] dark:bg-blue-950/40 flex items-center justify-center text-[#0A66C2] dark:text-blue-400">
                 <FileSearch className="w-7 h-7" />
               </div>
               <div className="space-y-1 max-w-md">
-                <h3 className="text-base font-bold text-[#1D2226]">Ready for ATS Screening Analysis</h3>
-                <p className="text-xs text-[#56687A] leading-relaxed">
-                  Active document: <span className="font-semibold text-[#1D2226] font-mono">{activeResume?.name}</span>. Click below to run full AI diagnostics with Groq.
+                <h3 className="text-base font-bold text-[#1D2226] dark:text-slate-100">Ready for ATS Screening Analysis</h3>
+                <p className="text-xs text-[#56687A] dark:text-slate-400 leading-relaxed">
+                  Active document: <span className="font-semibold text-[#1D2226] dark:text-slate-100 font-mono">{activeResume?.name}</span>. Click below to run full AI diagnostics with Groq.
                 </p>
               </div>
               <Button
@@ -399,26 +399,26 @@ export const ResumeAnalyzerPage: React.FC = () => {
           {!isLoadingResumes && !isAnalyzing && analysis && (
             <>
               {/* SECTION 1: ATS SCORE & PILLARS OVERVIEW */}
-              <Card className="p-4 bg-white border border-[#D9D9D9] space-y-4 shadow-sm">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-3 border-b border-[#E8E8E8]">
+              <Card className="p-4 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 space-y-4 shadow-sm">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-3 border-b border-[#E8E8E8] dark:border-slate-800">
                   <div className="flex items-center gap-5">
                     {/* Circular ATS Gauge */}
                     <CircularAtsGauge score={analysis.atsScore} size={118} strokeWidth={9} />
 
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <h3 className="text-base font-bold text-[#1D2226] tracking-tight">
+                        <h3 className="text-base font-bold text-[#1D2226] dark:text-slate-100 tracking-tight">
                           Algorithm Screening Evaluation
                         </h3>
                         <Badge variant={analysis.atsScore >= 80 ? 'success' : analysis.atsScore >= 65 ? 'brand' : 'warning'} size="sm">
                           {analysis.atsScore >= 85 ? 'Top Tier Match' : analysis.atsScore >= 70 ? 'Competitive' : 'Needs Optimization'}
                         </Badge>
                       </div>
-                      <p className="text-xs text-[#56687A] max-w-md leading-relaxed">
+                      <p className="text-xs text-[#56687A] dark:text-slate-400 max-w-md leading-relaxed">
                         Evaluated against real-world enterprise parsing benchmarks using Llama 3.3.
                         {analysis.jobDescription ? ' Custom comparison against target job requirements.' : ' Comprehensive general technical rubric.'}
                       </p>
-                      <p className="text-[11px] text-[#788896] font-mono">
+                      <p className="text-[11px] text-[#788896] dark:text-slate-400 font-mono">
                         Document: {activeResume?.name} • Evaluated: {analysis.analyzedAt ? analysis.analyzedAt.slice(0, 10) : 'Today'}
                       </p>
                     </div>
@@ -432,7 +432,7 @@ export const ResumeAnalyzerPage: React.FC = () => {
               </Card>
 
               {/* SECTION TABS: Overview, Keywords, Skills, Experience, Projects, Education, Formatting */}
-              <div className="flex items-center gap-1 overflow-x-auto pb-1 border-b border-[#E8E8E8]">
+              <div className="flex items-center gap-1 overflow-x-auto pb-1 border-b border-[#E8E8E8] dark:border-slate-800">
                 {[
                   { id: 'overview', label: 'Overview & Strength' },
                   { id: 'keywords', label: `Keywords & Gaps (${analysis.missingKeywords?.length || 0})` },
@@ -446,7 +446,7 @@ export const ResumeAnalyzerPage: React.FC = () => {
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
                       activeTab === tab.id
                         ? 'bg-[#0A66C2] text-white shadow-sm'
-                        : 'text-[#56687A] hover:text-[#1D2226] hover:bg-[#F3F6F8]'
+                        : 'text-[#56687A] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-100 hover:bg-[#F3F6F8] dark:hover:bg-slate-800'
                     }`}
                   >
                     {tab.label}
@@ -459,42 +459,42 @@ export const ResumeAnalyzerPage: React.FC = () => {
                 <div className="space-y-4 animate-in fade-in duration-150">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Strengths Card */}
-                    <Card className="p-4 bg-[#F3F6F8] border border-[#E8E8E8] space-y-3">
-                      <div className="flex items-center gap-2 text-xs font-bold text-emerald-700">
-                        <CheckCircle2 className="w-4 h-4" />
+                    <Card className="p-4 bg-[#F3F6F8] dark:bg-slate-900/60 border border-[#E8E8E8] dark:border-slate-800 space-y-3">
+                      <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         <span>Resume Strengths ({analysis.strengths?.length || 0})</span>
                       </div>
                       {analysis.strengths && analysis.strengths.length > 0 ? (
-                        <ul className="space-y-2 text-xs text-[#38434F]">
+                        <ul className="space-y-2 text-xs text-[#1D2226] dark:text-slate-200">
                           {analysis.strengths.map((s, idx) => (
                             <li key={idx} className="flex items-start gap-2 leading-relaxed">
-                              <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                              <span>{s}</span>
+                              <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+                              <span className="text-[#1D2226] dark:text-slate-200">{s}</span>
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-xs text-[#788896]">No specific strengths identified.</p>
+                        <p className="text-xs text-[#788896] dark:text-slate-400">No specific strengths identified.</p>
                       )}
                     </Card>
 
                     {/* Weaknesses / Diagnostic Gaps Card */}
-                    <Card className="p-4 bg-[#F3F6F8] border border-[#E8E8E8] space-y-3">
-                      <div className="flex items-center gap-2 text-xs font-bold text-[#8A6100]">
-                        <AlertCircle className="w-4 h-4" />
+                    <Card className="p-4 bg-[#F3F6F8] dark:bg-slate-900/60 border border-[#E8E8E8] dark:border-slate-800 space-y-3">
+                      <div className="flex items-center gap-2 text-xs font-bold text-[#8A6100] dark:text-amber-400">
+                        <AlertCircle className="w-4 h-4 text-[#8A6100] dark:text-amber-400" />
                         <span>Areas for Optimization ({analysis.weaknesses?.length || 0})</span>
                       </div>
                       {analysis.weaknesses && analysis.weaknesses.length > 0 ? (
-                        <ul className="space-y-2 text-xs text-[#38434F]">
+                        <ul className="space-y-2 text-xs text-[#1D2226] dark:text-slate-200">
                           {analysis.weaknesses.map((w, idx) => (
                             <li key={idx} className="flex items-start gap-2 leading-relaxed">
-                              <AlertTriangle className="w-3.5 h-3.5 text-[#8A6100] flex-shrink-0 mt-0.5" />
-                              <span>{w}</span>
+                              <AlertTriangle className="w-3.5 h-3.5 text-[#8A6100] dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                              <span className="text-[#1D2226] dark:text-slate-200">{w}</span>
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-xs text-[#788896]">No critical weaknesses detected.</p>
+                        <p className="text-xs text-[#788896] dark:text-slate-400">No critical weaknesses detected.</p>
                       )}
                     </Card>
                   </div>
@@ -506,16 +506,16 @@ export const ResumeAnalyzerPage: React.FC = () => {
 
                   {/* Actionable Recommendations */}
                   {analysis.recommendations && analysis.recommendations.length > 0 && (
-                    <Card className="p-4 bg-white border border-[#D9D9D9] space-y-3">
-                      <div className="flex items-center gap-2 text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider">
+                    <Card className="p-4 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 space-y-3">
+                      <div className="flex items-center gap-2 text-xs font-bold text-[#1D2226] dark:text-slate-100 uppercase font-mono tracking-wider">
                         <Sparkles className="w-4 h-4 text-amber-500" />
                         <span>High-Priority Recommendations</span>
                       </div>
-                      <ul className="space-y-2 text-xs text-[#38434F]">
+                      <ul className="space-y-2 text-xs text-[#38434F] dark:text-slate-200">
                         {analysis.recommendations.map((rec, idx) => (
                           <li key={idx} className="flex items-start gap-2 leading-relaxed">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#0A66C2] flex-shrink-0 mt-1.5" />
-                            <span>{rec}</span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#0A66C2] dark:bg-blue-400 flex-shrink-0 mt-1.5" />
+                            <span className="text-[#1D2226] dark:text-slate-200">{rec}</span>
                           </li>
                         ))}
                       </ul>
@@ -523,13 +523,13 @@ export const ResumeAnalyzerPage: React.FC = () => {
                   )}
 
                   {/* Next Steps: Skill Gaps and Job Match */}
-                  <Card className="p-4 bg-[#E8F3FF] border border-[#d0e6fc] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                  <Card className="p-4 bg-[#E8F3FF] dark:bg-blue-950/30 border border-[#d0e6fc] dark:border-blue-900/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
                     <div>
-                      <h4 className="text-xs font-bold text-[#1D2226] flex items-center gap-1.5">
+                      <h4 className="text-xs font-bold text-[#1D2226] dark:text-slate-100 flex items-center gap-1.5">
                         <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                         Next Steps: Explore Relevant Jobs & Skill Paths
                       </h4>
-                      <p className="text-[11px] text-[#56687A] mt-0.5">
+                      <p className="text-[11px] text-[#56687A] dark:text-slate-400 mt-0.5">
                         Use your verified {analysis.atsScore}% ATS score profile to evaluate job fit against active listings.
                       </p>
                     </div>
@@ -546,13 +546,13 @@ export const ResumeAnalyzerPage: React.FC = () => {
 
               {/* TAB 2: KEYWORDS & MISSING GAPS */}
               {activeTab === 'keywords' && (
-                <Card className="p-4 bg-white border border-[#D9D9D9] space-y-4 animate-in fade-in duration-150 shadow-sm">
+                <Card className="p-4 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 space-y-4 animate-in fade-in duration-150 shadow-sm">
                   <div>
-                    <h3 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-2">
-                      <FileSearch className="w-4 h-4 text-[#0A66C2]" />
+                    <h3 className="text-xs font-bold text-[#1D2226] dark:text-slate-100 uppercase font-mono tracking-wider flex items-center gap-2">
+                      <FileSearch className="w-4 h-4 text-[#0A66C2] dark:text-blue-400" />
                       ATS Missing Keywords Analysis
                     </h3>
-                    <p className="text-[11px] text-[#56687A] mt-0.5">
+                    <p className="text-[11px] text-[#56687A] dark:text-slate-400 mt-0.5">
                       {analysis.jobDescription
                         ? 'High-value keywords identified from your target job description that are absent from this resume.'
                         : 'Common keywords absent from your resume that appear in over 65% of target engineering listings.'}
@@ -564,11 +564,11 @@ export const ResumeAnalyzerPage: React.FC = () => {
                       {analysis.missingKeywords.map((kw, idx) => (
                         <div
                           key={idx}
-                          className="p-3 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] flex items-center justify-between gap-2"
+                          className="p-3 rounded-xl bg-[#F3F6F8] dark:bg-slate-800/60 border border-[#E8E8E8] dark:border-slate-700/60 flex items-center justify-between gap-2"
                         >
                           <div>
-                            <p className="text-xs font-bold text-[#1D2226] font-mono">{kw.name}</p>
-                            <span className="text-[10px] text-[#788896]">{kw.category}</span>
+                            <p className="text-xs font-bold text-[#1D2226] dark:text-slate-100 font-mono">{kw.name}</p>
+                            <span className="text-[10px] text-[#788896] dark:text-slate-400">{kw.category}</span>
                           </div>
 
                           <div className="flex items-center gap-2">
@@ -580,7 +580,7 @@ export const ResumeAnalyzerPage: React.FC = () => {
                             </Badge>
                             <Link
                               to="/learning"
-                              className="text-[10px] text-[#0A66C2] hover:text-[#004182] font-semibold flex items-center gap-0.5"
+                              className="text-[10px] text-[#0A66C2] dark:text-blue-400 hover:text-[#004182] dark:hover:text-blue-300 font-semibold flex items-center gap-0.5"
                             >
                               Learn <ArrowRight className="w-2.5 h-2.5" />
                             </Link>
@@ -589,8 +589,8 @@ export const ResumeAnalyzerPage: React.FC = () => {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-emerald-700 font-semibold flex items-center gap-1.5 p-3 rounded-xl bg-emerald-50 border border-emerald-200">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <p className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1.5 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                       All essential keywords appear to be covered in this document!
                     </p>
                   )}
@@ -599,14 +599,14 @@ export const ResumeAnalyzerPage: React.FC = () => {
 
               {/* TAB 3: SKILL EXTRACTION */}
               {activeTab === 'skills' && (
-                <Card className="p-4 bg-white border border-[#D9D9D9] space-y-4 animate-in fade-in duration-150 shadow-sm">
+                <Card className="p-4 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 space-y-4 animate-in fade-in duration-150 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-2">
-                        <Code2 className="w-4 h-4 text-emerald-600" />
+                      <h3 className="text-xs font-bold text-[#1D2226] dark:text-slate-100 uppercase font-mono tracking-wider flex items-center gap-2">
+                        <Code2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         Verified Technical Skills Extracted
                       </h3>
-                      <p className="text-[11px] text-[#56687A] mt-0.5">
+                      <p className="text-[11px] text-[#56687A] dark:text-slate-400 mt-0.5">
                         Parsed directly from your actual uploaded resume into verified competencies.
                       </p>
                     </div>
@@ -615,18 +615,18 @@ export const ResumeAnalyzerPage: React.FC = () => {
                   {analysis.extractedSkills && Object.keys(analysis.extractedSkills).length > 0 ? (
                     <div className="space-y-3">
                       {Object.entries(analysis.extractedSkills).map(([category, skillsList]) => (
-                        <div key={category} className="p-3 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] space-y-2">
-                          <div className="flex items-center justify-between text-xs font-semibold text-[#1D2226]">
+                        <div key={category} className="p-3 rounded-xl bg-[#F3F6F8] dark:bg-slate-800/60 border border-[#E8E8E8] dark:border-slate-700/60 space-y-2">
+                          <div className="flex items-center justify-between text-xs font-semibold text-[#1D2226] dark:text-slate-200">
                             <span>{category}</span>
-                            <span className="text-[10px] font-mono text-[#788896]">{skillsList.length} skills</span>
+                            <span className="text-[10px] font-mono text-[#788896] dark:text-slate-400">{skillsList.length} skills</span>
                           </div>
                           <div className="flex flex-wrap gap-1.5">
                             {skillsList.map((skill, sIdx) => (
                               <span
                                 key={sIdx}
-                                className="px-2 py-0.5 rounded-md bg-white border border-[#D9D9D9] text-[#1D2226] text-xs font-mono flex items-center gap-1 shadow-xs"
+                                className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-700 text-[#1D2226] dark:text-slate-200 text-xs font-mono flex items-center gap-1 shadow-xs"
                               >
-                                <Check className="w-2.5 h-2.5 text-emerald-600" />
+                                <Check className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
                                 {skill}
                               </span>
                             ))}
@@ -635,7 +635,7 @@ export const ResumeAnalyzerPage: React.FC = () => {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-[#788896] p-4 text-center">No skills extracted from this document.</p>
+                    <p className="text-xs text-[#788896] dark:text-slate-400 p-4 text-center">No skills extracted from this document.</p>
                   )}
                 </Card>
               )}
@@ -646,8 +646,8 @@ export const ResumeAnalyzerPage: React.FC = () => {
                   {analysis.bulletImprovements && analysis.bulletImprovements.length > 0 ? (
                     <AiBulletOptimizer bullets={analysis.bulletImprovements} />
                   ) : (
-                    <Card className="p-8 text-center bg-white border border-[#D9D9D9]">
-                      <p className="text-xs text-[#788896]">No bullet point rewrites available for this document.</p>
+                    <Card className="p-8 text-center bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800">
+                      <p className="text-xs text-[#788896] dark:text-slate-400">No bullet point rewrites available for this document.</p>
                     </Card>
                   )}
                 </div>
@@ -655,14 +655,14 @@ export const ResumeAnalyzerPage: React.FC = () => {
 
               {/* TAB 5: FORMATTING HEALTH */}
               {activeTab === 'formatting' && (
-                <Card className="p-4 bg-white border border-[#D9D9D9] space-y-4 animate-in fade-in duration-150 shadow-sm">
+                <Card className="p-4 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 space-y-4 animate-in fade-in duration-150 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-2">
-                        <Layout className="w-4 h-4 text-emerald-600" />
+                      <h3 className="text-xs font-bold text-[#1D2226] dark:text-slate-100 uppercase font-mono tracking-wider flex items-center gap-2">
+                        <Layout className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         ATS Formatting & Parseability Checklist
                       </h3>
-                      <p className="text-[11px] text-[#56687A] mt-0.5">
+                      <p className="text-[11px] text-[#56687A] dark:text-slate-400 mt-0.5">
                         Structural compliance ensuring zero parser truncation across enterprise hiring platforms.
                       </p>
                     </div>
@@ -673,11 +673,11 @@ export const ResumeAnalyzerPage: React.FC = () => {
                       {analysis.formattingHealth.map((item, idx) => (
                         <div
                           key={idx}
-                          className="p-3 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] flex items-start justify-between gap-3 text-xs"
+                          className="p-3 rounded-xl bg-[#F3F6F8] dark:bg-slate-800/60 border border-[#E8E8E8] dark:border-slate-700/60 flex items-start justify-between gap-3 text-xs"
                         >
                           <div className="space-y-0.5">
-                            <p className="font-semibold text-[#1D2226]">{item.label}</p>
-                            {item.detail && <p className="text-[11px] text-[#788896]">{item.detail}</p>}
+                            <p className="font-semibold text-[#1D2226] dark:text-slate-100">{item.label}</p>
+                            {item.detail && <p className="text-[11px] text-[#788896] dark:text-slate-400">{item.detail}</p>}
                           </div>
                           <Badge variant={item.status === 'Passed' ? 'success' : 'warning'} size="sm">
                             {item.status}
@@ -687,8 +687,8 @@ export const ResumeAnalyzerPage: React.FC = () => {
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <div className="p-3 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] flex items-center justify-between text-xs">
-                        <span className="font-semibold text-[#1D2226]">Parseable Document Structure</span>
+                      <div className="p-3 rounded-xl bg-[#F3F6F8] dark:bg-slate-800/60 border border-[#E8E8E8] dark:border-slate-700/60 flex items-center justify-between text-xs">
+                        <span className="font-semibold text-[#1D2226] dark:text-slate-100">Parseable Document Structure</span>
                         <Badge variant="success" size="sm">Passed</Badge>
                       </div>
                     </div>

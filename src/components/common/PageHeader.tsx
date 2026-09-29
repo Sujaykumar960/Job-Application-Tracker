@@ -22,7 +22,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   className,
 }) => {
   return (
-    <div className={cn('space-y-2 pb-5 border-b border-[#D9D9D9]', className)}>
+    <div className={cn('space-y-2 pb-5 border-b border-[#D9D9D9] dark:border-slate-800', className)}>
       {showBreadcrumbs && (
         <div className="mb-1.5">
           <Breadcrumb items={breadcrumbs} />
@@ -32,13 +32,13 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="text-lg sm:text-xl laptop:text-2xl font-bold tracking-tight text-[#1D2226] font-sans leading-snug">
+            <h1 className="text-lg sm:text-xl laptop:text-2xl font-bold tracking-tight text-[#1D2226] dark:text-slate-100 font-sans leading-snug">
               {title}
             </h1>
             {badge}
           </div>
           {description && (
-            <p className="text-xs sm:text-sm text-[#56687A] max-w-3xl leading-relaxed">
+            <p className="text-xs sm:text-sm text-[#56687A] dark:text-slate-400 max-w-3xl leading-relaxed">
               {description}
             </p>
           )}

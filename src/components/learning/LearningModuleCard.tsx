@@ -36,20 +36,20 @@ export interface LearningModuleCardProps {
 
 export const LearningModuleCard: React.FC<LearningModuleCardProps> = ({ module, onOpen }) => {
   const difficultyColors = {
-    Beginner: 'text-[#137333] bg-[#E6F4EA] border-[#c6ecd2]',
-    Intermediate: 'text-[#8A6100] bg-[#FFF4CC] border-[#ffe899]',
-    Advanced: 'text-[#B3261E] bg-[#FCE8E6] border-[#f8cbc7]',
+    Beginner: 'text-[#137333] dark:text-emerald-400 bg-[#E6F4EA] dark:bg-emerald-950/40 border-[#c6ecd2] dark:border-emerald-800/40',
+    Intermediate: 'text-[#8A6100] dark:text-amber-400 bg-[#FFF4CC] dark:bg-amber-950/40 border-[#ffe899] dark:border-amber-800/40',
+    Advanced: 'text-[#B3261E] dark:text-rose-400 bg-[#FCE8E6] dark:bg-rose-950/40 border-[#f8cbc7] dark:border-rose-800/40',
   };
 
   const isCompleted = module.progress === 100;
   const isInProgress = module.progress > 0 && module.progress < 100;
 
   return (
-    <Card className="p-4 flex flex-col justify-between hover:border-[#0A66C2]/40 hover:shadow-md transition-all duration-150 space-y-3 bg-white border border-[#D9D9D9] group shadow-xs">
+    <Card className="p-4 flex flex-col justify-between hover:border-[#0A66C2]/40 dark:hover:border-blue-500/40 hover:shadow-md transition-all duration-150 space-y-3 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 group shadow-xs">
       <div className="space-y-2.5">
         {/* Personalization Reason Pill (if recommended) */}
         {module.isRecommended && module.recommendationReason && (
-          <div className="p-1.5 px-2 rounded-lg bg-[#E8F3FF] border border-[#d0e6fc] flex items-center gap-1.5 text-[10px] text-[#0A66C2] font-semibold font-mono">
+          <div className="p-1.5 px-2 rounded-lg bg-[#E8F3FF] dark:bg-blue-950/40 border border-[#d0e6fc] dark:border-blue-800/40 flex items-center gap-1.5 text-[10px] text-[#0A66C2] dark:text-blue-400 font-semibold font-mono">
             <Sparkles className="w-3 h-3 text-amber-500 flex-shrink-0" />
             <span className="truncate">{module.recommendationReason}</span>
           </div>
@@ -57,7 +57,7 @@ export const LearningModuleCard: React.FC<LearningModuleCardProps> = ({ module, 
 
         {/* Category & Difficulty Row */}
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[10px] font-mono text-[#788896] font-semibold uppercase truncate">
+          <span className="text-[10px] font-mono text-[#788896] dark:text-slate-400 font-semibold uppercase truncate">
             {module.category}
           </span>
           <span
@@ -74,11 +74,11 @@ export const LearningModuleCard: React.FC<LearningModuleCardProps> = ({ module, 
         <div>
           <h3
             onClick={() => onOpen(module)}
-            className="text-xs font-bold text-[#1D2226] group-hover:text-[#0A66C2] transition cursor-pointer leading-snug line-clamp-2"
+            className="text-xs font-bold text-[#1D2226] dark:text-slate-100 group-hover:text-[#0A66C2] dark:group-hover:text-blue-400 transition cursor-pointer leading-snug line-clamp-2"
           >
             {module.title}
           </h3>
-          <p className="text-[11px] text-[#56687A] mt-1 line-clamp-2 leading-relaxed">
+          <p className="text-[11px] text-[#56687A] dark:text-slate-300 mt-1 line-clamp-2 leading-relaxed">
             {module.description}
           </p>
         </div>
@@ -88,7 +88,7 @@ export const LearningModuleCard: React.FC<LearningModuleCardProps> = ({ module, 
           {module.skillsCovered.map((skill) => (
             <span
               key={skill}
-              className="px-1.5 py-0.2 rounded bg-[#F3F6F8] text-[#56687A] border border-[#D9D9D9] text-[10px] font-mono"
+              className="px-1.5 py-0.2 rounded bg-[#F3F6F8] dark:bg-slate-800 text-[#56687A] dark:text-slate-300 border border-[#D9D9D9] dark:border-slate-700 text-[10px] font-mono"
             >
               {skill}
             </span>
@@ -97,11 +97,11 @@ export const LearningModuleCard: React.FC<LearningModuleCardProps> = ({ module, 
       </div>
 
       {/* Footer: Progress & Action */}
-      <div className="space-y-2.5 pt-2 border-t border-[#E8E8E8]">
+      <div className="space-y-2.5 pt-2 border-t border-[#E8E8E8] dark:border-slate-800">
         {/* Progress bar */}
         <div className="space-y-1">
           <div className="flex items-center justify-between text-[10px] font-mono">
-            <span className="text-[#788896] flex items-center gap-1">
+            <span className="text-[#788896] dark:text-slate-400 flex items-center gap-1">
               <Clock className="w-2.5 h-2.5" />
               {module.duration} • {module.lessonsCount} lessons
             </span>
@@ -109,21 +109,21 @@ export const LearningModuleCard: React.FC<LearningModuleCardProps> = ({ module, 
               className={cn(
                 'font-bold',
                 isCompleted
-                  ? 'text-emerald-700'
+                  ? 'text-emerald-700 dark:text-emerald-400'
                   : isInProgress
-                  ? 'text-[#0A66C2]'
-                  : 'text-[#788896]'
+                  ? 'text-[#0A66C2] dark:text-blue-400'
+                  : 'text-[#788896] dark:text-slate-400'
               )}
             >
               {module.progress}%
             </span>
           </div>
 
-          <div className="w-full h-1.5 rounded-full bg-[#F3F6F8] overflow-hidden border border-[#E8E8E8]">
+          <div className="w-full h-1.5 rounded-full bg-[#F3F6F8] dark:bg-slate-800 overflow-hidden border border-[#E8E8E8] dark:border-slate-700">
             <div
               className={cn(
                 'h-full rounded-full transition-all duration-500',
-                isCompleted ? 'bg-emerald-600' : 'bg-[#0A66C2]'
+                isCompleted ? 'bg-emerald-600 dark:bg-emerald-500' : 'bg-[#0A66C2] dark:bg-blue-500'
               )}
               style={{ width: `${module.progress}%` }}
             />

@@ -300,7 +300,7 @@ export const HomePage: React.FC = () => {
         </Link>
 
         {/* 9. Current coding streak */}
-        <Link to="/learning" className="group block h-full">
+        <Link to="/progress" className="group block h-full" title="View Progress Report">
           <Card className="p-3 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.08)] flex flex-col justify-between h-full group-hover:border-amber-500/50 dark:group-hover:border-amber-400/50 group-hover:shadow-md group-hover:-translate-y-0.5 transition-all duration-150 cursor-pointer">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-[#F5A623] dark:text-amber-400">Streak</span>

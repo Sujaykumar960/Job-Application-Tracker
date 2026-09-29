@@ -118,9 +118,14 @@ html.dark [class*="bg-white/"] {
   background-color: rgba(15, 23, 42, 0.95) !important;
 }
 
-html.dark .bg-\[\#E8F3FF\] {
+html.dark .bg-\[\#E8F3FF\],
+html.dark [class*="bg-[#E8F3FF]"] {
   background-color: #1E293B !important;
-  color: #38BDF8 !important;
+}
+
+html.dark .bg-\[\#E8E8E8\],
+html.dark [class*="bg-[#E8E8E8]"] {
+  background-color: #0F172A !important;
 }
 
 html.dark .border-\[\#d0e6fc\] {

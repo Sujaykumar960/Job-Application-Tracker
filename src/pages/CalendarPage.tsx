@@ -25,8 +25,16 @@ import {
   Briefcase,
   Loader2,
   Trash2,
+  PartyPopper,
+  CalendarDays,
+  CalendarCheck2,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
+import {
+  Holiday,
+  getHolidayForDate,
+  getHolidaysForMonth,
+} from '../data/holidaysData';
 
 export const CalendarPage: React.FC = () => {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -58,9 +66,19 @@ export const CalendarPage: React.FC = () => {
   const [isSyncingGoogle, setIsSyncingGoogle] = useState(false);
   const [syncStatus, setSyncStatus] = useState<GoogleCalendarSyncResult | null>(null);
 
-  // Current calendar month state (defaulting to September 2026)
-  const [currentYear, setCurrentYear] = useState(2026);
-  const [currentMonth, setCurrentMonth] = useState(8); // 0-indexed: 8 is September
+  // Dynamic today date calculation (strictly dynamic, no hardcoded date)
+  const todayDateStr = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, []);
+
+  // Current calendar month state (initializes to today's year and month)
+  const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(() => new Date().getMonth()); // 0-indexed
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
 
   const [syncNotice, setSyncNotice] = useState<string | null>(null);
 
@@ -111,7 +129,7 @@ export const CalendarPage: React.FC = () => {
     setNewEvent({
       title: '',
       type: 'Interview',
-      date: '2026-09-08',
+      date: selectedDate || todayDateStr,
       time: '10:00 AM',
       company: '',
       locationOrUrl: '',
@@ -149,11 +167,44 @@ export const CalendarPage: React.FC = () => {
     }
   };
 
+  // Reset view to dynamic Today
   const handleResetToday = () => {
-    setCurrentYear(2026);
-    setCurrentMonth(8); // September 2026
+    const d = new Date();
+    setCurrentYear(d.getFullYear());
+    setCurrentMonth(d.getMonth());
+    setSelectedDate(todayDateStr);
   };
 
+  // Day Navigation for Day-Wise Inspector
+  const handlePrevDay = () => {
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const prev = new Date(y, m - 1, d - 1);
+    const prevStr = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}-${String(prev.getDate()).padStart(2, '0')}`;
+    setSelectedDate(prevStr);
+    if (prev.getMonth() !== currentMonth || prev.getFullYear() !== currentYear) {
+      setCurrentMonth(prev.getMonth());
+      setCurrentYear(prev.getFullYear());
+    }
+  };
+
+  const handleNextDay = () => {
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const next = new Date(y, m - 1, d + 1);
+    const nextStr = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`;
+    setSelectedDate(nextStr);
+    if (next.getMonth() !== currentMonth || next.getFullYear() !== currentYear) {
+      setCurrentMonth(next.getMonth());
+      setCurrentYear(next.getFullYear());
+    }
+  };
+
+  const openAddModalForDate = (dateStr?: string) => {
+    setNewEvent((prev) => ({
+      ...prev,
+      date: dateStr || selectedDate || todayDateStr,
+    }));
+    setIsAddModalOpen(true);
+  };
 
   // Form State for Add Event
   const [newEvent, setNewEvent] = useState<{
@@ -167,44 +218,75 @@ export const CalendarPage: React.FC = () => {
   }>({
     title: '',
     type: 'Interview',
-    date: '2026-09-08',
+    date: todayDateStr,
     time: '10:00 AM',
     company: '',
     locationOrUrl: '',
     notes: '',
   });
 
-  // Color config for the 4 requested event types
+  // Month holidays for active month
+  const monthHolidays = useMemo(
+    () => getHolidaysForMonth(currentYear, currentMonth),
+    [currentYear, currentMonth]
+  );
+
+  // Selected date holiday
+  const selectedDateHoliday = useMemo(
+    () => getHolidayForDate(selectedDate),
+    [selectedDate]
+  );
+
+  // Events for selected date
+  const selectedDateEvents = useMemo(
+    () => events.filter((e) => e.date === selectedDate),
+    [events, selectedDate]
+  );
+
+  // Formatted date string for selected date
+  const formattedSelectedDate = useMemo(() => {
+    if (!selectedDate) return '';
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    return dt.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }, [selectedDate]);
+
+  // Color config for the 4 requested event types with full dark mode support
   const eventTypeConfig: Record<
     CalendarEventType,
     { label: string; bg: string; text: string; border: string; badge: 'brand' | 'danger' | 'warning' | 'success' }
   > = {
     Interview: {
       label: 'Interview',
-      bg: 'bg-[#E8F3FF]',
-      text: 'text-[#0A66C2]',
-      border: 'border-[#d0e6fc]',
+      bg: 'bg-blue-50 dark:bg-blue-950/80',
+      text: 'text-[#0A66C2] dark:text-blue-300',
+      border: 'border-blue-200 dark:border-blue-800',
       badge: 'brand',
     },
     Deadline: {
       label: 'Deadline',
-      bg: 'bg-[#FCE8E6]',
-      text: 'text-[#B3261E]',
-      border: 'border-[#f8cbc7]',
+      bg: 'bg-rose-50 dark:bg-rose-950/80',
+      text: 'text-[#B3261E] dark:text-rose-300',
+      border: 'border-rose-200 dark:border-rose-800',
       badge: 'danger',
     },
     'Follow-up': {
       label: 'Follow-up',
-      bg: 'bg-[#FFF4CC]',
-      text: 'text-[#8A6100]',
-      border: 'border-[#ffe899]',
+      bg: 'bg-amber-50 dark:bg-amber-950/80',
+      text: 'text-[#8A6100] dark:text-amber-300',
+      border: 'border-amber-200 dark:border-amber-800',
       badge: 'warning',
     },
     Assessment: {
       label: 'Assessment',
-      bg: 'bg-[#E6F4EA]',
-      text: 'text-[#137333]',
-      border: 'border-[#c6ecd2]',
+      bg: 'bg-emerald-50 dark:bg-emerald-950/80',
+      text: 'text-[#137333] dark:text-emerald-300',
+      border: 'border-emerald-200 dark:border-emerald-800',
       badge: 'success',
     },
   };
@@ -359,19 +441,19 @@ export const CalendarPage: React.FC = () => {
       {/* ========================================================================= */}
       {/* 1. GOOGLE CALENDAR SYNC BANNER                                            */}
       {/* ========================================================================= */}
-      <div className="p-3 rounded-xl bg-white border border-[#D9D9D9] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs shadow-sm">
+      <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs shadow-sm">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 flex-shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0">
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <div>
-            <div className="flex items-center gap-1.5 font-bold text-[#1D2226]">
+            <div className="flex items-center gap-1.5 font-bold text-[#1D2226] dark:text-slate-100">
               <span>Google Calendar API Integration Active</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             </div>
-            <p className="text-[11px] text-[#56687A]">
+            <p className="text-[11px] text-[#56687A] dark:text-slate-400">
               {syncStatus ? (
-                <>Synced with <strong className="text-[#1D2226]">{syncStatus.accountEmail}</strong> • Last updated {syncStatus.lastSyncedAt}</>
+                <>Synced with <strong className="text-[#1D2226] dark:text-slate-200">{syncStatus.accountEmail}</strong> • Last updated {syncStatus.lastSyncedAt}</>
               ) : (
                 'Sync not yet performed'
               )}
@@ -379,8 +461,8 @@ export const CalendarPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-[10px] font-mono text-[#56687A] self-end sm:self-center">
-          <span className="px-2 py-0.5 rounded bg-[#F3F6F8] border border-[#D9D9D9]">
+        <div className="flex items-center gap-2 text-[10px] font-mono text-[#56687A] dark:text-slate-400 self-end sm:self-center">
+          <span className="px-2 py-0.5 rounded bg-[#F3F6F8] dark:bg-slate-800 border border-[#D9D9D9] dark:border-slate-700">
             {events.filter((e) => e.isSyncedWithGoogle).length} Events Synced
           </span>
         </div>
@@ -389,33 +471,33 @@ export const CalendarPage: React.FC = () => {
       {/* ========================================================================= */}
       {/* 2. CALENDAR TOOLBAR: MONTH CONTROLS & EVENT FILTERS                       */}
       {/* ========================================================================= */}
-      <div className="p-3.5 rounded-2xl bg-white border border-[#D9D9D9] flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
+      <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
         {/* Month Navigation */}
         <div className="flex items-center gap-3">
-          <h2 className="text-base font-bold text-[#1D2226] tracking-tight flex items-center gap-2">
-            <CalendarIcon className="w-4 h-4 text-[#0A66C2]" />
+          <h2 className="text-base font-bold text-[#1D2226] dark:text-slate-100 tracking-tight flex items-center gap-2">
+            <CalendarIcon className="w-4 h-4 text-[#0A66C2] dark:text-blue-400" />
             <span>
               {monthNames[currentMonth]} {currentYear}
             </span>
           </h2>
 
-          <div className="flex items-center bg-[#F3F6F8] rounded-lg p-0.5 border border-[#D9D9D9]">
+          <div className="flex items-center bg-[#F3F6F8] dark:bg-slate-800 rounded-lg p-0.5 border border-[#D9D9D9] dark:border-slate-700">
             <button
               onClick={handlePrevMonth}
-              className="p-1 rounded text-[#56687A] hover:text-[#1D2226] hover:bg-[#E8E8E8] transition"
+              className="p-1 rounded text-[#56687A] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-100 hover:bg-[#E8E8E8] dark:hover:bg-slate-700 transition"
               title="Previous Month"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={handleResetToday}
-              className="px-2 py-0.5 text-[11px] font-semibold text-[#1D2226] hover:bg-[#E8E8E8] rounded transition"
+              className="px-2 py-0.5 text-[11px] font-semibold text-[#1D2226] dark:text-slate-200 hover:bg-[#E8E8E8] dark:hover:bg-slate-700 rounded transition"
             >
               Today
             </button>
             <button
               onClick={handleNextMonth}
-              className="p-1 rounded text-[#56687A] hover:text-[#1D2226] hover:bg-[#E8E8E8] transition"
+              className="p-1 rounded text-[#56687A] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-100 hover:bg-[#E8E8E8] dark:hover:bg-slate-700 transition"
               title="Next Month"
             >
               <ChevronRight className="w-4 h-4" />
@@ -436,14 +518,14 @@ export const CalendarPage: React.FC = () => {
                 className={cn(
                   'px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5',
                   selectedEventType === type
-                    ? 'bg-[#0A66C2] text-white shadow-sm'
-                    : 'text-[#56687A] hover:text-[#1D2226] hover:bg-[#F3F6F8]'
+                    ? 'bg-[#0A66C2] dark:bg-blue-600 text-white shadow-sm'
+                    : 'text-[#56687A] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-200 hover:bg-[#F3F6F8] dark:hover:bg-slate-800'
                 )}
               >
                 <span>{type === 'All' ? 'All Milestones' : `${type}s`}</span>
                 <span className={cn(
                   'text-[10px] font-mono px-1.5 py-0.2 rounded-full',
-                  selectedEventType === type ? 'bg-[#004182] text-white' : 'bg-[#F3F6F8] text-[#56687A]'
+                  selectedEventType === type ? 'bg-[#004182] dark:bg-blue-700 text-white' : 'bg-[#F3F6F8] dark:bg-slate-800 text-[#56687A] dark:text-slate-400'
                 )}>
                   {count}
                 </span>
@@ -454,12 +536,47 @@ export const CalendarPage: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. MAIN MONTHLY CALENDAR GRID                                             */}
+      {/* 2.5 THIS MONTH'S HOLIDAYS TICKER                                          */}
       {/* ========================================================================= */}
-      <div className="rounded-2xl bg-white border border-[#D9D9D9] overflow-x-auto shadow-sm">
-        <div className="min-w-[640px]">
-          {/* Days of Week Header */}
-          <div className="grid grid-cols-7 bg-[#F3F6F8] border-b border-[#D9D9D9] text-center text-[11px] font-mono font-bold uppercase text-[#56687A] py-2.5">
+      {monthHolidays.length > 0 && (
+        <div className="p-2.5 px-3.5 rounded-2xl bg-amber-500/5 dark:bg-amber-950/20 border border-amber-500/20 flex flex-col sm:flex-row sm:items-center gap-2 text-xs shadow-xs">
+          <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-300 font-bold whitespace-nowrap text-[11px] font-mono flex-shrink-0">
+            <PartyPopper className="w-3.5 h-3.5 text-amber-500" />
+            <span>{monthNames[currentMonth]} Holidays & Observances ({monthHolidays.length}):</span>
+          </div>
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+            {monthHolidays.map((h, i) => {
+              const isCurrentSelected = selectedDate === h.fullDate;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setSelectedDate(h.fullDate)}
+                  className={cn(
+                    'px-2.5 py-1 rounded-xl text-[10px] font-mono whitespace-nowrap flex items-center gap-1.5 border transition cursor-pointer flex-shrink-0',
+                    isCurrentSelected
+                      ? 'bg-[#0A66C2] dark:bg-blue-600 text-white border-transparent shadow-xs'
+                      : 'bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-200 border-[#D9D9D9] dark:border-slate-700 hover:border-[#0A66C2] dark:hover:border-blue-400'
+                  )}
+                  title={`${h.name} (${h.type}) - ${h.description}`}
+                >
+                  <span>{h.icon}</span>
+                  <span className="font-semibold">{h.dayNumber} {monthNames[currentMonth].slice(0, 3)}:</span>
+                  <span>{h.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3. MAIN MONTHLY CALENDAR GRID (Clear Box Pattern Dividing Each Day)       */}
+      {/* ========================================================================= */}
+      <div className="rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 overflow-x-auto shadow-sm">
+        <div className="min-w-[680px]">
+          {/* Days of Week Header with Clear Column Dividers */}
+          <div className="grid grid-cols-7 bg-slate-100 dark:bg-slate-800/95 border-b-2 border-slate-300 dark:border-slate-700 text-center text-[11px] font-mono font-bold uppercase text-slate-600 dark:text-slate-300 py-3 divide-x divide-slate-300 dark:divide-slate-700">
             <span>Sun</span>
             <span>Mon</span>
             <span>Tue</span>
@@ -469,86 +586,369 @@ export const CalendarPage: React.FC = () => {
             <span>Sat</span>
           </div>
 
-          {/* Month Day Cells */}
-          <div className="grid grid-cols-7 divide-x divide-y divide-[#E8E8E8] bg-[#E8E8E8]">
-          {calendarDays.map((day, idx) => (
-            <div
-              key={idx}
-              className={cn(
-                'min-h-[105px] p-2 flex flex-col justify-between transition',
-                day.isCurrentMonth ? 'bg-white' : 'bg-[#F3F6F8]',
-                day.dateStr === '2026-09-03' ? 'border-2 border-[#0A66C2] bg-[#E8F3FF]/40' : ''
-              )}
-            >
-              {/* Day Header */}
-              <div className="flex items-center justify-between">
-                <span
-                  className={cn(
-                    'text-xs font-mono font-bold',
-                    day.dateStr === '2026-09-03'
-                      ? 'w-5 h-5 rounded-full bg-[#0A66C2] text-white flex items-center justify-center'
-                      : day.isCurrentMonth
-                      ? 'text-[#1D2226]'
-                      : 'text-[#9AA5B1]'
-                  )}
-                >
-                  {day.dayNumber}
-                </span>
-              </div>
+          {/* Month Day Cells - High-Contrast 1px Dividing Lines Around Every Box */}
+          <div className="grid grid-cols-7 gap-[1px] bg-slate-300 dark:bg-slate-700">
+          {calendarDays.map((day, idx) => {
+            const isSelected = day.dateStr === selectedDate;
+            const isToday = day.dateStr === todayDateStr;
+            const dayHoliday = getHolidayForDate(day.dateStr);
 
-              {/* Day Events Chips */}
-              <div className="space-y-1 mt-1 flex-1">
-                {day.events.slice(0, 2).map((evt) => {
-                  const conf = eventTypeConfig[evt.type];
-
-                  return (
-                    <div
-                      key={evt.id}
-                      onClick={() => setSelectedEvent(evt)}
-                      className={cn(
-                        'p-1 px-1.5 rounded-md border text-[10px] font-mono cursor-pointer transition truncate flex items-center gap-1 shadow-xs',
-                        conf.bg,
-                        conf.text,
-                        conf.border
-                      )}
-                      title={`${evt.title} (${evt.time})`}
-                    >
-                      <span className="truncate font-semibold">{evt.title}</span>
-                    </div>
-                  );
-                })}
-
-                {day.events.length > 2 && (
-                  <button
-                    onClick={() => setSelectedEvent(day.events[0])}
-                    className="text-[9px] font-mono text-[#0A66C2] hover:text-[#004182] font-semibold"
-                  >
-                    +{day.events.length - 2} more
-                  </button>
+            return (
+              <div
+                key={idx}
+                onClick={() => setSelectedDate(day.dateStr)}
+                className={cn(
+                  'min-h-[115px] p-2 flex flex-col justify-between transition-all cursor-pointer select-none group relative',
+                  day.isCurrentMonth
+                    ? isSelected
+                      ? 'bg-blue-50/95 dark:bg-slate-800 text-slate-900 dark:text-slate-100'
+                      : isToday
+                      ? 'bg-sky-50/80 dark:bg-blue-950/40 text-slate-900 dark:text-slate-100'
+                      : 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/70 text-slate-900 dark:text-slate-100'
+                    : isSelected
+                      ? 'bg-blue-50/40 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500'
+                      : 'bg-slate-100/80 dark:bg-[#070D18] text-slate-400 dark:text-slate-600',
+                  isSelected
+                    ? 'ring-2 ring-inset ring-[#0A66C2] dark:ring-blue-500 z-10'
+                    : 'hover:ring-1 hover:ring-inset hover:ring-[#0A66C2]/40 dark:hover:ring-blue-400/40 hover:z-10'
                 )}
+              >
+                {/* Day Box Header */}
+                <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800/80">
+                  <div className="flex items-center gap-1">
+                    <span
+                      className={cn(
+                        'text-xs font-mono font-bold flex items-center justify-center transition',
+                        isToday
+                          ? 'w-6 h-6 rounded-full bg-[#0A66C2] dark:bg-blue-600 text-white shadow-xs'
+                          : isSelected
+                          ? 'w-6 h-6 rounded-full border-2 border-[#0A66C2] dark:border-blue-400 text-[#0A66C2] dark:text-blue-400 bg-white dark:bg-slate-900 shadow-xs'
+                          : day.isCurrentMonth
+                          ? 'text-[#1D2226] dark:text-slate-100'
+                          : 'text-[#9AA5B1] dark:text-slate-500'
+                      )}
+                    >
+                      {day.dayNumber}
+                    </span>
+                    {isToday && (
+                      <span className="text-[9px] font-mono font-bold text-[#0A66C2] dark:text-blue-400 uppercase tracking-wider hidden sm:inline">
+                        Today
+                      </span>
+                    )}
+                  </div>
+
+                  {dayHoliday && (
+                    <span
+                      title={`Holiday: ${dayHoliday.name} (${dayHoliday.type})`}
+                      className="text-xs transition-transform group-hover:scale-125"
+                    >
+                      {dayHoliday.icon}
+                    </span>
+                  )}
+                </div>
+
+                {/* Day Events & Holiday Chips */}
+                <div className="space-y-1 mt-1 flex-1">
+                  {dayHoliday && (
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedDate(day.dateStr);
+                      }}
+                      className="p-1 px-1.5 rounded-md bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30 dark:border-amber-500/40 text-[9px] font-mono text-amber-800 dark:text-amber-300 flex items-center gap-1 truncate shadow-2xs hover:bg-amber-500/25 transition cursor-pointer"
+                      title={`Holiday: ${dayHoliday.name} (${dayHoliday.type}) - Click to view`}
+                    >
+                      <span className="flex-shrink-0 text-[10px]">{dayHoliday.icon}</span>
+                      <span className="truncate font-semibold">{dayHoliday.name}</span>
+                    </div>
+                  )}
+
+                  {day.events.slice(0, 2).map((evt) => {
+                    const conf = eventTypeConfig[evt.type];
+
+                    return (
+                      <div
+                        key={evt.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedEvent(evt);
+                        }}
+                        className={cn(
+                          'p-1 px-1.5 rounded-md border text-[10px] font-mono cursor-pointer transition truncate flex items-center gap-1 shadow-xs',
+                          conf.bg,
+                          conf.text,
+                          conf.border
+                        )}
+                        title={`${evt.title} (${evt.time})`}
+                      >
+                        <span className="truncate font-semibold">{evt.title}</span>
+                      </div>
+                    );
+                  })}
+
+                  {day.events.length > 2 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedDate(day.dateStr);
+                      }}
+                      className="text-[9px] font-mono text-[#0A66C2] dark:text-blue-400 hover:text-[#004182] dark:hover:text-blue-300 font-semibold"
+                    >
+                      +{day.events.length - 2} more
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         </div>
       </div>
 
       {/* ========================================================================= */}
+      {/* 4. DAY SCHEDULE & HOLIDAY FOCUS (Today / Selected Date Inspector)          */}
+      {/* ========================================================================= */}
+      <Card className="p-4 sm:p-5 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 space-y-4 shadow-sm">
+        {/* Day Header with Controls */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E8E8E8] dark:border-slate-800">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#56687A] dark:text-slate-400 flex items-center gap-1.5">
+                <CalendarDays className="w-3.5 h-3.5 text-[#0A66C2] dark:text-blue-400" />
+                Day Schedule & Details
+              </span>
+              {selectedDate === todayDateStr ? (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                  Today
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-[#F3F6F8] dark:bg-slate-800 text-[#56687A] dark:text-slate-400 border border-[#D9D9D9] dark:border-slate-700">
+                  {selectedDate}
+                </span>
+              )}
+            </div>
+            <h3 className="text-base sm:text-lg font-bold text-[#1D2226] dark:text-slate-100 tracking-tight">
+              {formattedSelectedDate}
+            </h3>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center bg-[#F3F6F8] dark:bg-slate-800 rounded-lg p-0.5 border border-[#D9D9D9] dark:border-slate-700">
+              <button
+                type="button"
+                onClick={handlePrevDay}
+                className="p-1.5 rounded text-[#56687A] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-100 hover:bg-[#E8E8E8] dark:hover:bg-slate-700 transition"
+                title="Previous Day"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              {selectedDate !== todayDateStr && (
+                <button
+                  type="button"
+                  onClick={handleResetToday}
+                  className="px-2 py-1 text-[11px] font-semibold text-[#0A66C2] dark:text-blue-400 hover:bg-[#E8E8E8] dark:hover:bg-slate-700 rounded transition"
+                >
+                  Jump to Today
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleNextDay}
+                className="p-1.5 rounded text-[#56687A] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-100 hover:bg-[#E8E8E8] dark:hover:bg-slate-700 transition"
+                title="Next Day"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <Button
+              size="xs"
+              variant="primary"
+              onClick={() => openAddModalForDate(selectedDate)}
+              icon={<Plus className="w-3.5 h-3.5" />}
+            >
+              Add Milestone
+            </Button>
+          </div>
+        </div>
+
+        {/* Day Content: Holiday Banner + Milestones */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* Holiday Card (lg:col-span-5) */}
+          <div className="lg:col-span-5 flex flex-col">
+            {selectedDateHoliday ? (
+              <div className="p-4 rounded-xl bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent dark:from-amber-500/20 dark:via-amber-500/10 dark:to-slate-900 border border-amber-500/30 flex flex-col justify-between h-full space-y-3 shadow-xs">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl">{selectedDateHoliday.icon}</span>
+                    <Badge variant="warning" size="sm">
+                      {selectedDateHoliday.type}
+                    </Badge>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                      Holiday & Observance
+                    </span>
+                    <h4 className="text-base font-bold text-[#1D2226] dark:text-slate-100">
+                      {selectedDateHoliday.name}
+                    </h4>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    {selectedDateHoliday.description}
+                  </p>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-white/60 dark:bg-slate-800/80 border border-amber-500/20 text-[11px] text-amber-800 dark:text-amber-300 font-mono flex items-start gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-amber-500" />
+                  <span>
+                    Note: Recruiter responses or scheduled technical rounds may follow holiday schedules today.
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-[#F3F6F8] dark:bg-slate-800/60 border border-[#E8E8E8] dark:border-slate-700 flex flex-col justify-between h-full space-y-3">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xl">📅</span>
+                    <Badge variant="neutral" size="sm">
+                      Business Day
+                    </Badge>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#56687A] dark:text-slate-400">
+                      Standard Calendar Day
+                    </span>
+                    <h4 className="text-sm font-bold text-[#1D2226] dark:text-slate-100">
+                      Regular Working Day
+                    </h4>
+                  </div>
+                  <p className="text-xs text-[#56687A] dark:text-slate-400 leading-relaxed">
+                    No national or public holidays scheduled for this date. Regular recruitment schedules, technical assessments, and interview loops proceed as normal.
+                  </p>
+                </div>
+
+                {monthHolidays.length > 0 && (
+                  <div className="pt-2 border-t border-[#E8E8E8] dark:border-slate-700 text-[11px] text-[#56687A] dark:text-slate-400">
+                    <span>
+                      {monthNames[currentMonth]} has{' '}
+                      <strong className="text-[#1D2226] dark:text-slate-200">
+                        {monthHolidays.length} holiday{monthHolidays.length > 1 ? 's' : ''}
+                      </strong>
+                      . Plan interview prep and application submissions accordingly.
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Milestones for This Date (lg:col-span-7) */}
+          <div className="lg:col-span-7 flex flex-col justify-between">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-[#1D2226] dark:text-slate-200 uppercase font-mono tracking-wider flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-[#0A66C2] dark:text-blue-400" />
+                  Scheduled Milestones on this Day ({selectedDateEvents.length})
+                </h4>
+              </div>
+
+              {selectedDateEvents.length === 0 ? (
+                <div className="p-5 text-center border border-dashed border-[#D9D9D9] dark:border-slate-700 rounded-xl bg-[#F3F6F8] dark:bg-slate-800/40 space-y-2">
+                  <CalendarCheck2 className="w-7 h-7 mx-auto text-[#788896] dark:text-slate-500" />
+                  <p className="text-xs font-semibold text-[#1D2226] dark:text-slate-200">
+                    No career milestones scheduled for this date.
+                  </p>
+                  <p className="text-[11px] text-[#788896] dark:text-slate-400 max-w-sm mx-auto">
+                    Take advantage of this day for technical preparation, LeetCode practice, or submitting targeted applications.
+                  </p>
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    onClick={() => openAddModalForDate(selectedDate)}
+                    icon={<Plus className="w-3 h-3" />}
+                    className="mt-1"
+                  >
+                    Schedule Milestone
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {selectedDateEvents.map((evt) => {
+                    const conf = eventTypeConfig[evt.type];
+
+                    return (
+                      <div
+                        key={evt.id}
+                        onClick={() => setSelectedEvent(evt)}
+                        className="p-3 rounded-xl bg-[#F3F6F8] dark:bg-slate-800/70 border border-[#E8E8E8] dark:border-slate-700/80 hover:border-[#0A66C2]/40 dark:hover:border-blue-500/50 transition cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-2 group shadow-xs"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Badge variant={conf.badge} size="sm">
+                              {evt.type}
+                            </Badge>
+                            <span className="text-[11px] font-mono font-semibold text-[#0A66C2] dark:text-blue-400">
+                              {evt.time}
+                            </span>
+                            {evt.company && (
+                              <span className="text-xs font-mono font-medium text-[#56687A] dark:text-slate-400">
+                                • {evt.company}
+                              </span>
+                            )}
+                          </div>
+                          <h5 className="text-xs font-bold text-[#1D2226] dark:text-slate-100 group-hover:text-[#0A66C2] dark:group-hover:text-blue-400 transition">
+                            {evt.title}
+                          </h5>
+                          {evt.notes && (
+                            <p className="text-[11px] text-[#56687A] dark:text-slate-400 line-clamp-1">
+                              {evt.notes}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 self-end sm:self-center">
+                          {evt.locationOrUrl?.startsWith('http') && (
+                            <a
+                              href={evt.locationOrUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="px-2 py-1 rounded bg-[#0A66C2] dark:bg-blue-600 text-white text-[10px] font-mono font-semibold hover:bg-[#004182] transition flex items-center gap-1"
+                            >
+                              <Video className="w-3 h-3" /> Join
+                            </a>
+                          )}
+                          <span className="text-[11px] text-[#0A66C2] dark:text-blue-400 font-semibold font-mono group-hover:translate-x-0.5 transition">
+                            View →
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* ========================================================================= */}
       {/* 4. UPCOMING AGENDA PREVIEW (Chronological Timeline)                       */}
       {/* ========================================================================= */}
-      <Card className="p-4 bg-white border border-[#D9D9D9] space-y-3 shadow-sm">
-        <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8]">
-          <h3 className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider flex items-center gap-2">
-            <Clock className="w-3.5 h-3.5 text-[#0A66C2]" />
+      <Card className="p-4 bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 space-y-3 shadow-sm">
+        <div className="flex items-center justify-between pb-2 border-b border-[#E8E8E8] dark:border-slate-800">
+          <h3 className="text-xs font-bold text-[#1D2226] dark:text-slate-100 uppercase font-mono tracking-wider flex items-center gap-2">
+            <Clock className="w-3.5 h-3.5 text-[#0A66C2] dark:text-blue-400" />
             Upcoming Milestone Agenda
           </h3>
-          <span className="text-[11px] font-mono text-[#788896]">Chronological Order</span>
+          <span className="text-[11px] font-mono text-[#788896] dark:text-slate-400">Chronological Order</span>
         </div>
 
         {filteredEvents.length === 0 ? (
-          <div className="p-8 text-center border border-dashed border-[#D9D9D9] rounded-xl bg-[#F3F6F8]">
-            <p className="text-xs font-semibold text-[#1D2226]">No events scheduled.</p>
-            <p className="text-[11px] text-[#788896] mt-1">Add your upcoming interviews, assessment deadlines, or follow-ups.</p>
+          <div className="p-8 text-center border border-dashed border-[#D9D9D9] dark:border-slate-700 rounded-xl bg-[#F3F6F8] dark:bg-slate-800/40">
+            <p className="text-xs font-semibold text-[#1D2226] dark:text-slate-200">No events scheduled.</p>
+            <p className="text-[11px] text-[#788896] dark:text-slate-400 mt-1">Add your upcoming interviews, assessment deadlines, or follow-ups.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -559,28 +959,28 @@ export const CalendarPage: React.FC = () => {
                 <div
                   key={evt.id}
                   onClick={() => setSelectedEvent(evt)}
-                  className="p-3 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] hover:border-[#0A66C2]/40 transition cursor-pointer flex flex-col justify-between space-y-2 group shadow-xs"
+                  className="p-3 rounded-xl bg-[#F3F6F8] dark:bg-slate-800/70 border border-[#E8E8E8] dark:border-slate-700/80 hover:border-[#0A66C2]/40 dark:hover:border-blue-500/50 transition cursor-pointer flex flex-col justify-between space-y-2 group shadow-xs"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <Badge variant={conf.badge} size="sm">
                         {evt.type}
                       </Badge>
-                      <span className="text-[10px] font-mono text-[#788896]">
+                      <span className="text-[10px] font-mono text-[#788896] dark:text-slate-400">
                         {evt.date} • {evt.time}
                       </span>
                     </div>
-                    <h4 className="text-xs font-bold text-[#1D2226] group-hover:text-[#0A66C2] transition truncate">
+                    <h4 className="text-xs font-bold text-[#1D2226] dark:text-slate-100 group-hover:text-[#0A66C2] dark:group-hover:text-blue-400 transition truncate">
                       {evt.title}
                     </h4>
                     {evt.company && (
-                      <p className="text-[11px] text-[#56687A] font-mono">{evt.company}</p>
+                      <p className="text-[11px] text-[#56687A] dark:text-slate-400 font-mono">{evt.company}</p>
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-[#E8E8E8] text-[10px] font-mono text-[#788896]">
+                  <div className="flex items-center justify-between pt-2 border-t border-[#E8E8E8] dark:border-slate-700/70 text-[10px] font-mono text-[#788896] dark:text-slate-400">
                     <span className="truncate">{evt.locationOrUrl || 'Virtual Session'}</span>
-                    <span className="text-[#0A66C2] font-semibold group-hover:translate-x-0.5 transition">
+                    <span className="text-[#0A66C2] dark:text-blue-400 font-semibold group-hover:translate-x-0.5 transition">
                       Details →
                     </span>
                   </div>
@@ -602,40 +1002,40 @@ export const CalendarPage: React.FC = () => {
           subtitle={`${selectedEvent.date} at ${selectedEvent.time} • ${selectedEvent.company || 'CareerX'}`}
           maxWidth="md"
         >
-          <div className="space-y-4 text-xs text-slate-300">
+          <div className="space-y-4 text-xs text-slate-700 dark:text-slate-300">
             <div className="flex items-center gap-2">
               <Badge variant={eventTypeConfig[selectedEvent.type].badge} size="sm">
                 {selectedEvent.type}
               </Badge>
               {selectedEvent.isSyncedWithGoogle && (
-                <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+                <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" /> Synced with Google Calendar
                 </span>
               )}
             </div>
 
             {selectedEvent.notes && (
-              <div className="p-3 rounded-xl bg-[#F3F6F8] border border-[#D9D9D9] text-[#38434F] leading-relaxed">
+              <div className="p-3 rounded-xl bg-[#F3F6F8] dark:bg-slate-800/90 border border-[#D9D9D9] dark:border-slate-700 text-[#38434F] dark:text-slate-200 leading-relaxed">
                 {selectedEvent.notes}
               </div>
             )}
 
             {selectedEvent.locationOrUrl && (
-              <div className="p-3 rounded-xl bg-[#F3F6F8] border border-[#D9D9D9] flex items-center justify-between font-mono text-[11px]">
-                <span className="text-[#56687A]">Meeting Link / Platform:</span>
+              <div className="p-3 rounded-xl bg-[#F3F6F8] dark:bg-slate-800/90 border border-[#D9D9D9] dark:border-slate-700 flex items-center justify-between font-mono text-[11px]">
+                <span className="text-[#56687A] dark:text-slate-400">Meeting Link / Platform:</span>
                 <a
                   href={selectedEvent.locationOrUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-[#0A66C2] hover:text-[#004182] font-bold flex items-center gap-1 truncate max-w-[220px]"
+                  className="text-[#0A66C2] dark:text-blue-400 hover:text-[#004182] dark:hover:text-blue-300 font-bold flex items-center gap-1 truncate max-w-[220px]"
                 >
                   <span>{selectedEvent.locationOrUrl}</span>
-                  <ExternalLink className="w-3 h-3 text-[#788896]" />
+                  <ExternalLink className="w-3 h-3 text-[#788896] dark:text-slate-400" />
                 </a>
               </div>
             )}
 
-            <div className="flex items-center justify-between pt-2 border-t border-[#E8E8E8]">
+            <div className="flex items-center justify-between pt-2 border-t border-[#E8E8E8] dark:border-slate-800">
               <Button
                 size="xs"
                 variant="danger"
@@ -649,7 +1049,7 @@ export const CalendarPage: React.FC = () => {
                   Close
                 </Button>
                 <Link to="/applications">
-                  <Button size="xs" variant="outline" icon={<Briefcase className="w-3 h-3 text-[#0A66C2]" />}>
+                  <Button size="xs" variant="outline" icon={<Briefcase className="w-3 h-3 text-[#0A66C2] dark:text-blue-400" />}>
                     Applications
                   </Button>
                 </Link>
@@ -679,7 +1079,7 @@ export const CalendarPage: React.FC = () => {
         >
           <form onSubmit={(e) => { e.preventDefault(); handleAddEvent(); }} className="space-y-3.5 text-xs">
             <div>
-              <label className="text-xs font-semibold text-[#38434F] block mb-1">
+              <label className="text-xs font-semibold text-[#38434F] dark:text-slate-300 block mb-1">
                 Event Title *
               </label>
               <input
@@ -688,13 +1088,13 @@ export const CalendarPage: React.FC = () => {
                 value={newEvent.title}
                 onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
                 placeholder="e.g. Stripe Technical Onsite Loop"
-                className="w-full bg-white text-[#1D2226] placeholder-[#788896] text-xs rounded-lg border border-[#D9D9D9] p-2.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
+                className="w-full bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 placeholder-[#788896] dark:placeholder-slate-500 text-xs rounded-lg border border-[#D9D9D9] dark:border-slate-700 p-2.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] dark:focus:ring-blue-500"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-semibold text-[#38434F] block mb-1">
+                <label className="text-xs font-semibold text-[#38434F] dark:text-slate-300 block mb-1">
                   Category *
                 </label>
                 <select
@@ -702,7 +1102,7 @@ export const CalendarPage: React.FC = () => {
                   onChange={(e) =>
                     setNewEvent({ ...newEvent, type: e.target.value as CalendarEventType })
                   }
-                  className="w-full bg-white text-[#1D2226] text-xs rounded-lg border border-[#D9D9D9] p-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
+                  className="w-full bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 text-xs rounded-lg border border-[#D9D9D9] dark:border-slate-700 p-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] dark:focus:ring-blue-500"
                 >
                   <option value="Interview">Interview</option>
                   <option value="Deadline">Deadline</option>
@@ -712,44 +1112,44 @@ export const CalendarPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-[#38434F] block mb-1">Company</label>
+                <label className="text-xs font-semibold text-[#38434F] dark:text-slate-300 block mb-1">Company</label>
                 <input
                   type="text"
                   value={newEvent.company}
                   onChange={(e) => setNewEvent({ ...newEvent, company: e.target.value })}
                   placeholder="e.g. Stripe"
-                  className="w-full bg-white text-[#1D2226] placeholder-[#788896] text-xs rounded-lg border border-[#D9D9D9] p-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
+                  className="w-full bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 placeholder-[#788896] dark:placeholder-slate-500 text-xs rounded-lg border border-[#D9D9D9] dark:border-slate-700 p-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] dark:focus:ring-blue-500"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-semibold text-[#38434F] block mb-1">Date *</label>
+                <label className="text-xs font-semibold text-[#38434F] dark:text-slate-300 block mb-1">Date *</label>
                 <input
                   type="date"
                   required
                   value={newEvent.date}
                   onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
-                  className="w-full bg-white text-[#1D2226] text-xs rounded-lg border border-[#D9D9D9] p-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] font-mono"
+                  className="w-full bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 text-xs rounded-lg border border-[#D9D9D9] dark:border-slate-700 p-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] dark:focus:ring-blue-500 font-mono"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-[#38434F] block mb-1">Time *</label>
+                <label className="text-xs font-semibold text-[#38434F] dark:text-slate-300 block mb-1">Time *</label>
                 <input
                   type="text"
                   required
                   value={newEvent.time}
                   onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
                   placeholder="e.g. 10:00 AM"
-                  className="w-full bg-white text-[#1D2226] placeholder-[#788896] text-xs rounded-lg border border-[#D9D9D9] p-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] font-mono"
+                  className="w-full bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 placeholder-[#788896] dark:placeholder-slate-500 text-xs rounded-lg border border-[#D9D9D9] dark:border-slate-700 p-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] dark:focus:ring-blue-500 font-mono"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-[#38434F] block mb-1">
+              <label className="text-xs font-semibold text-[#38434F] dark:text-slate-300 block mb-1">
                 Meeting Link or Location
               </label>
               <input
@@ -757,22 +1157,22 @@ export const CalendarPage: React.FC = () => {
                 value={newEvent.locationOrUrl}
                 onChange={(e) => setNewEvent({ ...newEvent, locationOrUrl: e.target.value })}
                 placeholder="e.g. https://meet.google.com/xyz"
-                className="w-full bg-white text-[#1D2226] placeholder-[#788896] text-xs rounded-lg border border-[#D9D9D9] p-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] font-mono"
+                className="w-full bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 placeholder-[#788896] dark:placeholder-slate-500 text-xs rounded-lg border border-[#D9D9D9] dark:border-slate-700 p-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] dark:focus:ring-blue-500 font-mono"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-[#38434F] block mb-1">Notes</label>
+              <label className="text-xs font-semibold text-[#38434F] dark:text-slate-300 block mb-1">Notes</label>
               <textarea
                 rows={2}
                 value={newEvent.notes}
                 onChange={(e) => setNewEvent({ ...newEvent, notes: e.target.value })}
                 placeholder="Topics to prepare, panel names, questions to ask..."
-                className="w-full bg-white text-[#1D2226] placeholder-[#788896] text-xs rounded-lg border border-[#D9D9D9] p-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] resize-none leading-relaxed"
+                className="w-full bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 placeholder-[#788896] dark:placeholder-slate-500 text-xs rounded-lg border border-[#D9D9D9] dark:border-slate-700 p-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2] dark:focus:ring-blue-500 resize-none leading-relaxed"
               />
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#E8E8E8]">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#E8E8E8] dark:border-slate-800">
               <Button type="button" size="xs" variant="ghost" onClick={() => setIsAddModalOpen(false)}>
                 Cancel
               </Button>

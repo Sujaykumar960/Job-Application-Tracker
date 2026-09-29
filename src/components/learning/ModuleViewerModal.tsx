@@ -140,14 +140,14 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
     >
       <div className="space-y-4">
         {/* Module Header Overview */}
-        <div className="p-3.5 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] flex items-center justify-between flex-wrap gap-2 text-xs">
+        <div className="p-3.5 rounded-xl bg-[#F3F6F8] dark:bg-slate-800/60 border border-[#E8E8E8] dark:border-slate-700/60 flex items-center justify-between flex-wrap gap-2 text-xs">
           <div className="flex items-center gap-3">
-            <span className="font-mono text-xs text-[#0A66C2] font-bold">
+            <span className="font-mono text-xs text-[#0A66C2] dark:text-blue-400 font-bold">
               Progress: {currentProgress}%
             </span>
-            <div className="w-32 h-1.5 rounded-full bg-white overflow-hidden border border-[#D9D9D9]">
+            <div className="w-32 h-1.5 rounded-full bg-white dark:bg-slate-900 overflow-hidden border border-[#D9D9D9] dark:border-slate-700">
               <div
-                className="h-full bg-[#0A66C2] rounded-full transition-all duration-500"
+                className="h-full bg-[#0A66C2] dark:bg-blue-500 rounded-full transition-all duration-500"
                 style={{ width: `${currentProgress}%` }}
               />
             </div>
@@ -165,7 +165,7 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
                 variant="ghost"
                 disabled={isMutating}
                 onClick={handleReset}
-                icon={<RotateCcw className="w-3 h-3 text-[#788896]" />}
+                icon={<RotateCcw className="w-3 h-3 text-[#788896] dark:text-slate-400" />}
               >
                 Reset Progress
               </Button>
@@ -180,7 +180,7 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
                   isMutating ? (
                     <Loader2 className="w-3 h-3 animate-spin" />
                   ) : activeLesson.completed ? (
-                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                   ) : (
                     <Check className="w-3 h-3" />
                   )
@@ -193,8 +193,8 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
         </div>
 
         {isLoading ? (
-          <div className="py-16 flex items-center justify-center text-xs text-[#56687A] gap-2">
-            <Loader2 className="w-5 h-5 animate-spin text-[#0A66C2]" />
+          <div className="py-16 flex items-center justify-center text-xs text-[#56687A] dark:text-slate-400 gap-2">
+            <Loader2 className="w-5 h-5 animate-spin text-[#0A66C2] dark:text-blue-400" />
             Loading course syllabus and verification status...
           </div>
         ) : (
@@ -203,10 +203,10 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
             {/* Syllabus (4 Cols) */}
             <div className="md:col-span-5 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] uppercase font-mono font-bold text-[#788896] block">
+                <span className="text-[10px] uppercase font-mono font-bold text-[#788896] dark:text-slate-400 block">
                   Course Syllabus ({lessons.length} Lessons)
                 </span>
-                <span className="text-[10px] text-[#0A66C2] font-mono font-semibold">
+                <span className="text-[10px] text-[#0A66C2] dark:text-blue-400 font-mono font-semibold">
                   {lessons.filter((l) => l.completed).length} / {lessons.length} Done
                 </span>
               </div>
@@ -218,15 +218,15 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
                     onClick={() => setActiveLessonIdx(idx)}
                     className={`w-full p-2.5 rounded-xl border text-left text-xs transition flex items-start justify-between gap-2 shadow-xs ${
                       activeLessonIdx === idx
-                        ? 'bg-[#E8F3FF] border-[#0A66C2] text-[#1D2226]'
-                        : 'bg-white border-[#D9D9D9] text-[#56687A] hover:border-[#0A66C2]/40'
+                        ? 'bg-[#E8F3FF] dark:bg-blue-950/40 border-[#0A66C2] dark:border-blue-500 text-[#1D2226] dark:text-slate-100'
+                        : 'bg-white dark:bg-slate-900 border-[#D9D9D9] dark:border-slate-800 text-[#56687A] dark:text-slate-300 hover:border-[#0A66C2]/40 dark:hover:border-blue-500/40'
                     }`}
                   >
                     <div className="space-y-0.5 min-w-0 flex-1">
-                      <p className="font-semibold text-[11px] leading-tight truncate text-[#1D2226]">
+                      <p className="font-semibold text-[11px] leading-tight truncate text-[#1D2226] dark:text-slate-100">
                         {idx + 1}. {lesson.title}
                       </p>
-                      <span className="text-[10px] text-[#788896] font-mono">{lesson.duration}</span>
+                      <span className="text-[10px] text-[#788896] dark:text-slate-400 font-mono">{lesson.duration}</span>
                     </div>
 
                     <div
@@ -234,13 +234,13 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
                         e.stopPropagation();
                         handleToggleLesson(lesson);
                       }}
-                      className="p-1 hover:bg-[#F3F6F8] rounded transition"
+                      className="p-1 hover:bg-[#F3F6F8] dark:hover:bg-slate-800 rounded transition"
                       title={lesson.completed ? 'Mark Incomplete' : 'Mark Complete'}
                     >
                       {lesson.completed ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                       ) : (
-                        <Circle className="w-4 h-4 text-[#D9D9D9] hover:text-[#0A66C2] flex-shrink-0" />
+                        <Circle className="w-4 h-4 text-[#D9D9D9] dark:text-slate-600 hover:text-[#0A66C2] dark:hover:text-blue-400 flex-shrink-0" />
                       )}
                     </div>
                   </button>
@@ -251,44 +251,44 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
             {/* Code Sandbox / Lesson View (7 Cols) */}
             <div className="md:col-span-7 space-y-2.5">
               {activeLesson ? (
-                <div className="p-3.5 rounded-xl bg-[#F3F6F8] border border-[#E8E8E8] space-y-2.5">
-                  <div className="flex items-center justify-between text-xs pb-2 border-b border-[#E8E8E8]">
-                    <span className="font-bold text-[#1D2226] flex items-center gap-1.5 truncate">
-                      <Code2 className="w-3.5 h-3.5 text-[#0A66C2] flex-shrink-0" />
+                <div className="p-3.5 rounded-xl bg-[#F3F6F8] dark:bg-slate-800/60 border border-[#E8E8E8] dark:border-slate-700/60 space-y-2.5">
+                  <div className="flex items-center justify-between text-xs pb-2 border-b border-[#E8E8E8] dark:border-slate-700/60">
+                    <span className="font-bold text-[#1D2226] dark:text-slate-100 flex items-center gap-1.5 truncate">
+                      <Code2 className="w-3.5 h-3.5 text-[#0A66C2] dark:text-blue-400 flex-shrink-0" />
                       {activeLesson.title}
                     </span>
-                    <span className="text-[10px] text-[#788896] font-mono flex-shrink-0">
+                    <span className="text-[10px] text-[#788896] dark:text-slate-400 font-mono flex-shrink-0">
                       {activeLesson.duration}
                     </span>
                   </div>
 
                   {activeLesson.description && (
-                    <p className="text-[11px] text-[#38434F] leading-relaxed">
+                    <p className="text-[11px] text-[#38434F] dark:text-slate-200 leading-relaxed">
                       {activeLesson.description}
                     </p>
                   )}
 
                   {activeLesson.snippet ? (
                     <div className="space-y-1">
-                      <span className="text-[10px] font-mono text-[#788896] font-semibold uppercase">
+                      <span className="text-[10px] font-mono text-[#788896] dark:text-slate-400 font-semibold uppercase">
                         Technical Architecture Blueprint:
                       </span>
-                      <div className="p-3 rounded-lg bg-white border border-[#D9D9D9] font-mono text-[11px] text-[#0A66C2] overflow-x-auto leading-relaxed shadow-xs max-h-[220px]">
+                      <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-700 font-mono text-[11px] text-[#0A66C2] dark:text-blue-400 overflow-x-auto leading-relaxed shadow-xs max-h-[220px]">
                         <pre>{activeLesson.snippet}</pre>
                       </div>
                     </div>
                   ) : (
-                    <div className="p-6 rounded-lg bg-white border border-[#D9D9D9] text-center space-y-2">
-                      <BookOpen className="w-6 h-6 text-[#0A66C2] mx-auto" />
-                      <p className="text-xs font-semibold text-[#1D2226]">Interactive Lesson Content</p>
-                      <p className="text-[11px] text-[#56687A] max-w-sm mx-auto">
+                    <div className="p-6 rounded-lg bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-700 text-center space-y-2">
+                      <BookOpen className="w-6 h-6 text-[#0A66C2] dark:text-blue-400 mx-auto" />
+                      <p className="text-xs font-semibold text-[#1D2226] dark:text-slate-100">Interactive Lesson Content</p>
+                      <p className="text-[11px] text-[#56687A] dark:text-slate-400 max-w-sm mx-auto">
                         Study the core principles above and mark this lesson complete to track your mastery.
                       </p>
                     </div>
                   )}
 
                   <div className="flex items-center justify-between pt-1">
-                    <span className="text-[10px] text-[#788896] font-mono">
+                    <span className="text-[10px] text-[#788896] dark:text-slate-400 font-mono">
                       Status: {activeLesson.completed ? '✓ Completed' : 'Pending'}
                     </span>
                     <Button
@@ -302,7 +302,7 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="p-12 text-center text-xs text-[#56687A]">
+                <div className="p-12 text-center text-xs text-[#56687A] dark:text-slate-400">
                   Select a lesson from the syllabus to view architecture blueprints and exercises.
                 </div>
               )}
@@ -311,14 +311,14 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-2 border-t border-[#E8E8E8]">
+        <div className="flex items-center justify-between pt-2 border-t border-[#E8E8E8] dark:border-slate-800">
           <Button size="sm" variant="ghost" onClick={onClose}>
             Close
           </Button>
           <Button
             size="sm"
             variant="secondary"
-            icon={<ExternalLink className="w-3.5 h-3.5 text-[#0A66C2]" />}
+            icon={<ExternalLink className="w-3.5 h-3.5 text-[#0A66C2] dark:text-blue-400" />}
             onClick={() => {
               onClose();
               navigate('/learning/code');
