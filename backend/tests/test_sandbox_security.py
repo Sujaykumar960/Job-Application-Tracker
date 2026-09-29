@@ -36,10 +36,12 @@ from app.middleware.rate_limiter import get_client_ip
 from app.routers.code_execution import (
     BLOCKED_CALLS,
     BLOCKED_MODULES,
+    _limit_child_resources as _api_limit_child_resources,
     _run_python_sandbox,
     _validate_python_security,
 )
 from app.schemas.question import TestCase
+from sandbox.server import _limit_child_resources as _svc_limit_child_resources
 from sandbox.server import execute_python_in_sandbox
 
 
@@ -1259,3 +1261,202 @@ class TestOutputNormalization:
     def test_list_output_with_extra_spaces(self):
         result = self._run("def solution(): return [1, 2, 3]", "", "[ 1 , 2 , 3 ]")
         assert result.passed is True
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# N.  SUBPROCESS RESOURCE CEILINGS FAIL CLOSED
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestResourceCeilingsFailClosed:
+    """The sandbox must never run a submission it was unable to bound.
+
+    Regression guard: wrapping the whole ceiling sequence in ``except: pass``
+    turns every rlimit rejection into an unbounded child, which can exhaust the
+    shared sandbox budget and deny service to every other user. Losing the
+    ceilings has to abort the exec instead.
+    """
+
+    # Both copies of the harness must agree, or the API and the sandbox
+    # microservice drift apart on a security-critical path.
+    LIMITERS = [_api_limit_child_resources, _svc_limit_child_resources]
+    LIMITER_IDS = ["api", "sandbox_service"]
+
+    HARD_LIMITS = ("RLIMIT_CPU", "RLIMIT_AS")
+    SOFT_LIMITS = ("RLIMIT_FSIZE", "RLIMIT_NPROC")
+
+    @pytest.fixture
+    def rlimit_probe(self):
+        """Record ceiling calls without ever applying one to the test runner.
+
+        ``setrlimit`` is one-way: a real call would permanently cap the pytest
+        process at the sandbox's 512MB/5s and OOM-kill every later test in the
+        session. Real enforcement is asserted out-of-process by
+        ``test_ceilings_actually_reach_the_child``.
+
+        Yields the ordered list of ``(limit_name, ceiling)`` pairs applied.
+        """
+        import os
+        import resource as resource_mod
+
+        applied: list = []
+
+        names = {
+            resource_mod.RLIMIT_CPU: "RLIMIT_CPU",
+            resource_mod.RLIMIT_AS: "RLIMIT_AS",
+            resource_mod.RLIMIT_FSIZE: "RLIMIT_FSIZE",
+            resource_mod.RLIMIT_NPROC: "RLIMIT_NPROC",
+        }
+
+        def make_recorder(refuse: tuple):
+            def recorder(limit, values):
+                applied.append((limit, values))
+                if limit in refuse:
+                    raise PermissionError(1, "operation not permitted")
+                return None
+            return recorder
+
+        return applied, make_recorder, os, resource_mod
+
+    @pytest.mark.parametrize("limiter", LIMITERS, ids=LIMITER_IDS)
+    def test_hard_ceilings_are_requested_at_the_documented_values(self, limiter, rlimit_probe):
+        """CPU and address space are capped at the values the harness declares."""
+        import os
+        import resource as resource_mod
+
+        applied, make_recorder, os_mod, resource_mod = rlimit_probe
+
+        with patch.object(os, "setsid", lambda: None):
+            with patch.object(resource_mod, "setrlimit", make_recorder(())):
+                limiter()
+
+        requested = {limit: values[0] for limit, values in applied}
+        assert requested[resource_mod.RLIMIT_CPU] == 5
+        assert requested[resource_mod.RLIMIT_AS] == 512 * 1024 * 1024
+
+    @pytest.mark.parametrize("limiter", LIMITERS, ids=LIMITER_IDS)
+    def test_setsid_runs_before_any_ceiling_that_can_raise(self, limiter, rlimit_probe):
+        """Process-group isolation must not sit behind a rlimit call.
+
+        Timeouts reap the whole tree via the group id. The hard ceilings abort
+        the exec when a host refuses them, so ``setsid`` has to run first or a
+        refused ceiling leaves the tree unkillable by group.
+        """
+        import os
+        import resource as resource_mod
+
+        applied, make_recorder, os_mod, resource_mod = rlimit_probe
+        order: list = []
+        refuse = (resource_mod.RLIMIT_CPU, resource_mod.RLIMIT_AS)
+
+        with patch.object(os, "setsid", lambda: order.append("setsid")):
+            with patch.object(resource_mod, "setrlimit", make_recorder(refuse)):
+                with pytest.raises(PermissionError):
+                    limiter()
+
+        assert order == ["setsid"]
+
+    @pytest.mark.parametrize("limiter", LIMITERS, ids=LIMITER_IDS)
+    def test_soft_ceiling_rejection_does_not_abort(self, limiter, rlimit_probe):
+        """A host that forbids FSIZE/NPROC still gets the hard CPU/AS caps."""
+        import os
+        import resource as resource_mod
+
+        applied, make_recorder, os_mod, resource_mod = rlimit_probe
+        refuse = (resource_mod.RLIMIT_FSIZE, resource_mod.RLIMIT_NPROC)
+
+        with patch.object(os, "setsid", lambda: None):
+            with patch.object(resource_mod, "setrlimit", make_recorder(refuse)):
+                limiter()  # must not raise
+
+        requested = {limit for limit, _ in applied}
+        assert resource_mod.RLIMIT_CPU in requested
+        assert resource_mod.RLIMIT_AS in requested
+
+    @pytest.mark.parametrize("limiter", LIMITERS, ids=LIMITER_IDS)
+    def test_hard_ceiling_rejection_aborts_exec(self, limiter, rlimit_probe):
+        """If the memory/CPU cap cannot be applied, the child must not run."""
+        import os
+        import resource as resource_mod
+
+        applied, make_recorder, os_mod, resource_mod = rlimit_probe
+        refuse = (resource_mod.RLIMIT_CPU, resource_mod.RLIMIT_AS)
+
+        with patch.object(os, "setsid", lambda: None):
+            with patch.object(resource_mod, "setrlimit", make_recorder(refuse)):
+                with pytest.raises(PermissionError):
+                    limiter()
+
+    def test_ceilings_actually_reach_the_child(self):
+        """End-to-end: a real child comes back with the ceilings applied."""
+        import resource as resource_mod
+        import subprocess
+        import sys
+        import tempfile
+
+        if sys.platform == "win32":
+            pytest.skip("preexec_fn and rlimits are POSIX-only")
+
+        probe = (
+            "import os, resource;"
+            "print(resource.getrlimit(resource.RLIMIT_CPU)[0],"
+            "resource.getrlimit(resource.RLIMIT_AS)[0],"
+            "os.getpgid(0) == os.getpid())"
+        )
+        proc = subprocess.run(
+            [sys.executable, "-c", probe],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=tempfile.gettempdir(),
+            preexec_fn=_api_limit_child_resources,
+        )
+        assert proc.returncode == 0, proc.stderr
+        cpu_soft, as_soft, is_group_leader = proc.stdout.split()
+        assert int(cpu_soft) == 5
+        assert int(as_soft) == 512 * 1024 * 1024
+        # setsid() ran: the child leads its own process group.
+        assert is_group_leader == "True"
+
+    def test_memory_ceiling_is_enforced_on_a_real_child(self):
+        """A submission that outgrows the cap is killed, not served."""
+        import subprocess
+        import sys
+        import tempfile
+
+        if sys.platform == "win32":
+            pytest.skip("preexec_fn and rlimits are POSIX-only")
+
+        proc = subprocess.run(
+            [sys.executable, "-c", "x = bytearray(700 * 1024 * 1024)"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            cwd=tempfile.gettempdir(),
+            preexec_fn=_api_limit_child_resources,
+        )
+        assert proc.returncode != 0, "700MB allocation succeeded despite a 512MB cap"
+
+    def test_execute_reports_a_clean_error_when_ceilings_cannot_be_applied(self):
+        """A refused ceiling surfaces as a result, not a 500."""
+        import subprocess
+
+        with patch.object(subprocess, "run", side_effect=subprocess.SubprocessError("cannot setrlimit")):
+            result = _run_python_sandbox("def solution(): return 1", [TestCase(id="1", input="", expectedOutput="1")])
+
+        assert result[0] == "Runtime Error"
+        assert "Sandbox refused to start" in result[2]
+        assert all(not tc.passed for tc in result[3])
+
+    def test_sandbox_service_reports_a_clean_error_when_ceilings_cannot_be_applied(self):
+        """Same contract on the microservice path."""
+        import subprocess
+
+        with patch.object(subprocess, "run", side_effect=subprocess.SubprocessError("cannot setrlimit")):
+            result = execute_python_in_sandbox(
+                "def solution(): return 1",
+                [{"id": "1", "input": "", "expectedOutput": "1"}],
+            )
+
+        assert result["status"] == "Runtime Error"
+        assert "Sandbox refused to start" in result["stderr"]
+        assert result["passedCount"] == 0

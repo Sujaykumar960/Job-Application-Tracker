@@ -35,18 +35,33 @@ def _limit_child_resources() -> None:
     """Apply resource ceilings in the forked child before exec.
 
     Runs via `preexec_fn` (post-fork / pre-exec). Must stay POSIX-only and
-    allocation-free: anything that raises here leaves the child unbounded.
-    """
-    try:
-        import resource
+    allocation-free.
 
-        resource.setrlimit(resource.RLIMIT_CPU, (SANDBOX_MAX_CPU_SECONDS, SANDBOX_MAX_CPU_SECONDS))
-        resource.setrlimit(resource.RLIMIT_AS, (SANDBOX_MAX_MEMORY_BYTES, SANDBOX_MAX_MEMORY_BYTES))
-        resource.setrlimit(resource.RLIMIT_FSIZE, (SANDBOX_MAX_FILE_SIZE_BYTES, SANDBOX_MAX_FILE_SIZE_BYTES))
-        resource.setrlimit(resource.RLIMIT_NPROC, (64, 64))
-        os.setsid()
-    except Exception:
-        pass
+    Fails closed. An unbounded child can exhaust the shared sandbox budget and
+    deny service to every other user, so a child that cannot be bounded is
+    never allowed to exec.
+    """
+    import resource
+
+    # Own process group first, and independently of the ceilings below: timeout
+    # reaping signals the whole tree via the group id, so this must still happen
+    # when a later ceiling is rejected.
+    os.setsid()
+
+    # Hard ceilings. A host that refuses these leaves the child unrunnable.
+    resource.setrlimit(resource.RLIMIT_CPU, (SANDBOX_MAX_CPU_SECONDS, SANDBOX_MAX_CPU_SECONDS))
+    resource.setrlimit(resource.RLIMIT_AS, (SANDBOX_MAX_MEMORY_BYTES, SANDBOX_MAX_MEMORY_BYTES))
+
+    # Best-effort ceilings. Some hosts forbid lowering these, and the hard
+    # limits above already bound the child, so degrade instead of aborting.
+    for limit, ceiling in (
+        (resource.RLIMIT_FSIZE, SANDBOX_MAX_FILE_SIZE_BYTES),
+        (resource.RLIMIT_NPROC, 64),
+    ):
+        try:
+            resource.setrlimit(limit, (ceiling, ceiling))
+        except (ValueError, OSError):
+            pass
 
 
 def _clean_json_str(val: str) -> str:
@@ -261,6 +276,29 @@ print(json.dumps({{"results": results}}))
                     "actualOutput": "Time Limit Exceeded",
                     "passed": False,
                     "executionTimeMs": 5000,
+                }
+                for tc in test_cases
+            ],
+            "passedCount": 0,
+            "totalCount": len(test_cases),
+        }
+
+    except subprocess.SubprocessError as exc:
+        # The child never reached exec: resource ceilings could not be applied.
+        # Refuse the submission rather than run it unbounded.
+        return {
+            "status": "Runtime Error",
+            "stdout": "",
+            "stderr": f"Sandbox refused to start: {type(exc).__name__}: {exc}",
+            "executionTimeMs": 0,
+            "testCaseResults": [
+                {
+                    "id": tc.get("id"),
+                    "input": tc.get("input"),
+                    "expectedOutput": tc.get("expectedOutput"),
+                    "actualOutput": "Runtime Error",
+                    "passed": False,
+                    "executionTimeMs": 0,
                 }
                 for tc in test_cases
             ],
