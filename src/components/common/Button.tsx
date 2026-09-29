@@ -30,13 +30,13 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variantStyles = {
     primary:
-      'bg-[#0A66C2] hover:bg-[#004182] active:bg-[#004182] text-white shadow-sm border border-transparent disabled:bg-[#D9E2EC] disabled:text-[#788896]',
+      'bg-[#0A66C2] hover:bg-[#004182] active:bg-[#004182] text-white shadow-sm border border-transparent disabled:bg-[#D9E2EC] dark:disabled:bg-slate-800 disabled:text-[#788896] dark:disabled:text-slate-500',
     secondary:
-      'bg-white hover:bg-[#F3F6F8] text-[#1D2226] border border-[#56687A]',
+      'bg-white dark:bg-slate-800 hover:bg-[#F3F6F8] dark:hover:bg-slate-700 text-[#1D2226] dark:text-slate-100 border border-[#56687A] dark:border-slate-600',
     outline:
-      'bg-white hover:bg-[#F3F6F8] text-[#1D2226] border border-[#D9D9D9] hover:text-[#0A66C2]',
+      'bg-white dark:bg-slate-800 hover:bg-[#F3F6F8] dark:hover:bg-slate-700 text-[#1D2226] dark:text-slate-100 border border-[#D9D9D9] dark:border-slate-700 hover:text-[#0A66C2] dark:hover:text-blue-400',
     ghost:
-      'bg-transparent hover:bg-[#F3F6F8] text-[#56687A] hover:text-[#1D2226]',
+      'bg-transparent hover:bg-[#F3F6F8] dark:hover:bg-slate-800 text-[#56687A] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-100',
     danger:
       'bg-[#E6395A] hover:bg-[#B3261E] text-white shadow-sm border border-transparent',
   };

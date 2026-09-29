@@ -199,13 +199,13 @@ export const LearningHubPage: React.FC = () => {
       {/* ========================================================================= */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-[#1D2226] uppercase font-mono tracking-wider">
+          <span className="text-xs font-bold text-[#1D2226] dark:text-slate-100 uppercase font-mono tracking-wider">
             Explore Learning Tracks
           </span>
           {selectedCategory !== 'All' && (
             <button
               onClick={() => setSelectedCategory('All')}
-              className="text-[11px] text-[#0A66C2] hover:text-[#004182] font-semibold"
+              className="text-[11px] text-[#0A66C2] dark:text-blue-400 hover:text-[#004182] dark:hover:text-blue-300 font-semibold"
             >
               View All Tracks
             </button>
@@ -229,23 +229,23 @@ export const LearningHubPage: React.FC = () => {
       {/* 2. PERSONALIZED SECTION: RECOMMENDED FOR YOU                              */}
       {/* ========================================================================= */}
       {recommendedModules.length > 0 && (
-        <Card className="p-4 bg-[#E8F3FF] border border-[#d0e6fc] space-y-4 shadow-sm">
+        <Card className="p-4 bg-[#E8F3FF] dark:bg-slate-900/60 border border-[#d0e6fc] dark:border-slate-800 space-y-4 shadow-sm">
           {/* Recommendation Context Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#d0e6fc]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#d0e6fc] dark:border-slate-800">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-500" />
-                <h3 className="text-sm font-bold text-[#1D2226] tracking-tight">Recommended For You</h3>
+                <h3 className="text-sm font-bold text-[#1D2226] dark:text-slate-100 tracking-tight">Recommended For You</h3>
                 <Badge variant="brand" size="sm">
                   AI Customized
                 </Badge>
               </div>
-              <p className="text-xs text-[#38434F]">
+              <p className="text-xs text-[#38434F] dark:text-slate-300">
                 Personalized based on your active resume competencies, target market expectations, and identified skill gaps.
               </p>
             </div>
 
-            <Link to="/skills" className="text-xs text-[#0A66C2] hover:text-[#004182] font-semibold whitespace-nowrap flex items-center gap-1">
+            <Link to="/skills" className="text-xs text-[#0A66C2] dark:text-blue-400 hover:text-[#004182] dark:hover:text-blue-300 font-semibold whitespace-nowrap flex items-center gap-1">
               View Skill Gap Matrix →
             </Link>
           </div>
@@ -266,21 +266,21 @@ export const LearningHubPage: React.FC = () => {
       {/* ========================================================================= */}
       {/* 3. TOOLBAR: SEARCH, CATEGORY, DIFFICULTY, PROGRESS FILTERS                */}
       {/* ========================================================================= */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 rounded-2xl bg-white border border-[#D9D9D9] shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-[#D9D9D9] dark:border-slate-800 shadow-sm">
         {/* Search */}
         <div className="relative flex-1 max-w-sm">
-          <Search className="w-3.5 h-3.5 text-[#788896] absolute left-3 top-3 pointer-events-none" />
+          <Search className="w-3.5 h-3.5 text-[#788896] dark:text-slate-400 absolute left-3 top-3 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search courses, skills, system design blueprints..."
-            className="w-full bg-white text-[#1D2226] placeholder-[#788896] text-xs rounded-lg border border-[#D9D9D9] pl-9 pr-8 py-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
+            className="w-full bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 placeholder-[#788896] dark:placeholder-slate-400 text-xs rounded-lg border border-[#D9D9D9] dark:border-slate-700 pl-9 pr-8 py-2 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-2.5 top-2.5 text-[#788896] hover:text-[#1D2226]"
+              className="absolute right-2.5 top-2.5 text-[#788896] dark:text-slate-400 hover:text-[#1D2226] dark:hover:text-slate-100"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -293,7 +293,7 @@ export const LearningHubPage: React.FC = () => {
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="bg-white text-[#1D2226] text-xs rounded-lg border border-[#D9D9D9] px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
+            className="bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 text-xs rounded-lg border border-[#D9D9D9] dark:border-slate-700 px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
           >
             <option value="All">All Categories</option>
             {LEARNING_CATEGORIES.map((c) => (
@@ -307,7 +307,7 @@ export const LearningHubPage: React.FC = () => {
           <select
             value={selectedDifficulty}
             onChange={(e) => setSelectedDifficulty(e.target.value)}
-            className="bg-white text-[#1D2226] text-xs rounded-lg border border-[#D9D9D9] px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
+            className="bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 text-xs rounded-lg border border-[#D9D9D9] dark:border-slate-700 px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
           >
             <option value="All">All Difficulties</option>
             <option value="Beginner">Beginner</option>
@@ -319,7 +319,7 @@ export const LearningHubPage: React.FC = () => {
           <select
             value={selectedProgress}
             onChange={(e) => setSelectedProgress(e.target.value)}
-            className="bg-white text-[#1D2226] text-xs rounded-lg border border-[#D9D9D9] px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
+            className="bg-white dark:bg-slate-800 text-[#1D2226] dark:text-slate-100 text-xs rounded-lg border border-[#D9D9D9] dark:border-slate-700 px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#0A66C2]"
           >
             <option value="All">All Progress</option>
             <option value="In Progress">In Progress</option>
@@ -334,7 +334,7 @@ export const LearningHubPage: React.FC = () => {
             selectedProgress !== 'All') && (
             <button
               onClick={resetFilters}
-              className="text-xs text-[#0A66C2] hover:text-[#004182] font-semibold px-2 py-1"
+              className="text-xs text-[#0A66C2] dark:text-blue-400 hover:text-[#004182] dark:hover:text-blue-300 font-semibold px-2 py-1"
             >
               Reset
             </button>
@@ -346,14 +346,14 @@ export const LearningHubPage: React.FC = () => {
       {/* 4. MAIN MODULES GRID (Responsive 3-Column on Laptop 1366px+)               */}
       {/* ========================================================================= */}
       {isLoading ? (
-        <div className="p-16 flex items-center justify-center text-xs text-[#56687A] gap-2">
-          <Loader2 className="w-6 h-6 animate-spin text-[#0A66C2]" />
+        <div className="p-16 flex items-center justify-center text-xs text-[#56687A] dark:text-slate-400 gap-2">
+          <Loader2 className="w-6 h-6 animate-spin text-[#0A66C2] dark:text-blue-400" />
           Loading technical courses and progress...
         </div>
       ) : filteredModules.length === 0 ? (
-        <div className="p-12 text-center border border-dashed border-[#D9D9D9] rounded-2xl bg-[#F3F6F8] space-y-2">
-          <p className="text-sm font-semibold text-[#1D2226]">No modules match your current filter</p>
-          <p className="text-xs text-[#56687A]">Try broadening your category, difficulty, or search terms.</p>
+        <div className="p-12 text-center border border-dashed border-[#D9D9D9] dark:border-slate-800 rounded-2xl bg-[#F3F6F8] dark:bg-slate-900/60 space-y-2">
+          <p className="text-sm font-semibold text-[#1D2226] dark:text-slate-100">No modules match your current filter</p>
+          <p className="text-xs text-[#56687A] dark:text-slate-400">Try broadening your category, difficulty, or search terms.</p>
           <Button size="xs" variant="outline" onClick={resetFilters}>
             Clear Filters
           </Button>

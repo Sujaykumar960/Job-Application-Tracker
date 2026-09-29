@@ -39,6 +39,7 @@ export interface CompanyProfile {
   techStack: string[];
   benefits: string[];
   openJobsCount: number;
+  matchScore?: number;
   jobs: JobItem[];
   posts: CompanyPost[];
   employees: CompanyEmployee[];

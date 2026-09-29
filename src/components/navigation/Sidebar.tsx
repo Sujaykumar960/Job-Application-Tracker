@@ -31,6 +31,8 @@ export interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   badgeCount?: number;
   badgeVariant?: 'danger' | 'brand' | 'warning' | 'emerald';
+  /** If set, only users with these roles will see this item */
+  roles?: string[];
 }
 
 export interface SidebarProps {
@@ -55,7 +57,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const location = useLocation();
   const { role } = useAuth();
 
-  const navItems: NavItem[] = [
+  const allNavItems: NavItem[] = [
     { label: 'Dashboard', path: '/', icon: LayoutDashboard },
     {
       label: 'Applications',
@@ -87,9 +89,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badgeVariant: 'danger',
     },
     { label: 'Profile', path: '/profile', icon: User },
-    { label: 'Recruiter Portal', path: '/recruiter', icon: UserCheck },
+    // Recruiter Portal: only visible to recruiters and admins
+    { label: 'Recruiter Portal', path: '/recruiter', icon: UserCheck, roles: ['recruiter', 'admin'] },
     { label: 'Settings', path: '/settings', icon: Settings },
   ];
+
+  // Filter nav items by current user role
+  const navItems = allNavItems.filter(
+    (item) => !item.roles || item.roles.includes(role)
+  );
 
   return (
     <>

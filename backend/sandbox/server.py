@@ -37,13 +37,16 @@ def _limit_child_resources() -> None:
     Runs via `preexec_fn` (post-fork / pre-exec). Must stay POSIX-only and
     allocation-free: anything that raises here leaves the child unbounded.
     """
-    import resource
+    try:
+        import resource
 
-    resource.setrlimit(resource.RLIMIT_CPU, (SANDBOX_MAX_CPU_SECONDS, SANDBOX_MAX_CPU_SECONDS))
-    resource.setrlimit(resource.RLIMIT_AS, (SANDBOX_MAX_MEMORY_BYTES, SANDBOX_MAX_MEMORY_BYTES))
-    resource.setrlimit(resource.RLIMIT_FSIZE, (SANDBOX_MAX_FILE_SIZE_BYTES, SANDBOX_MAX_FILE_SIZE_BYTES))
-    resource.setrlimit(resource.RLIMIT_NPROC, (64, 64))
-    os.setsid()
+        resource.setrlimit(resource.RLIMIT_CPU, (SANDBOX_MAX_CPU_SECONDS, SANDBOX_MAX_CPU_SECONDS))
+        resource.setrlimit(resource.RLIMIT_AS, (SANDBOX_MAX_MEMORY_BYTES, SANDBOX_MAX_MEMORY_BYTES))
+        resource.setrlimit(resource.RLIMIT_FSIZE, (SANDBOX_MAX_FILE_SIZE_BYTES, SANDBOX_MAX_FILE_SIZE_BYTES))
+        resource.setrlimit(resource.RLIMIT_NPROC, (64, 64))
+        os.setsid()
+    except Exception:
+        pass
 
 
 def _clean_json_str(val: str) -> str:
@@ -229,6 +232,10 @@ print(json.dumps({{"results": results}}))
     if "SYSTEMROOT" in os.environ:
         clean_env["SYSTEMROOT"] = os.environ["SYSTEMROOT"]
 
+    extra_kwargs = {}
+    if sys.platform != "win32":
+        extra_kwargs["preexec_fn"] = _limit_child_resources
+
     try:
         proc = subprocess.run(
             [sys.executable, "-c", harness_script],
@@ -237,8 +244,8 @@ print(json.dumps({{"results": results}}))
             capture_output=True,
             timeout=5.0,
             env=clean_env,
-            preexec_fn=_limit_child_resources,
             cwd=tempfile.gettempdir(),
+            **extra_kwargs,
         )
     except subprocess.TimeoutExpired:
         return {

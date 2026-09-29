@@ -44,6 +44,7 @@ class CompanyProfile(BaseModel):
     openJobsCount: int = 0
     followersCount: int = 0
     isFollowing: Optional[bool] = False
+    matchScore: Optional[int] = None
     ownerId: Optional[str] = None
     recruiterIds: List[str] = Field(default_factory=list)
     employees: List[CompanyEmployeeSummary] = Field(default_factory=list)

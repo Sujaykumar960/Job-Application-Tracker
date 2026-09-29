@@ -70,6 +70,8 @@ class Settings(BaseSettings):
         ENVIRONMENT="development" does NOT satisfy this, so a forgotten
         environment fails closed towards secure behavior.
         """
+        if self.ENVIRONMENT.lower().strip() == "production":
+            return False
         if self.ENABLE_DEV_TOOLS:
             return True
         return self.ENVIRONMENT.lower().strip() in ("test", "testing")
