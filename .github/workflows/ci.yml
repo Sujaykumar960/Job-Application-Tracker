@@ -114,7 +114,7 @@ jobs:
       - name: Generate E2E Env Files
         run: |
           cat > backend/.env.e2e <<'EOF'
-          ENVIRONMENT=test
+          ENVIRONMENT=testing
           MONGODB_URI=mongodb://localhost:27017
           MONGODB_DB_NAME=careerx_e2e_db
           JWT_SECRET_KEY=careerx_ci_e2e_runtime_secret_0123456789abcdef
