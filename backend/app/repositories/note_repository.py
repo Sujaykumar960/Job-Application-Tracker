@@ -45,8 +45,29 @@ class NoteRepository(BaseRepository):
         docs = await self.collection.find(query).sort("createdAt", -1).to_list(length=200)
         return serialize_mongo_docs(docs)
 
-    async def delete_note(self, note_id: str, user_id: str) -> bool:
-        """Delete a note ensuring user ownership."""
+    async def delete_note(
+        self,
+        note_id: str,
+        user_id: str,
+        application_id: Optional[str] = None,
+    ) -> bool:
+        """Delete a note, enforcing both ownership and parent-application scope.
+
+        ``application_id`` is what makes ``DELETE
+        /applications/{app_id}/notes/{note_id}`` mean what its path claims. A
+        note id is unguessable but a user holds many of their own, so without
+        the parent scope a caller could route a delete through any application
+        they own and take out notes attached to a different one.
+
+        Both ``applicationId`` and the legacy ``application_id`` spelling are
+        matched, mirroring :meth:`get_notes_for_application` so a note stays
+        deletable through the same path that can read it.
+        """
         id_q = self._build_id_query(note_id)
-        res = await self.collection.delete_one({"$and": [id_q, {"userId": user_id}]})
+        query: Dict[str, Any] = {"$and": [id_q, {"userId": user_id}]}
+        if application_id is not None:
+            query["$and"].append(
+                {"$or": [{"applicationId": application_id}, {"application_id": application_id}]}
+            )
+        res = await self.collection.delete_one(query)
         return res.deleted_count > 0

@@ -6,6 +6,7 @@ from app.dependencies import get_current_active_user, get_db
 from app.repositories.application_repository import ApplicationRepository
 from app.repositories.job_repository import JobRepository
 from app.repositories.note_repository import NoteRepository
+from app.repositories.user_repository import UserRepository
 from app.schemas.application import (
     ApplicationCreate,
     ApplicationFilterQuery,
@@ -24,28 +25,38 @@ router = APIRouter(prefix="/applications", tags=["Applications"])
 
 
 async def _ensure_user_has_50_applications(db: AsyncIOMotorDatabase, user: Any, force: bool = False) -> None:
-    """Ensure that the authenticated seeker has 50 resume-calibrated applications if a resume exists."""
+    """Populate a demo account with 50 resume-calibrated applications.
+
+    Gated on an explicit ``isDemoAccount`` flag in the users collection. This
+    data is synthetic, and JA-08's funnel, metric cards and conversion rates are
+    aggregated straight off this collection, so a real seeker who uploaded a
+    resume would otherwise see analytics describing 50 applications they never
+    made. Real accounts start at zero and stay honest.
+
+    The flag is read from the database rather than the caller's auth payload so
+    the gate cannot be widened by anything a client controls.
+    """
     if isinstance(user, dict):
         user_id = str(user.get("id"))
-        user_name = user.get("name") or "Alex Rivera"
-        user_email = user.get("email") or "alex.rivera@devmail.io"
     else:
         user_id = str(user)
-        u_doc = await db.users.find_one({"$or": [{"id": user_id}, {"_id": user_id}]})
-        user_name = (u_doc and u_doc.get("name")) or "Alex Rivera"
-        user_email = (u_doc and u_doc.get("email")) or ""
-    if user_email and user_email.endswith("@r2test.io"):
+
+    # Resolve through UserRepository: user documents are keyed by ObjectId `_id`
+    # for accounts created via registration but by a custom `id` for seeded
+    # demo data, so a bare `{"id": ...}`/`{"_id": ...}` lookup silently misses
+    # one of the two shapes.
+    u_doc = await UserRepository(db).get_by_id(user_id)
+    if not u_doc:
+        return
+    if u_doc.get("isDemoAccount") is not True:
         return
 
-    # ONLY populate if user has an uploaded/analyzed resume OR is demo user usr-1!
-    resume_doc = None
-    analysis_doc = None
-    if user_id != "usr-1":
-        analysis_doc = await db.resume_analyses.find_one({"userId": user_id}, sort=[("createdAt", -1)])
-        resume_doc = await db.resumes.find_one({"userId": user_id}, sort=[("updatedAt", -1)])
-        if not analysis_doc and not resume_doc:
-            # Without a resume, the user starts with 0 applications and 0 predictions!
-            return
+    user_name = u_doc.get("name") or "Alex Rivera"
+    user_email = u_doc.get("email") or "alex.rivera@devmail.io"
+
+    # Calibration reads the demo account's own resume when it has one.
+    analysis_doc = await db.resume_analyses.find_one({"userId": user_id}, sort=[("createdAt", -1)])
+    resume_doc = await db.resumes.find_one({"userId": user_id}, sort=[("updatedAt", -1)])
 
     if force:
         await db.applications.delete_many({"userId": user_id})
@@ -341,10 +352,13 @@ async def add_note_to_application(
 
     repo = ApplicationRepository(db)
     app_doc = await repo.get_by_id(app_id)
+    # 404, not 400: every other application endpoint uses 404 for a missing
+    # application, and a third status code for the same condition only makes
+    # the surface harder to reason about.
     if not app_doc:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot add a note to a non-existent application with ID '{app_id}'.",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Application with ID '{app_id}' not found.",
         )
 
     if app_doc.get("userId") != user_id:
@@ -419,7 +433,11 @@ async def delete_application_note(
         )
 
     notes_repo = NoteRepository(db)
-    success = await notes_repo.delete_note(note_id, user_id)
+    # app_id is part of the delete's authorization scope, not just a lookup key:
+    # a note id is unguessable, but a user holds many of their own, so scoping
+    # only on userId would let a delete routed through application A remove a
+    # note attached to application B.
+    success = await notes_repo.delete_note(note_id, user_id, application_id=app_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
