@@ -259,21 +259,23 @@ class TestDomainE_LearningAndCodeExecution:
             assert comp_res.json()["progressPercent"] > 0
 
     def test_18_code_execution_accepted(self, client):
+        _, _, headers = reg_user(client, "code_exec_ok@p10integ.io", "Code Exec Seeker")
         res = client.post("/api/code/execute", json={
             "language": "python",
             "code": "def two_sum(nums, target): return [0, 1]",
             "testCases": [{"id": "tc-1", "input": "[2,7,11,15], 9", "expectedOutput": "[0, 1]"}],
-        })
+        }, headers=headers)
         assert res.status_code == 200
         data = res.json()
         assert data["status"] == "Accepted"
         assert data["passedCount"] >= 1
 
     def test_19_code_execution_compilation_error(self, client):
+        _, _, headers = reg_user(client, "code_exec_err@p10integ.io", "Code Exec Seeker")
         res = client.post("/api/code/execute", json={
             "language": "python",
             "code": "   ",
-        })
+        }, headers=headers)
         assert res.status_code == 200
         assert res.json()["status"] == "Compilation Error"
 
@@ -704,7 +706,7 @@ class TestDomainR_E2EJourneys:
         exec_res = client.post("/api/code/execute", json={
             "language": "python",
             "code": "def solve(): return True",
-        })
+        }, headers=headers)
         assert exec_res.status_code == 200
         assert exec_res.json()["status"] == "Accepted"
 

@@ -31,6 +31,7 @@ from starlette.requests import Request
 from starlette.testclient import TestClient
 
 from app.main import app, lifespan
+from app.dependencies import get_current_active_user
 from app.middleware.rate_limiter import get_client_ip
 from app.routers.code_execution import (
     BLOCKED_CALLS,
@@ -40,6 +41,82 @@ from app.routers.code_execution import (
 )
 from app.schemas.question import TestCase
 from sandbox.server import execute_python_in_sandbox
+
+
+@pytest.fixture(autouse=True)
+def _override_code_execute_auth():
+    """/api/code/execute now requires an authenticated active user.
+
+    The sandbox suite only exercises execution semantics, so a fake resolved
+    user keeps these tests focused while the dedicated
+    ``TestCodeExecuteAuthZ`` class verifies real enforcement.
+    """
+    async def _fake_active_user():
+        return {"id": "sandbox-authz-user", "email": "sandbox@test.dev", "role": "seeker"}
+
+    app.dependency_overrides[get_current_active_user] = _fake_active_user
+    yield
+    app.dependency_overrides.pop(get_current_active_user, None)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AUTHZ.  CODE EXECUTION REQUIRES AN AUTHENTICATED ACTIVE USER
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestCodeExecuteAuthZ:
+    """Execution is CPU/spawn-bound, so it must never be reachable anonymously."""
+
+    def test_anonymous_code_execute_rejected_401(self):
+        with TestClient(app) as client:
+            app.dependency_overrides.pop(get_current_active_user, None)
+            try:
+                res = client.post(
+                    "/api/code/execute",
+                    json={
+                        "language": "python",
+                        "code": "def solve(): return 42",
+                        "testCases": [{"id": "tc1", "input": "", "expectedOutput": "42"}],
+                    },
+                )
+                assert res.status_code == 401
+            finally:
+                async def _fake_active_user():
+                    return {"id": "sandbox-authz-user", "email": "sandbox@test.dev", "role": "seeker"}
+                app.dependency_overrides[get_current_active_user] = _fake_active_user
+
+    def test_authenticated_code_execute_accepted(self):
+        with TestClient(app) as client:
+            res = client.post(
+                "/api/code/execute",
+                json={
+                    "language": "python",
+                    "code": "def solve(): return 42",
+                    "testCases": [{"id": "tc1", "input": "", "expectedOutput": "42"}],
+                },
+            )
+            assert res.status_code == 200
+            assert res.json()["status"] == "Accepted"
+
+    def test_code_execute_rate_limited_in_production(self):
+        """Production sliding-window limiter (20/min/IP) must return 429 on overflow."""
+        from unittest.mock import patch
+
+        with patch("app.config.settings.ENVIRONMENT", "production"):
+            with patch("app.config.settings.CODE_SANDBOX_URL", ""):
+                with TestClient(app) as client:
+                    res = None
+                    for _ in range(21):
+                        res = client.post(
+                            "/api/code/execute",
+                            json={
+                                "language": "python",
+                                "code": "def solve(): return 42",
+                                "testCases": [{"id": "tc1", "input": "", "expectedOutput": "42"}],
+                            },
+                        )
+                    assert res is not None
+                    assert res.status_code == 429
+                    assert "Too many requests" in res.json()["detail"]
 
 
 # ─────────────────────────────────────────────────────────────────────────────

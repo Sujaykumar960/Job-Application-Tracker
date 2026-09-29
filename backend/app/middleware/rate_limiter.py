@@ -143,3 +143,9 @@ class SlidingWindowRateLimiter:
 
 # Standard auth endpoint rate limiter: 30 requests per minute
 auth_rate_limiter = SlidingWindowRateLimiter(requests_limit=30, window_seconds=60, name="auth")
+
+# Code execution is CPU-bound and spawns subprocesses: bound submissions per IP
+# to avoid unbounded sandbox spend from a single client.
+code_execution_rate_limiter = SlidingWindowRateLimiter(
+    requests_limit=20, window_seconds=60, name="code_execution"
+)

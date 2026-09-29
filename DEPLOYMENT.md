@@ -214,6 +214,13 @@ curl -i -X POST http://localhost/api/code/execute \
 3. Configure Environment Variables in Vercel:
    - `VITE_API_BASE_URL`: `https://api.yourdomain.com/api`
    - *(Optional WebSocket override)* `VITE_WS_BASE_URL`: `wss://api.yourdomain.com/api/ws/chat`
+
+> **Required:** `VITE_API_BASE_URL` is enforced at build time. A production
+> `npm run build` aborts with a clear error if it is unset or does not end in
+> `/api`, so a misconfigured deploy cannot silently ship pointing at
+> `localhost`. For `Dockerfile`-based builds, pass it as a build arg:
+> `docker build --build-arg VITE_API_BASE_URL=https://api.yourdomain.com/api .`
+
 4. Click **Deploy**.
 
 ---

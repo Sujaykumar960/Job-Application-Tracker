@@ -7,6 +7,37 @@
 
 ---
 
+## 0a. Hardening Re-Certification (Phases 0–3, 2026-09-29)
+
+Re-run of **Gate 1** against the post-hardening baseline. All security-hardening
+work merged onto `hardening/phase0-ci-stability`; no gate regressions.
+
+| Sub-Gate | Acceptance Standard | Result |
+| :--- | :--- | :--- |
+| **Full Backend Suite** | 0 failures on `MONGODB_DB_NAME=careerx_test_ci` | **PASS (497 passed, 1 skipped)** |
+| **Sandbox Security Suite** | 0 failures on `tests/test_sandbox_security.py` | **PASS (111/111)** |
+| **Frontend Production Build** | `npm run build` with `VITE_API_BASE_URL` set | **PASS (0 TS errors)** |
+| **Frontend Build Guard** | `vite build` fails when `VITE_API_BASE_URL` unset | **PASS (blocked, as intended)** |
+| **Git Working Tree** | `git diff --check` clean | **PASS** |
+
+### Newly enforced release gates (added in hardening)
+1. **`/api/code/execute` requires an authenticated active user** — anonymous
+   execution returns `401` (regression-tested). The Gate 3 curl drills below
+   therefore must include `-H "Authorization: Bearer <token>"`.
+2. **Code execution is rate-limited** to **20 submissions/min/IP** (sliding
+   window; Redis in prod, in-memory fallback). Overflow returns `429`.
+3. **Production builds require `VITE_API_BASE_URL`** — `vite build` aborts the
+   build with an actionable message when the API root is missing; CI passes a
+   placeholder, Vercel/Docker must supply the real value.
+4. **No fabricated UI fallback data** — dashboard stat cards and the
+   applications pipeline now render real (zero-based) values; a render crash is
+   caught by a global `ErrorBoundary` instead of a blank page.
+5. **Tenancy / session hardening re-verified** — recruiter tenant isolation,
+   refresh-token revocation with TTL index, and dev-tools fail-closed gating
+   remain green across the full suite.
+
+---
+
 ## 1. Executive Release Gate Status
 
 | Gate | Description | Status | Evidence / Verification |
@@ -112,9 +143,11 @@ srw-rw---- 1 careerx careerx 0 Sep 26 18:10 /sandbox_ipc/sandbox.sock
 ```bash
 curl -i -X POST http://localhost/api/code/execute \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
   -d '{"language":"python","code":"def solve(x): return x * 2","testCases":[{"id":"tc1","input":"21","expectedOutput":"42"}]}'
 ```
-**Expected:** HTTP `200 OK`, JSON body contains `"status": "Accepted"`, `"passedCount": 1`.
+**Expected:** HTTP `200 OK`, JSON body contains `"status": "Accepted"`, `"passedCount": 1`.  
+**Note:** `/api/code/execute` requires an active session since hardening — obtain a token via `/api/auth/login`.
 
 ```text
 Result:      [X] PASS    [ ] FAIL
@@ -154,6 +187,7 @@ Simulate complete sandbox failure by stopping the container:
 docker compose stop code-sandbox
 curl -i -X POST http://localhost/api/code/execute \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
   -d '{"language":"python","code":"def solution(): return 42"}'
 ```
 **Expected:** HTTP `503 Service Unavailable` with message `"Secure code sandbox service is unreachable"`.  
@@ -186,6 +220,7 @@ Restart the sandbox container and re-verify execution recovery:
 docker compose start code-sandbox
 curl -i -X POST http://localhost/api/code/execute \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
   -d '{"language":"python","code":"def solve(): return 42"}'
 ```
 **Expected:** HTTP `200 OK`, JSON body returns `"status": "Accepted"`.
@@ -230,6 +265,7 @@ Submit code attempting internal network discovery from inside user code:
 ```bash
 curl -i -X POST http://localhost/api/code/execute \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
   -d '{"language":"python","code":"def solution():\n  import urllib.request\n  return urllib.request.urlopen(\"http://mongodb:27017\", timeout=1).read().decode()"}'
 ```
 **Expected:** Test case fails (`passed: false`). Output contains `"Network socket creation is disabled"` or network unreachability error. No packets reach MongoDB.

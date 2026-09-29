@@ -10,10 +10,12 @@ import tempfile
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 import httpx
 
 from app.config import settings
+from app.dependencies import get_current_active_user
+from app.middleware.rate_limiter import code_execution_rate_limiter
 from app.schemas.question import ExecuteCodePayload, ExecutionResult, TestCase
 
 logger = logging.getLogger("careerx.code_execution")
@@ -548,7 +550,11 @@ def _build_execution_result_from_data(data: Dict[str, Any], test_cases: List[Tes
 
 
 @router.post("/execute", response_model=ExecutionResult)
-async def execute_code(payload: ExecuteCodePayload):
+async def execute_code(
+    payload: ExecuteCodePayload,
+    _user: Dict[str, Any] = Depends(get_current_active_user),
+    _rate_limited: None = Depends(code_execution_rate_limiter),
+):
     """Execute submitted code in an isolated execution sandbox against real test cases."""
     if not payload.code.strip():
         return ExecutionResult(

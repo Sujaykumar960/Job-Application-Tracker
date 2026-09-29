@@ -13,7 +13,9 @@ RUN npm ci
 
 # Copy source code and build production distribution
 COPY . .
+ARG VITE_API_BASE_URL
 ENV NODE_ENV=production
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 RUN npm run build
 
 # Stage 2: Serve static bundle via Alpine Nginx
