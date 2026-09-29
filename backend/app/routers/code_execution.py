@@ -149,14 +149,9 @@ socket.getaddrinfo = _blocked_net
 # ------------------------------------------------------
 
 # --- Security Hardening: Block filesystem + dynamic import escape hatches ---
-# NOTE: a runtime `builtins.__import__` guard was trialled here and reverted.
-# Neutralising the import builtin also blocks the harness's own lazy imports
-# and the user code that the environment-isolation tests rely on to *prove*
-# secrets are unreachable, so it fails 14 tests instead of 3. The AST gate
-# above remains the enforcement point; `open`/`eval`/`exec`/`compile` are
-# additionally constrained by RLIMIT_AS, RLIMIT_CPU and RLIMIT_NPROC in
-# `_limit_child_resources`. Revisit once those tests are updated to assert
-# on the new message.
+# Imports themselves stay permitted (env-isolation tests read the sanitized
+# environment via `os.environ`), but dangerous builtins and module attributes
+# are neutered after the user code is defined and before it is invoked.
 import builtins
 
 # ------------------------------------------------------
@@ -166,7 +161,54 @@ import builtins
 # --- User Code End ---
 
 # Guards go up after the user code is defined but before anything invokes it.
-# _real_exec was captured before patching, so parse_input_str keeps working.
+# `input` is blocked so sandboxed code cannot stall waiting for stdin.
+_real_import = builtins.__import__
+_real_exec = builtins.exec
+
+
+def _raise_restricted(operation):
+    raise PermissionError(
+        "SecurityError: '" + operation + "' is a restricted operation in the execution environment."
+    )
+
+
+# (module, attribute) pairs that may be imported but whose dangerous
+# attributes are replaced with raising stubs. Importing the module stays
+# allowed so env-isolation checks can still read the sanitized environment.
+_DANGEROUS_ATTRS = (
+    ("os", "system"), ("os", "popen"), ("os", "spawnl"), ("os", "spawnle"),
+    ("os", "spawnlp"), ("os", "spawnlpe"), ("os", "spawnv"), ("os", "spawnve"),
+    ("os", "spawnvp"), ("os", "spawnvpe"), ("os", "posix_spawn"),
+    ("os", "execv"), ("os", "execve"), ("os", "execl"), ("os", "execle"),
+    ("os", "execlp"), ("os", "execlpe"), ("os", "execvp"), ("os", "execvpe"),
+    ("os", "fork"), ("os", "forkpty"), ("os", "open"), ("os", "remove"),
+    ("os", "unlink"), ("os", "rename"), ("os", "renames"), ("os", "rmdir"),
+    ("os", "removedirs"), ("os", "chmod"), ("os", "chown"), ("os", "chroot"),
+    ("os", "link"), ("os", "symlink"), ("os", "mknod"), ("os", "mkfifo"),
+    ("os", "mkdir"), ("os", "makedirs"), ("os", "kill"), ("os", "killpg"),
+    ("subprocess", "Popen"), ("subprocess", "run"), ("subprocess", "call"),
+    ("subprocess", "check_output"), ("subprocess", "check_call"),
+    ("subprocess", "getoutput"), ("subprocess", "getstatusoutput"),
+)
+
+
+def _guarded_import(name, globals=None, locals=None, fromlist=(), level=0):
+    module = _real_import(name, globals, locals, fromlist, level)
+    for mod, attr in _DANGEROUS_ATTRS:
+        if mod == name and hasattr(module, attr):
+            try:
+                setattr(module, attr, lambda *args, _a_=attr, **kwargs: _raise_restricted(_a_))
+            except Exception:
+                pass
+    return module
+
+
+builtins.__import__ = _guarded_import
+builtins.exec = lambda *_a, **_k: _raise_restricted("exec")
+builtins.eval = lambda *_a, **_k: _raise_restricted("eval")
+builtins.compile = lambda *_a, **_k: _raise_restricted("compile")
+builtins.open = lambda *_a, **_k: _raise_restricted("open")
+builtins.input = lambda *_a, **_k: _raise_restricted("input")
 
 def _coerce_scalar(tok):
     # Parse a single whitespace/newline-separated token into a Python value.
@@ -206,7 +248,7 @@ def parse_input_str(raw_input):
             m = _re.match(r'([a-zA-Z_]\w*)\s*=', p_strip)
             if m:
                 order.append(m.group(1))
-            exec(p_strip, scope)
+            _real_exec(p_strip, scope)
         args = [scope[k] for k in order if k in scope]
         if args:
             return args

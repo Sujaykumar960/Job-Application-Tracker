@@ -314,15 +314,27 @@ class TestBlockedModuleRuntimeEnforcement:
         tc = TestCase(id="rt_test", input="", expectedOutput=expected)
         return _run_python_sandbox(code, [tc])
 
-    def test_runtime_os_import_rejected(self):
+    def test_runtime_os_import_still_works_for_env_isolation(self):
+        # `import os` must stay permitted so the env-isolation tests above can
+        # read the sanitized environment; the dangerous os operations are what
+        # the runtime blocks.
         code = """
 def solution(*args):
     import os
-    return os.getcwd()
+    return os.environ.get("JWT_SECRET_KEY", "NOT_FOUND")
+"""
+        status, _, stderr, tcs = self._run(code, "NOT_FOUND")
+        assert tcs[0].passed is True
+
+    def test_runtime_os_dangerous_ops_rejected(self):
+        code = """
+def solution(*args):
+    import os
+    return os.system("whoami")
 """
         status, _, stderr, tcs = self._run(code)
         assert tcs[0].passed is False
-        assert "SecurityError" in str(tcs[0].actualOutput) or "restricted" in str(tcs[0].actualOutput).lower()
+        assert "restricted" in str(tcs[0].actualOutput).lower()
 
     def test_runtime_subprocess_import_rejected(self):
         code = """
