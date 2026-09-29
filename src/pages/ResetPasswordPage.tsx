@@ -10,8 +10,8 @@ import { Lock, CheckCircle2, AlertCircle, ArrowRight, Eye, EyeOff } from 'lucide
 
 const resetPasswordSchema = z
   .object({
-    password: z.string().min(6, 'Password must be at least 6 characters'),
-    confirmPassword: z.string().min(6, 'Please confirm your new password'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string().min(8, 'Please confirm your new password'),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',

@@ -9,7 +9,6 @@ import { ApplicationModal } from '../components/applications/ApplicationModal';
 import { ApplicationDetailModal } from '../components/applications/ApplicationDetailModal';
 import { Application, ApplicationStatus, PriorityLevel } from '../types';
 import { applicationApi } from '../api/applicationApi';
-import { FALLBACK_APPLICATIONS_50 } from '../data/fallbackApplications';
 import {
   Plus,
   Search,
@@ -30,7 +29,7 @@ import {
 
 export const ApplicationsPage: React.FC = () => {
   // --- STATE FROM BACKEND ---
-  const [applications, setApplications] = useState<Application[]>(FALLBACK_APPLICATIONS_50);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,15 +51,11 @@ export const ApplicationsPage: React.FC = () => {
         setIsLoading(true);
         setError(null);
         const data = await applicationApi.getApplications();
-        if (data && data.length > 0) {
-          setApplications(data);
-        } else {
-          setApplications(FALLBACK_APPLICATIONS_50);
-        }
+        setApplications(data ?? []);
       } catch (err) {
         console.error('Applications fetch error:', err);
-        // Resilient fallback to 50 pre-seeded applications
-        setApplications(FALLBACK_APPLICATIONS_50);
+        setError('Unable to load applications. Please try again.');
+        setApplications([]);
       } finally {
         setIsLoading(false);
       }

@@ -225,9 +225,10 @@ async def get_skill_trajectories(
                     )
                 )
 
-    # Return up to 6 unique trajectories
+    # Return up to 6 unique trajectories (user-derived only; fresh users get
+    # an empty list instead of fabricated demo data).
     unique_trajs = {}
-    for t in trajectories + default_trajectories:
+    for t in trajectories:
         if t.name not in unique_trajs or t.currentScore > unique_trajs[t.name].currentScore:
             unique_trajs[t.name] = t
 

@@ -163,6 +163,7 @@ async def async_client():
 @pytest.fixture(autouse=True)
 def reset_rate_limiter():
     """Ensure test isolation so previous tests do not deplete rate limits."""
-    from app.middleware.rate_limiter import auth_rate_limiter
+    from app.middleware.rate_limiter import auth_rate_limiter, code_execution_rate_limiter
     auth_rate_limiter.requests.clear()
+    code_execution_rate_limiter.requests.clear()
 

@@ -10,10 +10,12 @@ import tempfile
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 import httpx
 
 from app.config import settings
+from app.dependencies import get_current_active_user
+from app.middleware.rate_limiter import code_execution_rate_limiter
 from app.schemas.question import ExecuteCodePayload, ExecutionResult, TestCase
 
 logger = logging.getLogger("careerx.code_execution")
@@ -58,16 +60,32 @@ def _limit_child_resources() -> None:
 
     Runs via `preexec_fn`, so it executes post-fork / pre-exec in the child.
     Must stay POSIX-only and allocation-free.
+
+    Fails closed. An unbounded child can exhaust the shared sandbox budget and
+    deny service to every other user, so a child that cannot be bounded is
+    never allowed to exec.
     """
-    try:
-        import resource
-        resource.setrlimit(resource.RLIMIT_CPU, (SANDBOX_MAX_CPU_SECONDS, SANDBOX_MAX_CPU_SECONDS))
-        resource.setrlimit(resource.RLIMIT_AS, (SANDBOX_MAX_MEMORY_BYTES, SANDBOX_MAX_MEMORY_BYTES))
-        resource.setrlimit(resource.RLIMIT_FSIZE, (SANDBOX_MAX_FILE_SIZE_BYTES, SANDBOX_MAX_FILE_SIZE_BYTES))
-        resource.setrlimit(resource.RLIMIT_NPROC, (64, 64))
-        os.setsid()  # Own process group, so timeouts can reap the whole tree.
-    except Exception:
-        pass
+    import resource
+
+    # Own process group first, and independently of the ceilings below: timeout
+    # reaping signals the whole tree via the group id, so this must still happen
+    # when a later ceiling is rejected.
+    os.setsid()
+
+    # Hard ceilings. A host that refuses these leaves the child unrunnable.
+    resource.setrlimit(resource.RLIMIT_CPU, (SANDBOX_MAX_CPU_SECONDS, SANDBOX_MAX_CPU_SECONDS))
+    resource.setrlimit(resource.RLIMIT_AS, (SANDBOX_MAX_MEMORY_BYTES, SANDBOX_MAX_MEMORY_BYTES))
+
+    # Best-effort ceilings. Some hosts forbid lowering these, and the hard
+    # limits above already bound the child, so degrade instead of aborting.
+    for limit, ceiling in (
+        (resource.RLIMIT_FSIZE, SANDBOX_MAX_FILE_SIZE_BYTES),
+        (resource.RLIMIT_NPROC, 64),
+    ):
+        try:
+            resource.setrlimit(limit, (ceiling, ceiling))
+        except (ValueError, OSError):
+            pass
 
 
 def _validate_python_security(code: str) -> Optional[str]:
@@ -165,14 +183,9 @@ socket.getaddrinfo = _blocked_net
 # ------------------------------------------------------
 
 # --- Security Hardening: Block filesystem + dynamic import escape hatches ---
-# NOTE: a runtime `builtins.__import__` guard was trialled here and reverted.
-# Neutralising the import builtin also blocks the harness's own lazy imports
-# and the user code that the environment-isolation tests rely on to *prove*
-# secrets are unreachable, so it fails 14 tests instead of 3. The AST gate
-# above remains the enforcement point; `open`/`eval`/`exec`/`compile` are
-# additionally constrained by RLIMIT_AS, RLIMIT_CPU and RLIMIT_NPROC in
-# `_limit_child_resources`. Revisit once those tests are updated to assert
-# on the new message.
+# Imports themselves stay permitted (env-isolation tests read the sanitized
+# environment via `os.environ`), but dangerous builtins and module attributes
+# are neutered after the user code is defined and before it is invoked.
 import builtins
 
 # ------------------------------------------------------
@@ -182,7 +195,54 @@ import builtins
 # --- User Code End ---
 
 # Guards go up after the user code is defined but before anything invokes it.
-# _real_exec was captured before patching, so parse_input_str keeps working.
+# `input` is blocked so sandboxed code cannot stall waiting for stdin.
+_real_import = builtins.__import__
+_real_exec = builtins.exec
+
+
+def _raise_restricted(operation):
+    raise PermissionError(
+        "SecurityError: '" + operation + "' is a restricted operation in the execution environment."
+    )
+
+
+# (module, attribute) pairs that may be imported but whose dangerous
+# attributes are replaced with raising stubs. Importing the module stays
+# allowed so env-isolation checks can still read the sanitized environment.
+_DANGEROUS_ATTRS = (
+    ("os", "system"), ("os", "popen"), ("os", "spawnl"), ("os", "spawnle"),
+    ("os", "spawnlp"), ("os", "spawnlpe"), ("os", "spawnv"), ("os", "spawnve"),
+    ("os", "spawnvp"), ("os", "spawnvpe"), ("os", "posix_spawn"),
+    ("os", "execv"), ("os", "execve"), ("os", "execl"), ("os", "execle"),
+    ("os", "execlp"), ("os", "execlpe"), ("os", "execvp"), ("os", "execvpe"),
+    ("os", "fork"), ("os", "forkpty"), ("os", "open"), ("os", "remove"),
+    ("os", "unlink"), ("os", "rename"), ("os", "renames"), ("os", "rmdir"),
+    ("os", "removedirs"), ("os", "chmod"), ("os", "chown"), ("os", "chroot"),
+    ("os", "link"), ("os", "symlink"), ("os", "mknod"), ("os", "mkfifo"),
+    ("os", "mkdir"), ("os", "makedirs"), ("os", "kill"), ("os", "killpg"),
+    ("subprocess", "Popen"), ("subprocess", "run"), ("subprocess", "call"),
+    ("subprocess", "check_output"), ("subprocess", "check_call"),
+    ("subprocess", "getoutput"), ("subprocess", "getstatusoutput"),
+)
+
+
+def _guarded_import(name, globals=None, locals=None, fromlist=(), level=0):
+    module = _real_import(name, globals, locals, fromlist, level)
+    for mod, attr in _DANGEROUS_ATTRS:
+        if mod == name and hasattr(module, attr):
+            try:
+                setattr(module, attr, lambda *args, _a_=attr, **kwargs: _raise_restricted(_a_))
+            except Exception:
+                pass
+    return module
+
+
+builtins.__import__ = _guarded_import
+builtins.exec = lambda *_a, **_k: _raise_restricted("exec")
+builtins.eval = lambda *_a, **_k: _raise_restricted("eval")
+builtins.compile = lambda *_a, **_k: _raise_restricted("compile")
+builtins.open = lambda *_a, **_k: _raise_restricted("open")
+builtins.input = lambda *_a, **_k: _raise_restricted("input")
 
 def _coerce_scalar(tok):
     # Parse a single whitespace/newline-separated token into a Python value.
@@ -222,7 +282,7 @@ def parse_input_str(raw_input):
             m = _re.match(r'([a-zA-Z_]\w*)\s*=', p_strip)
             if m:
                 order.append(m.group(1))
-            exec(p_strip, scope)
+            _real_exec(p_strip, scope)
         args = [scope[k] for k in order if k in scope]
         if args:
             return args
@@ -387,6 +447,25 @@ print(json.dumps({{"results": results}}))
                     actualOutput="Time Limit Exceeded",
                     passed=False,
                     executionTimeMs=5000,
+                )
+                for tc in test_cases
+            ],
+        )
+
+    except subprocess.SubprocessError as exc:
+        # The child never reached exec: resource ceilings could not be applied.
+        # Refuse the submission rather than run it unbounded.
+        return (
+            "Runtime Error",
+            "",
+            f"Sandbox refused to start: {type(exc).__name__}: {exc}",
+            [
+                TestCase(
+                    id=tc.id,
+                    input=tc.input,
+                    expectedOutput=tc.expectedOutput,
+                    actualOutput="Runtime Error",
+                    passed=False,
                 )
                 for tc in test_cases
             ],
@@ -561,7 +640,11 @@ def _build_execution_result_from_data(data: Dict[str, Any], test_cases: List[Tes
 
 
 @router.post("/execute", response_model=ExecutionResult)
-async def execute_code(payload: ExecuteCodePayload):
+async def execute_code(
+    payload: ExecuteCodePayload,
+    _user: Dict[str, Any] = Depends(get_current_active_user),
+    _rate_limited: None = Depends(code_execution_rate_limiter),
+):
     """Execute submitted code in an isolated execution sandbox against real test cases."""
     if not payload.code.strip():
         return ExecutionResult(

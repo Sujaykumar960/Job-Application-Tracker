@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import secrets
 from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, status
@@ -77,7 +77,13 @@ async def logout(
     if token:
         await db.revoked_tokens.update_one(
             {"token": token},
-            {"$set": {"token": token, "revokedAt": utc_now_iso(), "expiresAt": now_ts + 86400}},
+            {
+                "$set": {
+                    "token": token,
+                    "revokedAt": utc_now_iso(),
+                    "expiresAt": datetime.now(timezone.utc) + timedelta(days=1),
+                }
+            },
             upsert=True,
         )
 

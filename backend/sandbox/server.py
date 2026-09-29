@@ -35,18 +35,33 @@ def _limit_child_resources() -> None:
     """Apply resource ceilings in the forked child before exec.
 
     Runs via `preexec_fn` (post-fork / pre-exec). Must stay POSIX-only and
-    allocation-free: anything that raises here leaves the child unbounded.
-    """
-    try:
-        import resource
+    allocation-free.
 
-        resource.setrlimit(resource.RLIMIT_CPU, (SANDBOX_MAX_CPU_SECONDS, SANDBOX_MAX_CPU_SECONDS))
-        resource.setrlimit(resource.RLIMIT_AS, (SANDBOX_MAX_MEMORY_BYTES, SANDBOX_MAX_MEMORY_BYTES))
-        resource.setrlimit(resource.RLIMIT_FSIZE, (SANDBOX_MAX_FILE_SIZE_BYTES, SANDBOX_MAX_FILE_SIZE_BYTES))
-        resource.setrlimit(resource.RLIMIT_NPROC, (64, 64))
-        os.setsid()
-    except Exception:
-        pass
+    Fails closed. An unbounded child can exhaust the shared sandbox budget and
+    deny service to every other user, so a child that cannot be bounded is
+    never allowed to exec.
+    """
+    import resource
+
+    # Own process group first, and independently of the ceilings below: timeout
+    # reaping signals the whole tree via the group id, so this must still happen
+    # when a later ceiling is rejected.
+    os.setsid()
+
+    # Hard ceilings. A host that refuses these leaves the child unrunnable.
+    resource.setrlimit(resource.RLIMIT_CPU, (SANDBOX_MAX_CPU_SECONDS, SANDBOX_MAX_CPU_SECONDS))
+    resource.setrlimit(resource.RLIMIT_AS, (SANDBOX_MAX_MEMORY_BYTES, SANDBOX_MAX_MEMORY_BYTES))
+
+    # Best-effort ceilings. Some hosts forbid lowering these, and the hard
+    # limits above already bound the child, so degrade instead of aborting.
+    for limit, ceiling in (
+        (resource.RLIMIT_FSIZE, SANDBOX_MAX_FILE_SIZE_BYTES),
+        (resource.RLIMIT_NPROC, 64),
+    ):
+        try:
+            resource.setrlimit(limit, (ceiling, ceiling))
+        except (ValueError, OSError):
+            pass
 
 
 def _clean_json_str(val: str) -> str:
@@ -87,6 +102,53 @@ socket.getaddrinfo = _blocked_net
 {user_code}
 # --- User Code End ---
 
+# Guards go up after the user code is defined but before anything invokes it.
+import builtins
+_real_import = builtins.__import__
+_real_exec = builtins.exec
+
+
+def _raise_restricted(operation):
+    raise PermissionError(
+        "SecurityError: '" + operation + "' is a restricted operation in the execution environment."
+    )
+
+
+_DANGEROUS_ATTRS = (
+    ("os", "system"), ("os", "popen"), ("os", "spawnl"), ("os", "spawnle"),
+    ("os", "spawnlp"), ("os", "spawnlpe"), ("os", "spawnv"), ("os", "spawnve"),
+    ("os", "spawnvp"), ("os", "spawnvpe"), ("os", "posix_spawn"),
+    ("os", "execv"), ("os", "execve"), ("os", "execl"), ("os", "execle"),
+    ("os", "execlp"), ("os", "execlpe"), ("os", "execvp"), ("os", "execvpe"),
+    ("os", "fork"), ("os", "forkpty"), ("os", "open"), ("os", "remove"),
+    ("os", "unlink"), ("os", "rename"), ("os", "renames"), ("os", "rmdir"),
+    ("os", "removedirs"), ("os", "chmod"), ("os", "chown"), ("os", "chroot"),
+    ("os", "link"), ("os", "symlink"), ("os", "mknod"), ("os", "mkfifo"),
+    ("os", "mkdir"), ("os", "makedirs"), ("os", "kill"), ("os", "killpg"),
+    ("subprocess", "Popen"), ("subprocess", "run"), ("subprocess", "call"),
+    ("subprocess", "check_output"), ("subprocess", "check_call"),
+    ("subprocess", "getoutput"), ("subprocess", "getstatusoutput"),
+)
+
+
+def _guarded_import(name, globals=None, locals=None, fromlist=(), level=0):
+    module = _real_import(name, globals, locals, fromlist, level)
+    for mod, attr in _DANGEROUS_ATTRS:
+        if mod == name and hasattr(module, attr):
+            try:
+                setattr(module, attr, lambda *args, _a_=attr, **kwargs: _raise_restricted(_a_))
+            except Exception:
+                pass
+    return module
+
+
+builtins.__import__ = _guarded_import
+builtins.exec = lambda *_a, **_k: _raise_restricted("exec")
+builtins.eval = lambda *_a, **_k: _raise_restricted("eval")
+builtins.compile = lambda *_a, **_k: _raise_restricted("compile")
+builtins.open = lambda *_a, **_k: _raise_restricted("open")
+builtins.input = lambda *_a, **_k: _raise_restricted("input")
+
 def parse_input_str(raw_input):
     import re
     try:
@@ -100,7 +162,7 @@ def parse_input_str(raw_input):
             m = re.match(r'([a-zA-Z_]\\w*)\\s*=', p_strip)
             if m:
                 order.append(m.group(1))
-            exec(p_strip, scope)
+            _real_exec(p_strip, scope)
         args = [scope[k] for k in order if k in scope]
         if args:
             return args
@@ -214,6 +276,29 @@ print(json.dumps({{"results": results}}))
                     "actualOutput": "Time Limit Exceeded",
                     "passed": False,
                     "executionTimeMs": 5000,
+                }
+                for tc in test_cases
+            ],
+            "passedCount": 0,
+            "totalCount": len(test_cases),
+        }
+
+    except subprocess.SubprocessError as exc:
+        # The child never reached exec: resource ceilings could not be applied.
+        # Refuse the submission rather than run it unbounded.
+        return {
+            "status": "Runtime Error",
+            "stdout": "",
+            "stderr": f"Sandbox refused to start: {type(exc).__name__}: {exc}",
+            "executionTimeMs": 0,
+            "testCaseResults": [
+                {
+                    "id": tc.get("id"),
+                    "input": tc.get("input"),
+                    "expectedOutput": tc.get("expectedOutput"),
+                    "actualOutput": "Runtime Error",
+                    "passed": False,
+                    "executionTimeMs": 0,
                 }
                 for tc in test_cases
             ],

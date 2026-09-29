@@ -64,22 +64,28 @@ async def lifespan(app: FastAPI):
                     await DatabaseManager.db.jobs.bulk_write(ops, ordered=False)
                     logger.info("Auto-seeded 100 jobs on platform startup.")
 
-            from app.data.companies import SEEDED_COMPANIES
-            from pymongo import UpdateOne
-            from app.utils.helpers import utc_now_iso
-            comp_cnt = await DatabaseManager.db.companies.count_documents({})
-            if comp_cnt < len(SEEDED_COMPANIES):
-                comp_ops = [
-                    UpdateOne(
-                        {"id": c["id"]},
-                        {"$set": dict(c, createdAt=utc_now_iso(), updatedAt=utc_now_iso())},
-                        upsert=True,
-                    )
-                    for c in SEEDED_COMPANIES
-                ]
-                if comp_ops:
-                    await DatabaseManager.db.companies.bulk_write(comp_ops, ordered=False)
-                    logger.info("Auto-seeded/synced %d companies on platform startup.", len(SEEDED_COMPANIES))
+            # Self-contained: a failure here must not skip the recruiter tenancy
+            # backfill below, which is a data-correctness migration.
+            try:
+                from app.data.companies import SEEDED_COMPANIES
+                from pymongo import UpdateOne
+                from app.utils.helpers import utc_now_iso
+                comp_cnt = await DatabaseManager.db.companies.count_documents({})
+                if comp_cnt < len(SEEDED_COMPANIES):
+                    comp_ops = [
+                        UpdateOne(
+                            {"id": c["id"]},
+                            {"$set": dict(c, createdAt=utc_now_iso(), updatedAt=utc_now_iso())},
+                            upsert=True,
+                        )
+                        for c in SEEDED_COMPANIES
+                    ]
+                    if comp_ops:
+                        await DatabaseManager.db.companies.bulk_write(comp_ops, ordered=False)
+                        logger.info("Auto-seeded/synced %d companies on platform startup.", len(SEEDED_COMPANIES))
+            except Exception as seed_err:
+                logger.warning("Company auto-seed skipped: %s", seed_err)
+
             try:
                 from app.utils.tenancy import backfill_recruiter_company_membership
                 backfilled = await backfill_recruiter_company_membership(DatabaseManager.db)

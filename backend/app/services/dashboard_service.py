@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from pymongo import UpdateOne
 
 from app.schemas.dashboard import (
     ActivityType,
@@ -25,100 +24,14 @@ class DashboardService:
 
     async def ensure_user_dashboard_defaults(self, user_id: str, user_name: str = "", user_email: str = "") -> None:
         """
-        Auto-provision realistic demo/starter data for new seekers or users missing data:
-        1. 50 applications (handled via app.data.applications)
-        2. Resume analysis with 88% ATS score & active resume record
-        3. 8 Saved jobs bookmarked from top jobs
-        4. Learning progress with 24 solved questions, 87.5% accuracy, 7-day streak
+        Auto-provision resume-calibrated starter applications for new seekers
+        that have analyzed/uploaded a resume. Saved jobs, learning progress,
+        and other counters must stay faithfully empty until the user actually
+        creates data, so overview metrics reflect reality.
         """
         try:
             from app.routers.applications import _ensure_user_has_50_applications
             await _ensure_user_has_50_applications(self.db, user_id)
-        except Exception:
-            pass
-
-        try:
-            # 2. Ensure 8 Saved Jobs
-            saved_count = await self.db.saved_jobs.count_documents({"userId": user_id})
-            if saved_count < 8:
-                cursor = self.db.jobs.find({}).limit(8)
-                top_jobs = await cursor.to_list(8)
-                job_ids = [j.get("id") or str(j.get("_id")) for j in top_jobs if (j.get("id") or j.get("_id"))]
-                if not job_ids:
-                    job_ids = ["job-1", "job-2", "job-5", "job-6", "job-9", "job-10", "job-13", "job-17"]
-                
-                ops = [
-                    UpdateOne(
-                        {"userId": user_id, "jobId": jid},
-                        {"$set": {"userId": user_id, "jobId": jid, "savedAt": utc_now_iso()}},
-                        upsert=True
-                    )
-                    for jid in job_ids[:8]
-                ]
-                if ops:
-                    await self.db.saved_jobs.bulk_write(ops, ordered=False)
-        except Exception:
-            pass
-
-        try:
-            # 4. Ensure Learning Progress (Solved 24, Accuracy 87.5, Streak 7d)
-            prog = await self.db.progress.find_one({"userId": user_id})
-            if not prog:
-                default_prog = {
-                    "userId": user_id,
-                    "questionsSolved": 24,
-                    "totalQuestions": 150,
-                    "accuracy": 87.5,
-                    "streakDays": 7,
-                    "codingStreakDays": 7,
-                    "currentAtsScore": 0,
-                    "projectsCompleted": 3,
-                    "certificationsCount": 2,
-                    "coursesEnrolled": 4,
-                    "coursesCompleted": 2,
-                    "lessonsCompleted": 36,
-                    "totalStudyHours": 48.5,
-                    "activityHistory": {
-                        "daily": [
-                            {"period": "Mon", "studyHours": 3.0, "questionsSolved": 4, "streakDays": 1},
-                            {"period": "Tue", "studyHours": 2.5, "questionsSolved": 3, "streakDays": 2},
-                            {"period": "Wed", "studyHours": 4.0, "questionsSolved": 5, "streakDays": 3},
-                            {"period": "Thu", "studyHours": 3.5, "questionsSolved": 4, "streakDays": 4},
-                            {"period": "Fri", "studyHours": 2.0, "questionsSolved": 2, "streakDays": 5},
-                            {"period": "Sat", "studyHours": 5.0, "questionsSolved": 6, "streakDays": 6},
-                            {"period": "Sun", "studyHours": 1.5, "questionsSolved": 2, "streakDays": 7},
-                        ],
-                        "weekly": [
-                            {"period": "W1", "studyHours": 14.5, "questionsSolved": 18, "streakDays": 7},
-                            {"period": "W2", "studyHours": 16.0, "questionsSolved": 22, "streakDays": 14},
-                        ],
-                        "monthly": [
-                            {"period": "Aug", "studyHours": 46.0, "questionsSolved": 62, "streakDays": 22},
-                            {"period": "Sep", "studyHours": 54.0, "questionsSolved": 78, "streakDays": 30},
-                        ],
-                    },
-                    "skillTrajectories": [
-                        {"name": "TypeScript & React Patterns", "initialScore": 60, "currentScore": 92, "growthPercentage": 53},
-                        {"name": "FastAPI & Python Concurrency", "initialScore": 55, "currentScore": 90, "growthPercentage": 63},
-                        {"name": "Database Indexing & PostgreSQL", "initialScore": 45, "currentScore": 88, "growthPercentage": 95},
-                        {"name": "System Architecture & Docker", "initialScore": 40, "currentScore": 86, "growthPercentage": 115},
-                    ],
-                    "createdAt": utc_now_iso(),
-                    "updatedAt": utc_now_iso(),
-                }
-                await self.db.progress.insert_one(default_prog)
-            elif prog.get("questionsSolved", 0) == 0:
-                await self.db.progress.update_one(
-                    {"_id": prog["_id"]},
-                    {"$set": {
-                        "questionsSolved": 24,
-                        "accuracy": 87.5,
-                        "streakDays": 7,
-                        "codingStreakDays": 7,
-                        "currentAtsScore": prog.get("currentAtsScore", 0),
-                        "updatedAt": utc_now_iso(),
-                    }}
-                )
         except Exception:
             pass
 
@@ -168,9 +81,6 @@ class DashboardService:
             )
             if res_doc and res_doc.get("atsScore") is not None:
                 ats_score = int(res_doc["atsScore"])
-
-        if ats_score is None:
-            ats_score = 0
 
         profile_overview = UserProfileOverview(
             id=user_id,
@@ -291,8 +201,6 @@ class DashboardService:
 
         # 8. Saved Jobs Count
         saved_jobs_count = await self.db.saved_jobs.count_documents({"userId": user_id})
-        if saved_jobs_count == 0:
-            saved_jobs_count = 8
 
         # 9. Learning / Career Progress
         progress_doc = await self.db.progress.find_one({"userId": user_id})
