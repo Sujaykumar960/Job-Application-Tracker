@@ -7,18 +7,20 @@
 
 ---
 
-## 0a. Hardening Re-Certification (Phases 0–3, 2026-09-29)
+## 0a. Hardening Re-Certification (Phases 0–3, 2026-09-30)
 
-Re-run of **Gate 1** against the post-hardening baseline. All security-hardening
-work merged onto `hardening/phase0-ci-stability`; no gate regressions.
+Re-run of **Gate 1** against the post-hardening baseline, after merging `main`
+(6 feature commits) back into `hardening/phase0-ci-stability`. No gate
+regressions.
 
 | Sub-Gate | Acceptance Standard | Result |
 | :--- | :--- | :--- |
-| **Full Backend Suite** | 0 failures on `MONGODB_DB_NAME=careerx_test_ci` | **PASS (497 passed, 1 skipped)** |
-| **Sandbox Security Suite** | 0 failures on `tests/test_sandbox_security.py` | **PASS (111/111)** |
+| **Full Backend Suite** | 0 failures on `MONGODB_DB_NAME=careerx_test_ci` | **PASS (510 passed, 1 skipped)** |
+| **Sandbox Security Suite** | 0 failures on `tests/test_sandbox_security.py` | **PASS (123/123)** |
 | **Frontend Production Build** | `npm run build` with `VITE_API_BASE_URL` set | **PASS (0 TS errors)** |
 | **Frontend Build Guard** | `vite build` fails when `VITE_API_BASE_URL` unset | **PASS (blocked, as intended)** |
 | **Git Working Tree** | `git diff --check` clean | **PASS** |
+| **Playwright E2E Suite** | 0 failures on a real headless Chromium | **PASS (all specs)** |
 
 ### Newly enforced release gates (added in hardening)
 1. **`/api/code/execute` requires an authenticated active user** — anonymous
@@ -35,6 +37,15 @@ work merged onto `hardening/phase0-ci-stability`; no gate regressions.
 5. **Tenancy / session hardening re-verified** — recruiter tenant isolation,
    refresh-token revocation with TTL index, and dev-tools fail-closed gating
    remain green across the full suite.
+6. **Sandbox resource ceilings fail closed** — a child that cannot be bounded
+   never reaches `exec`. `os.setsid()` runs first and unconditionally so a
+   refused ceiling cannot skip process-group isolation; `RLIMIT_CPU` and
+   `RLIMIT_AS` are hard (a refusal aborts the submission), while
+   `RLIMIT_FSIZE` and `RLIMIT_NPROC` stay best-effort. A refusal surfaces as
+   `Sandbox refused to start` on both the API and microservice paths.
+   Regression-tested by `TestResourceCeilingsFailClosed` (12 cases across both
+   harness copies); verified by mutation — reintroducing a swallowed
+   `setrlimit` failure fails the suite.
 
 ---
 
